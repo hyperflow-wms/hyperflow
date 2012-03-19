@@ -11,10 +11,10 @@ var app = module.exports = express.createServer();
 
 // for couch
 var cradle = require('cradle');
-var host = 'https://remote-couchdb-server.com';
-var port = 443;
-var credentials = {username: 'xxx', password: 'xxx' };
-var local=true;
+var host = 'http://beboj.iriscouch.com';
+var port = 5984;
+var credentials = {username: 'balis', password: 'ala123' };
+var local=false;
 var db;
 if(local===true) {
   db = new(cradle.Connection)().database('html5-microblog');
