@@ -103,7 +103,7 @@ app.get('/microblog/', function(req, res){
 
   ctype = acceptsXml(req);
   
-  db.get(view, options, function(err, doc) {
+  db.view('microblog/users_by_id', function(err, doc) {
     res.header('content-type',ctype);
     res.render('index', {
       title: 'Home',

@@ -2,6 +2,7 @@
   "name": "beboj-test",
   "version": "0.0.1",
    "dependencies": {
-    "express": "2.0.0"
+    "express": "",
+    "cradle": ""
    }
 }
