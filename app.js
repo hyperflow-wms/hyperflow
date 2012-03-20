@@ -25,8 +25,9 @@ else {
 
 // global data
 var contentType = 'text/html';
-var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
-
+//var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
+var baseUrl ='';
+console.log('address='+baseUrl);
 // Configuration
 
 app.configure(function(){
@@ -74,7 +75,7 @@ function validateUser(req, res, next) {
   options.descending='true';
   options.key=String.fromCharCode(34)+req.credentials[0]+String.fromCharCode(34);
   
-  db.get(view, options, function(err, doc) {
+  db.view('microblog/users_by_id', function(err, doc) {
     try {
       if(doc[0].value.password===req.credentials[1]) {
         next(req,res);
@@ -103,7 +104,7 @@ app.get('/microblog/', function(req, res){
 
   ctype = acceptsXml(req);
   
-  db.view('microblog/users_by_id', function(err, doc) {
+  db.view('microblog/posts_all', function(err, doc) {
     res.header('content-type',ctype);
     res.render('index', {
       title: 'Home',
@@ -126,7 +127,7 @@ app.get('/microblog/messages/:i', function(req, res){
 
   ctype = acceptsXml(req);
   
-  db.get(view, options, function(err, doc) {
+  db.view('microblog/posts_by_id', function(err, doc) {
     res.header('content-type',ctype);
     res.render('message', {
       title: id,
@@ -181,7 +182,7 @@ app.get('/microblog/users/:i', function(req, res){
   options.descending='true';
   options.key=String.fromCharCode(34)+id+String.fromCharCode(34);
   
-  db.get(view, options, function(err, doc) {
+  db.view('microblog/users_by_id', function(err, doc) {
     res.header('content-type',ctype);
     res.render('user', {
       title: id,
@@ -204,7 +205,7 @@ app.get('/microblog/user-messages/:i', function(req, res){
   options.descending='true';
   options.key=String.fromCharCode(34)+id+String.fromCharCode(34);
   
-  db.get(view, options, function(err, doc) {
+  db.view('microblog/posts_by_user', function(err, doc) {
     res.header('content-type',ctype);
     res.render('user-messages', {
       title: id,
@@ -222,7 +223,7 @@ app.get('/microblog/users/', function(req, res){
   
   ctype = acceptsXml(req);
     
-  db.get(view, function(err, doc) {
+  db.view('microblog/users_by_id', function(err, doc) {
     res.header('content-type',ctype);
     res.render('users', {
       title: 'User List',
