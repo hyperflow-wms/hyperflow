@@ -25,7 +25,7 @@ else {
 
 // global data
 var contentType = 'text/html';
-var baseUrl = 'http://localhost:3000/microblog/';
+var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
 
 // Configuration
 
@@ -385,6 +385,6 @@ function badRequest(res) {
 
 // Only listen on $ node app.js
 if (!module.parent) {
-  app.listen(3000);
+  app.listen(process.env.PORT);
   console.log("Express server listening on port %d", app.address().port);
 }
