@@ -23,10 +23,16 @@ else {
   db = new(cradle.Connection)(host, port, {auth: credentials}).database('html5-microblog');
 }
 
+// for xml2js parser
+var fs = require('fs'),
+    //eyes = require('eyes'),
+    xml2js = require('xml2js');
+    
+    
 // global data
 var contentType = 'text/html';
 //var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
-var baseUrl ='';
+var baseUrl =''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 console.log('address='+baseUrl);
 // Configuration
 
@@ -113,6 +119,40 @@ app.get('/microblog/', function(req, res){
     });  
   });
 });
+
+/* experiment - parsing Montage workflow trace XML -> JSON */
+app.get('/workflow/', function(req, res){
+
+  var ctype;
+  
+  var file = 'Montage_25.xml';
+  var parser = new xml2js.Parser();
+  
+  parser.on('end', function(result) {
+      //eyes.inspect(result);
+      res.header('content-type','application/json');
+      res.send(JSON.stringify(result));
+  });
+         
+   fs.readFile(file, function(err, data) {
+          parser.parseString(data);
+   });
+});
+
+app.get('/workflow/m25/', function(req, res){
+
+  var wf;
+  var file = 'Montage_25.json';
+    
+  fs.readFile(file, function(err, data) {
+          wf = data;
+  });
+   
+  res.header('content-type','text/plain');
+  res.send(wf.job[0].id);
+  
+});
+
 
 /* single message page */
 app.get('/microblog/messages/:i', function(req, res){

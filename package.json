@@ -4,6 +4,8 @@
    "dependencies": {
     "express": "",
     "cradle": "",
-    "ejs": ""
+    "ejs": "",
+    "eyes":"",
+    "xml2js":""
    }
 }
