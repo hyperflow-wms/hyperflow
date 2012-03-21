@@ -1,0 +1,2122 @@
+{
+    "@": {
+		"xmlns": "http://pegasus.isi.edu/schema/DAX",
+		"xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+		"xsi:schemaLocation": "http://pegasus.isi.edu/schema/DAX http://pegasus.isi.edu/schema/dax-2.1.xsd",
+		"version": "2.1",
+		"count": "1",
+		"index": "0",
+		"name": "test",
+		"jobCount": "25",
+		"fileCount": "0",
+		"childCount": "20"
+	},
+	"job": [
+		{
+			"@": {
+				"id": "ID00000",
+				"namespace": "Montage",
+				"name": "mProjectPP",
+				"version": "1.0",
+				"runtime": "13.39"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "2mass-atlas-ID00000s-jID00000.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4222080"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4167312"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4167312"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00001",
+				"namespace": "Montage",
+				"name": "mProjectPP",
+				"version": "1.0",
+				"runtime": "13.83"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4222080"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4171851"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4171851"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00002",
+				"namespace": "Montage",
+				"name": "mProjectPP",
+				"version": "1.0",
+				"runtime": "13.36"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "2mass-atlas-ID00002s-jID00002.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4222080"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157122"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157122"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00003",
+				"namespace": "Montage",
+				"name": "mProjectPP",
+				"version": "1.0",
+				"runtime": "13.60"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "2mass-atlas-ID00003s-jID00003.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4222080"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4174004"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4174004"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00004",
+				"namespace": "Montage",
+				"name": "mProjectPP",
+				"version": "1.0",
+				"runtime": "13.78"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "2mass-atlas-ID00004s-jID00004.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4222080"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4153521"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4153521"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00005",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.59"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4167312"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4167312"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4171851"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4171851"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "272"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "408404"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00006",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.59"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4185623"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4185623"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4181449"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4181449"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "282"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "314191"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00007",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.88"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4155530"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4155530"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4174004"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4174004"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "287"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "228602"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00008",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.81"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157122"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157122"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4143677"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4143677"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "272"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "176356"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00009",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.49"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4149806"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4149806"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4150602"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4150602"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "262"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "233476"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00010",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.51"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4152397"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4152397"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "267"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "251206"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00011",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.51"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4173072"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4173072"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170398"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170398"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "274"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "271248"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00012",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.62"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4153521"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4153521"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4155664"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4155664"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "271"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "313128"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00013",
+				"namespace": "Montage",
+				"name": "mDiffFit",
+				"version": "1.0",
+				"runtime": "10.37"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4141389"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4141389"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163196"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163196"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "297"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "297231"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00014",
+				"namespace": "Montage",
+				"name": "mConcatFit",
+				"version": "1.0",
+				"runtime": "0.72"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "fits_list.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "245"
+					}
+				},
+				{
+					"@": {
+						"file": "fit.txt",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "272"
+					}
+				},
+				{
+					"@": {
+						"file": "diff.txt",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "408404"
+					}
+				},
+				{
+					"@": {
+						"file": "fits.tbl",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "1889"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00015",
+				"namespace": "Montage",
+				"name": "mBgModel",
+				"version": "1.0",
+				"runtime": "1.42"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "pimages.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "837"
+					}
+				},
+				{
+					"@": {
+						"file": "fits.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "1889"
+					}
+				},
+				{
+					"@": {
+						"file": "corrections.tbl",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "265"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00016",
+				"namespace": "Montage",
+				"name": "mBackground",
+				"version": "1.0",
+				"runtime": "10.39"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "corrections.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "265"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163084"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163084"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163084"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00000s-jID00000.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163084"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00017",
+				"namespace": "Montage",
+				"name": "mBackground",
+				"version": "1.0",
+				"runtime": "10.64"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "corrections.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "265"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4161831"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4161831"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4161831"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00001s-jID00001.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4161831"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00018",
+				"namespace": "Montage",
+				"name": "mBackground",
+				"version": "1.0",
+				"runtime": "10.83"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "corrections.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "265"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4182323"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4182323"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4182323"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00002s-jID00002.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4182323"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00019",
+				"namespace": "Montage",
+				"name": "mBackground",
+				"version": "1.0",
+				"runtime": "10.93"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "corrections.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "265"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170858"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170858"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00003s-jID00003.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170858"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170858"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00020",
+				"namespace": "Montage",
+				"name": "mBackground",
+				"version": "1.0",
+				"runtime": "10.76"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "corrections.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "265"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157647"
+					}
+				},
+				{
+					"@": {
+						"file": "p2mass-atlas-ID00004s-jID00004_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157647"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00004s-jID00004.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157647"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00004s-jID00004_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157647"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00021",
+				"namespace": "Montage",
+				"name": "mImgTbl",
+				"version": "1.0",
+				"runtime": "1.39"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "cimages.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "837"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00000s-jID00000_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163084"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00000s-jID00000.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4163084"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00001s-jID00001_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4161831"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00001s-jID00001.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4161831"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00002s-jID00002_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4182323"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00002s-jID00002.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4182323"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00003s-jID00003.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170858"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00003s-jID00003_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4170858"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00004s-jID00004.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157647"
+					}
+				},
+				{
+					"@": {
+						"file": "c2mass-atlas-ID00004s-jID00004_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "4157647"
+					}
+				},
+				{
+					"@": {
+						"file": "newcimages.tbl",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "1599"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00022",
+				"namespace": "Montage",
+				"name": "mAdd",
+				"version": "1.0",
+				"runtime": "3.03"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "region.hdr",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "304"
+					}
+				},
+				{
+					"@": {
+						"file": "newcimages.tbl",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "1599"
+					}
+				},
+				{
+					"@": {
+						"file": "mosaic_ID00022_ID00022.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "46509614"
+					}
+				},
+				{
+					"@": {
+						"file": "mosaic_ID00022_ID00022_area.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "46509614"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00023",
+				"namespace": "Montage",
+				"name": "mShrink",
+				"version": "1.0",
+				"runtime": "3.86"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "mosaic_ID00022_ID00022.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "46509614"
+					}
+				},
+				{
+					"@": {
+						"file": "mosaic_ID00022_ID00022_area.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "46509614"
+					}
+				},
+				{
+					"@": {
+						"file": "shrunken_ID00023_ID00023.fits",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "1861129"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"id": "ID00024",
+				"namespace": "Montage",
+				"name": "mJPEG",
+				"version": "1.0",
+				"runtime": "0.45"
+			},
+			"uses": [
+				{
+					"@": {
+						"file": "shrunken_ID00023_ID00023.fits",
+						"link": "input",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "1861129"
+					}
+				},
+				{
+					"@": {
+						"file": "shrunken_ID00023_ID00023.jpg",
+						"link": "output",
+						"register": "true",
+						"transfer": "true",
+						"optional": "false",
+						"type": "data",
+						"size": "204856"
+					}
+				}
+			]
+		}
+	],
+	"child": [
+		{
+			"@": {
+				"ref": "ID00005"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00000"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00006"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00000"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00007"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00003"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00008"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00002"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00000"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00009"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00002"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00010"
+			},
+			"parent": {
+				"@": {
+					"ref": "ID00002"
+				}
+			}
+		},
+		{
+			"@": {
+				"ref": "ID00011"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00003"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00012"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00004"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00013"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00004"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00003"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00014"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00012"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00013"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00010"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00011"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00006"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00005"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00009"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00008"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00007"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00015"
+			},
+			"parent": {
+				"@": {
+					"ref": "ID00014"
+				}
+			}
+		},
+		{
+			"@": {
+				"ref": "ID00016"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00000"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00015"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00017"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00001"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00015"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00018"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00002"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00015"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00019"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00003"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00015"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00020"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00004"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00015"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00021"
+			},
+			"parent": [
+				{
+					"@": {
+						"ref": "ID00020"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00016"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00017"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00018"
+					}
+				},
+				{
+					"@": {
+						"ref": "ID00019"
+					}
+				}
+			]
+		},
+		{
+			"@": {
+				"ref": "ID00022"
+			},
+			"parent": {
+				"@": {
+					"ref": "ID00021"
+				}
+			}
+		},
+		{
+			"@": {
+				"ref": "ID00023"
+			},
+			"parent": {
+				"@": {
+					"ref": "ID00022"
+				}
+			}
+		},
+		{
+			"@": {
+				"ref": "ID00024"
+			},
+			"parent": {
+				"@": {
+					"ref": "ID00023"
+				}
+			}
+		}
+	]
+}
