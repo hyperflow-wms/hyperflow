@@ -141,15 +141,18 @@ app.get('/workflow/', function(req, res){
 
 app.get('/workflow/m25/', function(req, res){
 
-  var wf;
+  var wf, r;
   var file = 'Montage_25.json';
     
-  fs.readFile(file, function(err, data) {
-          wf = data;
-  });
-   
-  res.header('content-type','text/plain');
-  res.send(wf.job[0].id);
+  fs.readFile(file, 'utf8', function(err, data) {
+          wf = JSON.parse(data);
+          r=JSON.stringify(wf.job[0]['@'].id);
+          console.log(r);
+          res.header('content-type','text/plain');          
+          res.send(r);
+    });
+     
+
   
 });
 
