@@ -146,14 +146,19 @@ app.get('/workflow/m25/', function(req, res){
     
   fs.readFile(file, 'utf8', function(err, data) {
           wf = JSON.parse(data);
-          r=JSON.stringify(wf.job[0]['@'].id);
+          /*r=JSON.stringify(wf.job[0]['@'].id);
           console.log(r);
           res.header('content-type','text/plain');          
-          res.send(r);
-    });
-     
-
+          res.send(r);*/
+          var ctype = acceptsXml(req);
+          res.header('content-type',ctype);          
+          res.render('workflow', {
+              title: 'Workflow Montage 25',
+              wfname: 'Montage 25',
+              wftasks: wf.job
+          });
   
+   });
 });
 
 
