@@ -1,39 +1,21 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div class="workflow">
+  <form class="workflow-execute" action="/workflow/m25/" method="post">
+    <p class="buttons">
+      <input type="submit" value="Execute" />
+    </p>
+  </form>
   <div id="workflow-tasks">
-    <ul class="workflow-tasks">
+    <ul class="all">
       <% for(i=0,x=wftasks.length;i<x;i++) { %>
         <li>
-          <span class="workflow-task-id">
-            <%=wftasks[i]['@'].id%>
-          </span>
-          <span class="workflow-task-name">
-            <%=wftasks[i]['@'].name%>
-          </span>
-        <% if (wftasks[i].uses != null) { %>
-          <ul class="workflow-task-inputs">
-            <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
-              <span class="workflow-task-input">
-                 <% if (wftasks[i].uses[j]['@'].link == 'input') { %>
-                 <li>In: 
-                   ["<%=wftasks[i].uses[j]['@'].file%>",<%=wftasks[i].uses[j]['@'].size%>]
-                 <% } %>
-              </span>
-            <% } %>
-          </ul>
-          <ul class="workflow-task-inputs">
-            <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
-              <span class="workflow-task-input">
-                 <% if (wftasks[i].uses[j]['@'].link == 'output') { %>
-                 <li>Out: 
-                   ["<%=wftasks[i].uses[j]['@'].file%>",<%=wftasks[i].uses[j]['@'].size%>]
-                 <% } %>
-              </span>
-            <% } %>
-          </ul>
-        <% } %>
+            <a rel="workflow-task" href="task-<%=i%>">
+               <span class="name">
+                   <%=wftasks[i]['@'].name%>
+               </span>
+            </a>
+        </li>
       <% } %>
-    </ul>
+    </ul>   
   </div>
-  &#160;
 </div>

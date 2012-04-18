@@ -28,7 +28,9 @@ var fs = require('fs'),
     //eyes = require('eyes'),
     xml2js = require('xml2js');
     
-    
+
+var adag = require('./adag_parser').init();
+
 // global data
 var contentType = 'text/html';
 //var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
@@ -139,12 +141,14 @@ app.get('/workflow/', function(req, res){
    });
 });
 
+
 app.get('/workflow/m25/', function(req, res){
 
   var wf, r;
   var file = 'Montage_25.json';
     
   fs.readFile(file, 'utf8', function(err, data) {
+          //wf = JSON.parse(data);
           wf = JSON.parse(data);
           /*r=JSON.stringify(wf.job[0]['@'].id);
           console.log(r);
@@ -157,6 +161,53 @@ app.get('/workflow/m25/', function(req, res){
               wfname: 'Montage 25',
               wftasks: wf.job
           });
+  
+   });
+});
+
+
+app.get('/workflow/m25/task-:i', function(req, res){
+
+  var wf, r;
+  var file = 'Montage_25.json';
+  id = req.params.i;
+    
+  fs.readFile(file, 'utf8', function(err, data) {
+          wf = JSON.parse(data);
+          /*r=JSON.stringify(wf.job[0]['@'].id);
+          console.log(r);
+          res.header('content-type','text/plain');          
+          res.send(r);*/
+          var ctype = acceptsXml(req);
+          res.header('content-type',ctype);          
+          res.render('workflow-task', {
+              nr: id,
+              title:' workflow task',
+              wftask: wf.job[id] // FIXME - 404 if doesn't exist
+          });
+  
+   });
+});
+
+
+app.post('/workflow/m25/', function(req, res){
+
+  var file = 'Montage_25.xml';
+    
+  adag.parse(file, function(result) {
+          //wf = JSON.parse(data);
+          //r=JSON.stringify(wf.job[0]['@'].id);
+          console.log(JSON.stringify(result));
+          res.header('content-type','text/plain');          
+          res.send(JSON.stringify(result));
+          
+          /*var ctype = acceptsXml(req);
+          res.header('content-type',ctype);          
+          res.render('workflow-post', {
+              title: 'Workflow Montage 25 POST',
+              wfname: 'Montage 25',
+              wftasks: result.job
+          });*/
   
    });
 });
