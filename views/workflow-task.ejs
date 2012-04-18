@@ -1,0 +1,31 @@
+<div id="workflow-tasks">
+   <ul class="single">
+     <li>
+       <span class="name">
+          <%=wftask['@'].name%>
+       </span>
+       <div id="workflow-task-inputs">
+          <ul class="all">
+             <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
+                 <% if (wftask.uses[j]['@'].link == 'input') { %>
+                    <li>
+                       <a rel="workflow-task-data input" href="<%=wftask['@'].name%>-<%=wftask['@'].id%>/<%=wftask.uses[j]['@'].file%>"><%=wftask['@'].name%>-<%=wftask['@'].id%>/in-<%=wftask.uses[j]['@'].file%></a>
+                    </li>
+                 <% } %>
+             <% } %>
+          </ul>
+       </div>
+       <div id="workflow-task-outputs">
+          <ul class="all">
+             <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
+                 <% if (wftask.uses[j]['@'].link == 'output') { %>
+                    <li>
+                       <a rel="workflow-task-data output" href="<%=wftask['@'].name%>-<%=wftask['@'].id%>/<%=wftask.uses[j]['@'].file%>"><%=wftask['@'].name%>-<%=wftask['@'].id%>/in-<%=wftask.uses[j]['@'].file%></a>
+                    </li>
+                 <% } %>
+             <% } %>
+          </ul>
+       </div>
+     </li>
+   </ul>
+</div>
