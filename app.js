@@ -125,20 +125,12 @@ app.get('/microblog/', function(req, res){
 /* experiment - parsing Montage workflow trace XML -> JSON */
 app.get('/workflow/', function(req, res){
 
-  var ctype;
-  
   var file = 'Montage_25.xml';
-  var parser = new xml2js.Parser();
   
-  parser.on('end', function(result) {
-      //eyes.inspect(result);
+  adag.parse(file, function(result) {
       res.header('content-type','application/json');
       res.send(JSON.stringify(result));
   });
-         
-   fs.readFile(file, function(err, data) {
-          parser.parseString(data);
-   });
 });
 
 
@@ -197,17 +189,17 @@ app.post('/workflow/m25/', function(req, res){
   adag.parse(file, function(result) {
           //wf = JSON.parse(data);
           //r=JSON.stringify(wf.job[0]['@'].id);
-          console.log(JSON.stringify(result));
+          /*console.log(JSON.stringify(result));
           res.header('content-type','text/plain');          
-          res.send(JSON.stringify(result));
+          res.send(JSON.stringify(result));*/
           
-          /*var ctype = acceptsXml(req);
+          var ctype = acceptsXml(req);
           res.header('content-type',ctype);          
           res.render('workflow-post', {
               title: 'Workflow Montage 25 POST',
               wfname: 'Montage 25',
               wftasks: result.job
-          });*/
+          });
   
    });
 });

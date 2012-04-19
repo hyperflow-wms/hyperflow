@@ -37,6 +37,7 @@ exports.init = function () {
            //var i, j, k, children, parents;
            var wf = result;
            
+           // move info about parents to 'job' elements
            foreach(wf.job, function(job) {
                foreach(wf.child, function(child) {
                    if (job['@'].id == child['@'].ref) { 
@@ -50,6 +51,55 @@ exports.init = function () {
                });
                
            });
+           
+           // create an  array of workflow data elements
+           var found;
+           wf.data = [];
+           foreach(wf.job, function(job) {
+               foreach(job.uses, function(job_data) {
+                   found = undefined;
+                   foreach(wf.data, function(data) {
+                       if (data.name == job_data['@'].file && data.size == job_data['@'].size) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+                           found = data; // data element already in the array
+                       }
+                   });
+                   if (!found) {
+                       var idx = wf.data.push({'id': -1, 'name': job_data['@'].file, 'size': job_data['@'].size, 'from': [], 'to': []});
+                       found = wf.data[idx-1]; 
+                   }
+                   if (job_data['@'].link == 'input') {
+                           found.to.push({'job_name': job['@'].name, 'job_id': job['@'].id}); // task to which this data is passed to (if many -> partitioning)
+                   } else {
+                       found.from.push({'job_name': job['@'].name, 'job_id': job['@'].id});  // task from which this data is received from (if many -> aggregation)
+                   }
+               });
+           });
+
+           // assign identifiers to data elements
+           var id = 1;
+           foreach(wf.data, function(data) {
+               data.id = id++;
+           });
+           
+           
+           /*var data_id = 0;
+           foreach(wf.job, function(job) {
+               foreach(job.uses, function(data) {
+                   if (! ('parents' in job['@'])) {
+                       data['@'].id = ++data_id;
+                   }
+               });
+           });
+           foreach(wf.job, function(job) {
+               foreach(job.uses, function(data) {
+                   if (('parents' in job['@'])) {
+                       foreach(job['@'].parents, function(parent) {
+                           if (parent['@'].ref == 
+                           data['@'].id = ++data_id;
+                       });
+                   }
+               });
+           });*/
            
            /*for(i=0,jobs=wf.job;i<jobs.length;i++) { 
                for(j=0,children=wf.child;j<children.length;j++) {
