@@ -1,0 +1,30 @@
+<div id="workflow-data">
+   <ul class="single">
+     <li>
+       <span class="name">
+          <%=data.name%>
+       </span>
+       <span class="size">
+          <%=data.size%>
+       </span>
+       <div id="produced-by">
+          <ul class="all">
+             <% for(j=0,y=data.from.length;j<y;j++) { %>
+                    <li>Produced by
+                       <a rel="workflow-task data-producer" href="/workflow/<%=wfname%>/task-<%=data.from[j].job_id%>/">/workflow/<%=wfname%>/task-<%=data.from[j].job_id%></a>
+                    </li>
+             <% } %>
+          </ul>
+       </div>
+       <div id="consumed-by">
+          <ul class="all">
+             <% for(j=0,y=data.to.length;j<y;j++) { %>
+                    <li>Consumed by
+                       <a rel="workflow-task data-consumer" href="/workflow/<%=wfname%>/task-<%=data.to[j].job_id%>/">/workflow/<%=wfname%>/task-<%=data.to[j].job_id%></a>
+                    </li>
+             <% } %>
+          </ul>
+       </div>
+     </li>
+   </ul>
+</div>
