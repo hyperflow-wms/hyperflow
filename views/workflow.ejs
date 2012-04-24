@@ -1,6 +1,6 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div class="workflow">
-  <form class="workflow-execute" action="/workflow/m25/" method="post">
+  <form class="workflow-execute" action="/workflow/<%=wfname%>/" method="post">
     <p class="buttons">
       <input type="submit" value="Execute" />
     </p>
@@ -9,7 +9,7 @@
     <ul class="all">
       <% for(i=0,x=wftasks.length;i<x;i++) { %>
         <li>
-            <a rel="workflow-task" href="task-<%=i%>">
+            <a rel="workflow-task" href="/workflow/<%=wfname%>/task-<%=i+1%>/">
                <span class="name">
                    <%=wftasks[i]['@'].name%>
                </span>

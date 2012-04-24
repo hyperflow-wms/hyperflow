@@ -8,8 +8,8 @@
           <ul class="all">
              <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
                  <% if (wftask.uses[j]['@'].link == 'input') { %>
-                    <li>
-                       <a rel="workflow-task-data input" href="<%=wftask['@'].name%>-<%=wftask['@'].id%>/<%=wftask.uses[j]['@'].file%>"><%=wftask['@'].name%>-<%=wftask['@'].id%>/in-<%=wftask.uses[j]['@'].file%></a>
+                    <li>In
+                       <a rel="workflow-task-data input" href="/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/">/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/</a>
                     </li>
                  <% } %>
              <% } %>
@@ -19,8 +19,8 @@
           <ul class="all">
              <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
                  <% if (wftask.uses[j]['@'].link == 'output') { %>
-                    <li>
-                       <a rel="workflow-task-data output" href="<%=wftask['@'].name%>-<%=wftask['@'].id%>/<%=wftask.uses[j]['@'].file%>"><%=wftask['@'].name%>-<%=wftask['@'].id%>/in-<%=wftask.uses[j]['@'].file%></a>
+                    <li>Out
+                       <a rel="workflow-task-data output" href="/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/">/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/</a>
                     </li>
                  <% } %>
              <% } %>

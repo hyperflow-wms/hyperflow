@@ -1,6 +1,8 @@
 /* 2001-07-25 (mca) : collection+json */
 /* Designing Hypermedia APIs by Mike Amundsen (2011) */
 
+'use strict';
+
 /**
  * Module dependencies.
  */
@@ -13,470 +15,491 @@ var app = module.exports = express.createServer();
 var cradle = require('cradle');
 var host = 'http://beboj.iriscouch.com';
 var port = 5984;
-var credentials = {username: 'balis', password: 'ala123' };
-var local=false;
+var credentials = {
+    username: 'balis',
+    password: 'ala123'
+};
+var local = false;
 var db;
-if(local===true) {
-  db = new(cradle.Connection)().database('html5-microblog');
+if (local === true) {
+    db = new(cradle.Connection)().database('html5-microblog');
 }
 else {
-  db = new(cradle.Connection)(host, port, {auth: credentials}).database('html5-microblog');
+    db = new(cradle.Connection)(host, port, {
+        auth: credentials
+    }).database('html5-microblog');
 }
-
-// for xml2js parser
-var fs = require('fs'),
-    //eyes = require('eyes'),
-    xml2js = require('xml2js');
-    
 
 var adag = require('./adag_parser').init();
 
 // global data
 var contentType = 'text/html';
 //var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
-var baseUrl =''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
-console.log('address='+baseUrl);
+var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
+console.log('address=' + baseUrl);
+
+var workflow_cache = {}; // cache for parsed json workfow representations
+
 // Configuration
-
-app.configure(function(){
-  app.set('views', __dirname + '/views');
-  app.set('view engine', 'ejs');
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(app.router);
-  app.use(express.static(__dirname + '/public'));
+app.configure(function() {
+    app.set('views', __dirname + '/views');
+    app.set('view engine', 'ejs');
+    app.use(express.bodyParser());
+    app.use(express.methodOverride());
+    app.use(app.router);
+    app.use(express.static(__dirname + '/public'));
 });
 
-app.configure('development', function(){
-  app.use(express.errorHandler({ dumpExceptions: true, showStack: true })); 
+app.configure('development', function() {
+    app.use(express.errorHandler({
+        dumpExceptions: true,
+        showStack: true
+    }));
 });
 
-app.configure('production', function(){
-  app.use(express.errorHandler()); 
+app.configure('production', function() {
+    app.use(express.errorHandler());
 });
 
 /* validate user (from  db) via HTTP Basic Auth */
+
 function validateUser(req, res, next) {
 
-  var parts, auth, scheme, credentials; 
-  var view, options;
-  
-  // handle auth stuff
-  auth = req.headers["authorization"];
-  if (!auth){
-    return authRequired(res, 'Microblog');
-  }  
-  
-  parts = auth.split(' ');
-  scheme = parts[0];
-  credentials = new Buffer(parts[1], 'base64').toString().split(':');
-  
-  if ('Basic' != scheme) {
-    return badRequest(res);
-  } 
-  req.credentials = credentials;
+    var parts, auth, scheme, credentials;
+    var view, options;
 
-  // ok, let's look this user up
-  view = '/_design/microblog/_view/users_by_id';
-  
-  options = {};
-  options.descending='true';
-  options.key=String.fromCharCode(34)+req.credentials[0]+String.fromCharCode(34);
-  
-  db.view('microblog/users_by_id', function(err, doc) {
-    try {
-      if(doc[0].value.password===req.credentials[1]) {
-        next(req,res);
-      }
-      else {
-        throw new Error('Invalid User');
-      } 
+    // handle auth stuff
+    auth = req.headers["authorization"];
+    if (!auth) {
+        return authRequired(res, 'Microblog');
     }
-    catch (ex) {
-      return authRequired(res, 'Microblog');
+
+    parts = auth.split(' ');
+    scheme = parts[0];
+    credentials = new Buffer(parts[1], 'base64').toString().split(':');
+
+    if ('Basic' != scheme) {
+        return badRequest(res);
     }
-  });
+    req.credentials = credentials;
+
+    // ok, let's look this user up
+    view = '/_design/microblog/_view/users_by_id';
+
+    options = {};
+    options.descending = 'true';
+    options.key = String.fromCharCode(34) + req.credentials[0] + String.fromCharCode(34);
+
+    db.view('microblog/users_by_id', function(err, doc) {
+        try {
+            if (doc[0].value.password === req.credentials[1]) {
+                next(req, res);
+            }
+            else {
+                throw new Error('Invalid User');
+            }
+        }
+        catch (ex) {
+            return authRequired(res, 'Microblog');
+        }
+    });
 }
 
 // Routes
-
 /* starting page */
-app.get('/microblog/', function(req, res){
+app.get('/microblog/', function(req, res) {
 
-  var ctype;
-  
-  var view = '/_design/microblog/_view/posts_all';
-  
-  var options = {};
-  options.descending = 'true';
+    var ctype;
 
-  ctype = acceptsXml(req);
-  
-  db.view('microblog/posts_all', function(err, doc) {
-    res.header('content-type',ctype);
-    res.render('index', {
-      title: 'Home',
-      site: baseUrl,
-      items: doc
-    });  
-  });
+    var view = '/_design/microblog/_view/posts_all';
+
+    var options = {};
+    options.descending = 'true';
+
+    ctype = acceptsXml(req);
+
+    db.view('microblog/posts_all', function(err, doc) {
+        res.header('content-type', ctype);
+        res.render('index', {
+            title: 'Home',
+            site: baseUrl,
+            items: doc
+        });
+    });
 });
 
-/* experiment - parsing Montage workflow trace XML -> JSON */
-app.get('/workflow/', function(req, res){
+app.get('/workflow/', function(req, res) {
 
-  var file = 'Montage_25.xml';
-  
-  adag.parse(file, function(result) {
-      res.header('content-type','application/json');
-      res.send(JSON.stringify(result));
-  });
-});
+    var file = 'Montage_25.xml';
 
-
-app.get('/workflow/m25/', function(req, res){
-
-  var wf, r;
-  var file = 'Montage_25.json';
-    
-  fs.readFile(file, 'utf8', function(err, data) {
-          //wf = JSON.parse(data);
-          wf = JSON.parse(data);
-          /*r=JSON.stringify(wf.job[0]['@'].id);
-          console.log(r);
-          res.header('content-type','text/plain');          
-          res.send(r);*/
-          var ctype = acceptsXml(req);
-          res.header('content-type',ctype);          
-          res.render('workflow', {
-              title: 'Workflow Montage 25',
-              wfname: 'Montage 25',
-              wftasks: wf.job
-          });
-  
-   });
+    adag.parse(file, function(result) {
+        res.header('content-type', 'application/json');
+        res.send(JSON.stringify(result));
+    });
 });
 
 
-app.get('/workflow/m25/task-:i', function(req, res){
-
-  var wf, r;
-  var file = 'Montage_25.json';
-  id = req.params.i;
-    
-  fs.readFile(file, 'utf8', function(err, data) {
-          wf = JSON.parse(data);
-          /*r=JSON.stringify(wf.job[0]['@'].id);
-          console.log(r);
-          res.header('content-type','text/plain');          
-          res.send(r);*/
-          var ctype = acceptsXml(req);
-          res.header('content-type',ctype);          
-          res.render('workflow-task', {
-              nr: id,
-              title:' workflow task',
-              wftask: wf.job[id] // FIXME - 404 if doesn't exist
-          });
-  
-   });
+app.get('/workflow/:w/', function(req, res) {
+    getWfJson(req.params.w, function(wf) {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.render('workflow', {
+            title: req.params.w,
+            wfname: req.params.w,
+            wftasks: wf.job
+        });
+    });
 });
 
 
-app.post('/workflow/m25/', function(req, res){
+app.get('/workflow/:w/task-:i/', function(req, res) {
+    var id = req.params.i;
 
-  var file = 'Montage_25.xml';
-    
-  adag.parse(file, function(result) {
-          //wf = JSON.parse(data);
-          //r=JSON.stringify(wf.job[0]['@'].id);
-          /*console.log(JSON.stringify(result));
-          res.header('content-type','text/plain');          
-          res.send(JSON.stringify(result));*/
-          
-          var ctype = acceptsXml(req);
-          res.header('content-type',ctype);          
-          res.render('workflow-post', {
-              title: 'Workflow Montage 25 POST',
-              wfname: 'Montage 25',
-              wftasks: result.job
-          });
-  
-   });
+    getWfJson(req.params.w, function(wf) {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.render('workflow-task', {
+            nr: id,
+            wfname: req.params.w,
+            title: ' workflow task',
+            wftask: wf.job[id - 1] // FIXME - 404 if doesn't exist
+        });
+    });
+});
+
+app.get('/workflow/:w/data-:j/', function(req, res) {
+    var data_id = req.params.j;
+    getWfJson(req.params.w, function(wf) {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.render('workflow-data', {
+            title: 'workflow data',
+            wfname: req.params.w,
+            data: wf.data[data_id - 1] // FIXME: 404 if doesn't exist
+        });
+    });
+});
+
+app.post('/workflow/:w/', function(req, res) {
+
+    getWfJson(req.params.w, function(wf) {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.render('workflow-post', {
+            title: 'Workflow Montage 25 POST',
+            wfname: req.params.w,
+            wftasks: wf.job
+        });
+    });
 });
 
 
 /* single message page */
-app.get('/microblog/messages/:i', function(req, res){
+app.get('/microblog/messages/:i', function(req, res) {
 
-  var view, options, id, ctype;
-  id = req.params.i;
-  
-  view = '/_design/microblog/_view/posts_by_id';
-  options = {};
-  options.descending='true';
-  options.key=String.fromCharCode(34)+id+String.fromCharCode(34);
+    var view, options, id, ctype;
+    id = req.params.i;
 
-  ctype = acceptsXml(req);
-  
-  db.view('microblog/posts_by_id', function(err, doc) {
-    res.header('content-type',ctype);
-    res.render('message', {
-      title: id,
-      site: baseUrl,
-      items: doc
-    });  
-  });
+    view = '/_design/microblog/_view/posts_by_id';
+    options = {};
+    options.descending = 'true';
+    options.key = String.fromCharCode(34) + id + String.fromCharCode(34);
+
+    ctype = acceptsXml(req);
+
+    db.view('microblog/posts_by_id', function(err, doc) {
+        res.header('content-type', ctype);
+        res.render('message', {
+            title: id,
+            site: baseUrl,
+            items: doc
+        });
+    });
 });
 
 // add a message
 app.post('/microblog/messages/', function(req, res) {
-  
-  validateUser(req, res, function(req,res) {
-  
-    var text, item;
-    
-    // get data array
-    text = req.body.message;
-    if(text!=='') {
-      item = {};
-      item.type='post';
-      item.text = text;
-      item.user = req.credentials[0];
-      item.dateCreated = now();
-      
-      // write to DB
-      db.save(item, function(err, doc) {
-        if(err) {
-          res.status=400;
-          res.send(err);
+
+    validateUser(req, res, function(req, res) {
+
+        var text, item;
+
+        // get data array
+        text = req.body.message;
+        if (text !== '') {
+            item = {};
+            item.type = 'post';
+            item.text = text;
+            item.user = req.credentials[0];
+            item.dateCreated = now();
+
+            // write to DB
+            db.save(item, function(err, doc) {
+                if (err) {
+                    res.status = 400;
+                    res.send(err);
+                }
+                else {
+                    res.redirect('/microblog/', 302);
+                }
+            });
         }
         else {
-          res.redirect('/microblog/', 302);
+            return badReqest(res);
         }
-      });  
-    }
-    else {
-      return badReqest(res);
-    }
-  });
+    });
 });
 
 /* single user profile page */
-app.get('/microblog/users/:i', function(req, res){
+app.get('/microblog/users/:i', function(req, res) {
 
-  var view, options, id, ctype;
-  id = req.params.i;
-  ctype = acceptsXml(req);
-    
-  view = '/_design/microblog/_view/users_by_id';
-  options = {};
-  options.descending='true';
-  options.key=String.fromCharCode(34)+id+String.fromCharCode(34);
-  
-  db.view('microblog/users_by_id', function(err, doc) {
-    res.header('content-type',ctype);
-    res.render('user', {
-      title: id,
-      site: baseUrl,
-      items: doc
-    });  
-  });
+    var view, options, id, ctype;
+    id = req.params.i;
+    ctype = acceptsXml(req);
+
+    view = '/_design/microblog/_view/users_by_id';
+    options = {};
+    options.descending = 'true';
+    options.key = String.fromCharCode(34) + id + String.fromCharCode(34);
+
+    db.view('microblog/users_by_id', function(err, doc) {
+        res.header('content-type', ctype);
+        res.render('user', {
+            title: id,
+            site: baseUrl,
+            items: doc
+        });
+    });
 });
 
 /* user messages page */
-app.get('/microblog/user-messages/:i', function(req, res){
+app.get('/microblog/user-messages/:i', function(req, res) {
 
-  var view, options, id, ctype;
- 
-  id = req.params.i;
-  ctype = acceptsXml(req);
-  
-  view = '/_design/microblog/_view/posts_by_user';
-  options = {};
-  options.descending='true';
-  options.key=String.fromCharCode(34)+id+String.fromCharCode(34);
-  
-  db.view('microblog/posts_by_user', function(err, doc) {
-    res.header('content-type',ctype);
-    res.render('user-messages', {
-      title: id,
-      site: baseUrl,
-      items: doc
-    });  
-  });
+    var view, options, id, ctype;
+
+    id = req.params.i;
+    ctype = acceptsXml(req);
+
+    view = '/_design/microblog/_view/posts_by_user';
+    options = {};
+    options.descending = 'true';
+    options.key = String.fromCharCode(34) + id + String.fromCharCode(34);
+
+    db.view('microblog/posts_by_user', function(err, doc) {
+        res.header('content-type', ctype);
+        res.render('user-messages', {
+            title: id,
+            site: baseUrl,
+            items: doc
+        });
+    });
 });
 
 /* get user list page */
-app.get('/microblog/users/', function(req, res){
-  var ctype;
-  
-  var view = '/_design/microblog/_view/users_by_id';
-  
-  ctype = acceptsXml(req);
-    
-  db.view('microblog/users_by_id', function(err, doc) {
-    res.header('content-type',ctype);
-    res.render('users', {
-      title: 'User List',
-      site: baseUrl,
-      items: doc
-    });  
-  });
+app.get('/microblog/users/', function(req, res) {
+    var ctype;
+
+    var view = '/_design/microblog/_view/users_by_id';
+
+    ctype = acceptsXml(req);
+
+    db.view('microblog/users_by_id', function(err, doc) {
+        res.header('content-type', ctype);
+        res.render('users', {
+            title: 'User List',
+            site: baseUrl,
+            items: doc
+        });
+    });
 });
 
 /* post to user list page */
 app.post('/microblog/users/', function(req, res) {
 
-  var item,id; 
+    var item, id;
 
-  id = req.body.user;
-  if(id==='') {
-    res.status=400;
-    res.send('missing user');  
-  }
-  else {
-    item = {};
-    item.type='user';
-    item.password = req.body.password;
-    item.name = req.body.name;
-    item.email = req.body.email;
-    item.description = req.body.description;
-    item.imageUrl = req.body.avatar;
-    item.websiteUrl = req.body.website;
-    item.dateCreated = today();
-    
-    // write to DB
-    db.save(req.body.user, item, function(err, doc) {
-      if(err) {
-        res.status=400;
-        res.send(err);
-      }
-      else {
-        res.redirect('/microblog/users/', 302);
-      }
-    });    
-  }
+    id = req.body.user;
+    if (id === '') {
+        res.status = 400;
+        res.send('missing user');
+    }
+    else {
+        item = {};
+        item.type = 'user';
+        item.password = req.body.password;
+        item.name = req.body.name;
+        item.email = req.body.email;
+        item.description = req.body.description;
+        item.imageUrl = req.body.avatar;
+        item.websiteUrl = req.body.website;
+        item.dateCreated = today();
+
+        // write to DB
+        db.save(req.body.user, item, function(err, doc) {
+            if (err) {
+                res.status = 400;
+                res.send(err);
+            }
+            else {
+                res.redirect('/microblog/users/', 302);
+            }
+        });
+    }
 });
 
 /* get user register page */
-app.get('/microblog/register/', function(req, res){
+app.get('/microblog/register/', function(req, res) {
 
-  var ctype;
-  ctype = acceptsXml(req);
+    var ctype;
+    ctype = acceptsXml(req);
 
-  res.header('content-type',ctype);
-  res.render('register', {
-    title: 'Register',
-    site: baseUrl
-  });
+    res.header('content-type', ctype);
+    res.render('register', {
+        title: 'Register',
+        site: baseUrl
+    });
 });
 
 /* support various content-types from clients */
+
 function acceptsXml(req) {
-  var ctype = contentType;
-  var acc = req.headers["accept"];
-  
-  switch(acc) {
+    var ctype = contentType;
+    var acc = req.headers["accept"];
+
+    switch (acc) {
     case "text/xml":
-      ctype = "text/xml";
-      break;
+        ctype = "text/xml";
+        break;
     case "application/xml":
-      ctype = "application/xml";
-      break;
+        ctype = "application/xml";
+        break;
     case "application/xhtml+xml":
-      ctype = "application/xhtml+xml";
-      break;
+        ctype = "application/xhtml+xml";
+        break;
     default:
-      ctype = contentType;
-      break;
-  }
-  return ctype;
+        ctype = contentType;
+        break;
+    }
+    return ctype;
 }
 
 /* compute the current date/time as a simple date */
+
 function today() {
 
-  var y, m, d, dt;
-  
-  dt = new Date();
+    var y, m, d, dt;
 
-  y = String(dt.getFullYear());
-  
-  m = String(dt.getMonth()+1);
-  if(m.length===1) {
-    m = '0'+m;
-  }
+    dt = new Date();
 
-  d = String(dt.getDate());
-  if(d.length===1) {
-    d = '0'+d.toString();
-  }
+    y = String(dt.getFullYear());
 
-  return y+'-'+m+'-'+d;
+    m = String(dt.getMonth() + 1);
+    if (m.length === 1) {
+        m = '0' + m;
+    }
+
+    d = String(dt.getDate());
+    if (d.length === 1) {
+        d = '0' + d.toString();
+    }
+
+    return y + '-' + m + '-' + d;
 }
 
 /* compute the current date/time */
-function now() {
-  var y, m, d, h, i, s, dt;
-  
-  dt = new Date();
-  
-  y = String(dt.getFullYear());
-  
-  m = String(dt.getMonth()+1);
-  if(m.length===1) {
-    m = '0'+m;
-  }
 
-  d = String(dt.getDate());
-  if(d.length===1) {
-    d = '0'+d.toString();
-  }
-  
-  h = String(dt.getHours()+1);
-  if(h.length===1) {
-    h = '0'+h;
-  }
-  
-  i = String(dt.getMinutes()+1);
-  if(i.length===1) {
-    i = '0'+i;
-  }
-  
-  s = String(dt.getSeconds()+1);
-  if(s.length===1) {
-    s = '0'+s;
-  }
-  return y+'-'+m+'-'+d+' '+h+':'+i+':'+s;
+function now() {
+    var y, m, d, h, i, s, dt;
+
+    dt = new Date();
+
+    y = String(dt.getFullYear());
+
+    m = String(dt.getMonth() + 1);
+    if (m.length === 1) {
+        m = '0' + m;
+    }
+
+    d = String(dt.getDate());
+    if (d.length === 1) {
+        d = '0' + d.toString();
+    }
+
+    h = String(dt.getHours() + 1);
+    if (h.length === 1) {
+        h = '0' + h;
+    }
+
+    i = String(dt.getMinutes() + 1);
+    if (i.length === 1) {
+        i = '0' + i;
+    }
+
+    s = String(dt.getSeconds() + 1);
+    if (s.length === 1) {
+        s = '0' + s;
+    }
+    return y + '-' + m + '-' + d + ' ' + h + ':' + i + ':' + s;
 }
 
 /* return standard 403 response */
+
 function forbidden(res) {
 
-  var body = 'Forbidden';
+    var body = 'Forbidden';
 
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Content-Length', body.length);
-  res.statusCode = 403;
-  res.end(body);
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Length', body.length);
+    res.statusCode = 403;
+    res.end(body);
 }
 
 /* return standard 'auth required' response */
-function authRequired(res,realm) {
-  var r = (realm||'Authentication Required');
-  res.statusCode = 401;
-  res.setHeader('WWW-Authenticate', 'Basic realm="' + r + '"');
-  res.end('Unauthorized');
+
+function authRequired(res, realm) {
+    var r = (realm || 'Authentication Required');
+    res.statusCode = 401;
+    res.setHeader('WWW-Authenticate', 'Basic realm="' + r + '"');
+    res.end('Unauthorized');
 }
 
 /* return standard 'bad inputs' response */
+
 function badRequest(res) {
-  res.statusCode = 400;
-  res.end('Bad Request');
+    res.statusCode = 400;
+    res.end('Bad Request');
+}
+
+/* iterate over json array and invoke callback */
+
+function foreach(what, cb) {
+    function isArray(what) {
+        return Object.prototype.toString.call(what) === '[object Array]';
+    }
+
+    if (isArray(what)) {
+        for (var i = 0, arr = what; i < what.length; i++) {
+            cb(arr[i]);
+        }
+    }
+    else {
+        cb(what);
+    }
+}
+
+function getWfJson(wfname, cb) {
+    if (wfname in workflow_cache) {
+        cb(workflow_cache[wfname]);
+    } else {
+        adag.parse(wfname + '.xml', function(w) {
+            workflow_cache[wfname] = w;
+            cb(workflow_cache[wfname]);
+        });
+    }
 }
 
 // Only listen on $ node app.js
 if (!module.parent) {
-  app.listen(process.env.PORT);
-  console.log("Express server listening on port %d", app.address().port);
+    app.listen(process.env.PORT);
+    console.log("Express server listening on port %d", app.address().port);
 }

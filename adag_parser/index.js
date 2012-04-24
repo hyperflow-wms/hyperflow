@@ -11,16 +11,16 @@ var fs = require('fs'),
     
 exports.init = function () {
     
-    function isArray(what) {
-        return Object.prototype.toString.call(what) === '[object Array]';
-    }
-
     // for each element in array 'what' invoke 'cb' function
     // detects if what is an array - useful for processing xml2js output which
     // translates:
     // <a><b/><b/><a> --> array 'b'
     // <a><b/></a>    --> object 'b' 
     function foreach(what, cb) {
+        function isArray(what) {
+            return Object.prototype.toString.call(what) === '[object Array]';
+        }
+        
         if (isArray(what)) {
             for (var i=0, arr=what;i<what.length;i++) {
                 cb(arr[i]);
@@ -36,9 +36,11 @@ exports.init = function () {
        parser.on('end', function(result) {
            //var i, j, k, children, parents;
            var wf = result;
+           var job_id = 0;
            
            // move info about parents to 'job' elements
            foreach(wf.job, function(job) {
+               job['@'].job_id = ++job_id;
                foreach(wf.child, function(child) {
                    if (job['@'].id == child['@'].ref) { 
                        job['@'].parents = child.parent; // assumes that child element always has some parent(s)
@@ -68,9 +70,9 @@ exports.init = function () {
                        found = wf.data[idx-1]; 
                    }
                    if (job_data['@'].link == 'input') {
-                           found.to.push({'job_name': job['@'].name, 'job_id': job['@'].id}); // task to which this data is passed to (if many -> partitioning)
+                           found.to.push({'job_name': job['@'].name, 'job_id': job['@'].job_id}); // task to which this data is passed to (if many -> partitioning)
                    } else {
-                       found.from.push({'job_name': job['@'].name, 'job_id': job['@'].id});  // task from which this data is received from (if many -> aggregation)
+                       found.from.push({'job_name': job['@'].name, 'job_id': job['@'].job_id});  // task from which this data is received from (if many -> aggregation)
                    }
                });
            });
@@ -81,36 +83,16 @@ exports.init = function () {
                data.id = id++;
            });
            
-           
-           /*var data_id = 0;
+           // add data element id to each 'uses' element of each job
            foreach(wf.job, function(job) {
-               foreach(job.uses, function(data) {
-                   if (! ('parents' in job['@'])) {
-                       data['@'].id = ++data_id;
-                   }
+               foreach(job.uses, function(job_data) {
+                   foreach(wf.data, function(data) {
+                       if (data.name == job_data['@'].file && data.size == job_data['@'].size) {
+                           job_data['@'].id = data.id;
+                       }
+                   });
                });
            });
-           foreach(wf.job, function(job) {
-               foreach(job.uses, function(data) {
-                   if (('parents' in job['@'])) {
-                       foreach(job['@'].parents, function(parent) {
-                           if (parent['@'].ref == 
-                           data['@'].id = ++data_id;
-                       });
-                   }
-               });
-           });*/
-           
-           /*for(i=0,jobs=wf.job;i<jobs.length;i++) { 
-               for(j=0,children=wf.child;j<children.length;j++) {
-                   if (jobs[i]['@'].id == children[j]['@'].ref) {
-                       console.log(children[j]['@'].ref);
-                       for(k=0,parents=children[j].parent;k<parents.length;k++){
-                           console.log('   ' + parents[k]['@'].ref);
-                       }
-                   }
-               }
-           }*/
            cb(wf);
         });
         
