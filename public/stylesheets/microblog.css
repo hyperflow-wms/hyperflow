@@ -5,6 +5,26 @@ body {
   font-family: sans-serif;
 }
 
+div#workflow-tasks span.task-status-waiting {
+    background-color: red;
+}
+
+div#workflow-tasks span.task-status-running {
+    background-color: Aqua;
+}
+
+div#workflow-tasks span.task-status-finished {
+    background-color:GreenYellow;
+}
+
+span.data-status-not_ready {
+    background-color: Red;
+}
+
+span.data-status-ready {
+    background-color: GreenYellow;
+}
+
 div#queries {
   width:500px;
   float:right;
@@ -104,6 +124,8 @@ span.message-buttons input {
   -moz-border-radius: 15px; 
   border-radius: 15px; 
 }
+
+
 p.buttons input {
   background-color: #cccc99;
   -moz-border-radius: 15px; 

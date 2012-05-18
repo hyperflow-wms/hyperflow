@@ -64,7 +64,7 @@ exports.init = function () {
                    job_data['@'].status = 'not_ready';
                    found = undefined;
                    foreach(wf.data, function(data) {
-                       if (data.name == job_data['@'].file && data.size == job_data['@'].size) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+                       if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
                            found = data; // data element already in the array
                        }
                    });
@@ -73,9 +73,9 @@ exports.init = function () {
                        found = wf.data[idx-1]; 
                    }
                    if (job_data['@'].link == 'input') {
-                           found.to.push({'job_name': job['@'].name, 'job_id': job['@'].job_id}); // task to which this data is passed to (if many -> partitioning)
+                           found.to.push({'job_name': job['@'].name, 'job_id': job['@'].job_id, 'job_uri': job['@'].uri}); // task to which this data is passed to (if many -> partitioning)
                    } else {
-                       found.from.push({'job_name': job['@'].name, 'job_id': job['@'].job_id});  // task from which this data is received from (if many -> aggregation)
+                       found.from.push({'job_name': job['@'].name, 'job_id': job['@'].job_id, 'job_uri': job['@'].uri});  // task from which this data is received from (if many -> aggregation)
                    }
                });
            });
@@ -87,11 +87,11 @@ exports.init = function () {
                data.uri = baseUrl + '/workflow/'+wfname+'/data-'+id;
            });
            
-           // add data element id to each 'uses' element of each job
+           // add data element id and uri to each 'uses' element of each job
            foreach(wf.job, function(job) {
                foreach(job.uses, function(job_data) {
                    foreach(wf.data, function(data) {
-                       if (data.name == job_data['@'].file && data.size == job_data['@'].size) {
+                       if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */) {
                            job_data['@'].id = data.id;
                            job_data['@'].uri = data.uri;
                        }

@@ -14,10 +14,37 @@
                    <%=wftasks[i]['@'].name%>
                </span>
             </a>
-            <span class="status">
+            <span class="task-status-<%=wftasks[i]['@'].status%>">
                <%=wftasks[i]['@'].status%>
             </span>
         </li>
+ 
+        <div id="workflow-task-inputs">
+          <ul class="all">
+             <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
+                 <% if (wftasks[i].uses[j]['@'].link == 'input') { %>
+                    <li>In:
+                       <a rel="workflow-task-data input" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].uri%>/</a>
+                       <span class="data-status-<%=wftasks[i].uses[j]['@'].status%>">Data <%=wftasks[i].uses[j]['@'].status%>!</span>
+                    </li>
+                 <% } %>
+             <% } %>
+          </ul>
+       </div>
+       <div id="workflow-task-outputs">
+          <ul class="all">
+             <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
+                 <% if (wftasks[i].uses[j]['@'].link == 'output') { %>
+                    <li>Out
+                       <a rel="workflow-task-data output" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].uri%>/</a>
+                       <span class="data-status-<%=wftasks[i].uses[j]['@'].status%>">Data <%=wftasks[i].uses[j]['@'].status%>!</span>
+                    </li>
+                 <% } %>
+             <% } %>
+          </ul>
+       </div>
+
+
       <% } %>
     </ul>   
   </div>

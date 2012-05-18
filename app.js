@@ -40,7 +40,7 @@ var contentType = 'text/html';
 //var baseUrl = 'http://localhost:'+process.env.PORT;
 var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 
-var workflow_cache = {}; // cache for parsed json workfow representations
+var workflow_cache = {}; // cache for parsed json workfow representations (database substitute)
 
 // Configuration
 app.configure(function() {
@@ -155,6 +155,32 @@ app.get('/workflow/:w', function(req, res) {
 });
 
 
+/* HACK: emulates workflow execution the workflow, i.e. posts to all tasks
+ * all input data which is not produced by any other task (assuming it is the
+ * workflow input data normally provided by the user). 
+ * FIXME: this should be done by a properly written client.
+ */
+app.post('/workflow/:w', function(req, res) {
+    getWfJson(req.params.w, function(wf) {
+        foreach(wf.data, function(data) {
+            if (data.from.length == 0) {
+                foreach(data.to, function(job) {
+                    urlReq.urlReq('http://0.0.0.0:' + app.address().port + job.job_uri, {
+                        method: 'POST',
+                        params: {
+                            'input-data-link': data.uri
+                        }
+                    }, function(body, res) {
+                        // do your stuff
+                    });
+                });
+            }
+        });
+        res.redirect(req.url, 302); // redirect after making all POSTs
+    });
+});
+
+
 app.get('/workflow/:w/task-:i', function(req, res) {
     var id = req.params.i;
 
@@ -201,7 +227,7 @@ app.post('/workflow/:w/task-:i', function(req, res) {
         } else {
             found['@'].status='ready';
             foreach(wf.job[id].uses, function(job_data) {
-                if (job_data['@'] == 'input' && job_data['@'].status != 'ready') {
+                if (job_data['@'].link == 'input' && job_data['@'].status != 'ready') {
                     all_ready = false;
                 }
             });
@@ -209,15 +235,22 @@ app.post('/workflow/:w/task-:i', function(req, res) {
             // All inputs are ready! ==> Emulate the execution of the workflow task
             if (all_ready) {
                 wf.job[id]['@'].status = 'running';
+                
+                /* The following setTimeout must be replaced with the actual invocation of the
+                 * computing backend of the workflow task. The completion callback passed to
+                 * the invocation will, however, basically be the same (POST to all dependent 
+                 * tasks information that new data has been produced). 
+                 */
                 setTimeout(function() {
                     wf.job[id]['@'].status = 'finished';
-            
+                
                     // POST to all dependant tasks which consume outputs of this task
                     foreach(wf.job[id].uses, function(job_data) {
                         if (job_data['@'].link == 'output') {
+                            job_data['@'].status = 'ready';
                             foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
                                 var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
-                                urlReq.urlReq('http://localhost:'+app.address().port+uri, {
+                                urlReq.urlReq('http://0.0.0.0:'+app.address().port+uri, {
                                     method: 'POST',
                                     params: {
                                         'input-data-link': job_data['@'].uri
@@ -253,18 +286,6 @@ app.get('/workflow/:w/data-:j', function(req, res) {
     });
 });
 
-app.post('/workflow/:w', function(req, res) {
-
-    getWfJson(req.params.w, function(wf) {
-        var ctype = acceptsXml(req);
-        res.header('content-type', ctype);
-        res.render('workflow-post', {
-            title: 'Workflow Montage 25 POST',
-            wfname: req.params.w,
-            wftasks: wf.job
-        });
-    });
-});
 
 
 /* single message page */
@@ -574,8 +595,7 @@ function getWfJson(wfname, cb) {
 // Only listen on $ node app.js
 if (!module.parent) {
     app.listen(process.env.PORT, function() {
-        console.log(app.address()); 
-        });
-    console.log('address=' + app.address().hostname);
+        console.log('address='+app.address());
+    });
     console.log("Express server listening on port %d", app.address().port);
 }
