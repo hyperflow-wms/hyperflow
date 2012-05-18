@@ -32,13 +32,12 @@ else {
 
 var adag = require('./adag_parser').init();
 var urlReq = require('./req_url');
-
 var timers = require('timers');
 
 // global data
 var contentType = 'text/html';
-var baseUrl = 'http://0.0.0.0:'+process.env.PORT;
-//var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
+//var baseUrl = 'http://localhost:'+process.env.PORT;
+var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 
 var workflow_cache = {}; // cache for parsed json workfow representations
 
@@ -217,7 +216,7 @@ app.post('/workflow/:w/task-:i', function(req, res) {
                         if (job_data['@'].link == 'output') {
                             foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
                                 var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
-                                urlReq.urlReq(uri, {
+                                urlReq.urlReq('http://localhost:'+app.address().port+uri, {
                                     method: 'POST',
                                     params: {
                                         'input-data-link': job_data['@'].uri
