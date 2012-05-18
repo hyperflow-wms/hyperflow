@@ -37,9 +37,8 @@ var timers = require('timers');
 
 // global data
 var contentType = 'text/html';
-//var baseUrl = 'http://0.0.0.0:'+process.env.PORT+'/microblog/';
-var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
-console.log('address=' + baseUrl);
+var baseUrl = 'http://0.0.0.0:'+process.env.PORT;
+//var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 
 var workflow_cache = {}; // cache for parsed json workfow representations
 
@@ -187,7 +186,7 @@ app.post('/workflow/:w/task-:i', function(req, res) {
     var id, link;
     var found = undefined;
     var all_ready = true;
-    id = req.params.i;
+    id = req.params.i-1;
     link = req.body['input-data-link'];
     
     getWfJson(req.params.w, function(wf) {
@@ -202,13 +201,14 @@ app.post('/workflow/:w/task-:i', function(req, res) {
         } else {
             found['@'].status='ready';
             foreach(wf.job[id].uses, function(job_data) {
-                if (job_data['@'].status != 'ready') {
+                if (job_data['@'] == 'input' && job_data['@'].status != 'ready') {
                     all_ready = false;
                 }
             });
             
             // All inputs are ready! ==> Emulate the execution of the workflow task
             if (all_ready) {
+                wf.job[id]['@'].status = 'running';
                 setTimeout(function() {
                     wf.job[id]['@'].status = 'finished';
             
@@ -234,7 +234,7 @@ app.post('/workflow/:w/task-:i', function(req, res) {
                     });
                 }, wf.job[id]['@'].runtime * 1000);
             }
-            res.redirect('/workflow/'+req.params.w, 302);
+            res.redirect(wf.job[id]['@'].uri, 302);
         }
     });
 });
@@ -564,7 +564,7 @@ function getWfJson(wfname, cb) {
     if (wfname in workflow_cache) {
         cb(workflow_cache[wfname]);
     } else {
-        adag.parse(wfname + '.xml', wfname, function(w) {
+        adag.parse(wfname + '.xml', wfname, baseUrl, function(w) {
             workflow_cache[wfname] = w;
             cb(workflow_cache[wfname]);
         });
@@ -573,6 +573,9 @@ function getWfJson(wfname, cb) {
 
 // Only listen on $ node app.js
 if (!module.parent) {
-    app.listen(process.env.PORT);
+    app.listen(process.env.PORT, function() {
+        console.log(app.address()); 
+        });
+    console.log('address=' + app.address().hostname);
     console.log("Express server listening on port %d", app.address().port);
 }

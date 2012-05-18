@@ -30,7 +30,7 @@ exports.init = function () {
         }
     }
     
-    function parse(file, wfname, cb) {
+    function parse(file, wfname, baseUrl, cb) {
        var parser = new xml2js.Parser();
        
        parser.on('end', function(result) {
@@ -42,7 +42,7 @@ exports.init = function () {
            foreach(wf.job, function(job) {
                job['@'].status = 'waiting'; // initial status of all jobs - waiting for input data
                job['@'].job_id = ++job_id; 
-               job['@'].uri = '/workflow/'+wfname+'/task-'+job_id;
+               job['@'].uri = baseUrl + '/workflow/'+wfname+'/task-'+job_id;
                foreach(wf.child, function(child) {
                    if (job['@'].id == child['@'].ref) { 
                        job['@'].parents = child.parent; // assumes that child element always has some parent(s)
@@ -84,7 +84,7 @@ exports.init = function () {
            var id = 0;
            foreach(wf.data, function(data) {
                data.id = ++id;
-               data.uri = '/workflow/'+wfname+'/data-'+id;
+               data.uri = baseUrl + '/workflow/'+wfname+'/data-'+id;
            });
            
            // add data element id to each 'uses' element of each job
@@ -93,7 +93,7 @@ exports.init = function () {
                    foreach(wf.data, function(data) {
                        if (data.name == job_data['@'].file && data.size == job_data['@'].size) {
                            job_data['@'].id = data.id;
-                           job_data.uri = data.uri;
+                           job_data['@'].uri = data.uri;
                        }
                    });
                });

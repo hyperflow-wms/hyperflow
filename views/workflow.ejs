@@ -9,11 +9,14 @@
     <ul class="all">
       <% for(i=0,x=wftasks.length;i<x;i++) { %>
         <li>
-            <a rel="workflow-task" href="/workflow/<%=wfname%>/task-<%=i+1%>/">
+            <a rel="workflow-task" href="<%=wftasks[i]['@'].uri%>">
                <span class="name">
                    <%=wftasks[i]['@'].name%>
                </span>
             </a>
+            <span class="status">
+               <%=wftasks[i]['@'].status%>
+            </span>
         </li>
       <% } %>
     </ul>   

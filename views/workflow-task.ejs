@@ -10,10 +10,14 @@
                  <% if (wftask.uses[j]['@'].link == 'input') { %>
                     <li>In
                        <a rel="workflow-task-data input" href="/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/">/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/</a>
-                       <form method="post" action="<%=wftask['@'].uri%>" class="input-data-link">
-                          <input type="text" name="input-data-link" value="<%=wftask.uses[j]['@'].uri%>" required="true"/>
-                          <input type="submit" value="Send this data!" />
-                       </form>
+                       <% if (wftask.uses[j]['@'].status == 'ready') { %>
+                         <span class="data-status">Data ready!</span>
+                       <% } else { %>
+                         <form method="post" action="<%=wftask['@'].uri%>" class="input-data-link">
+                            <input type="text" name="input-data-link" value="<%=wftask.uses[j]['@'].uri%>" required="true"/>
+                            <input type="submit" value="Send this data!" />
+                         </form>
+                       <% } %>
                     </li>
                  <% } %>
              <% } %>
