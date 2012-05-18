@@ -30,7 +30,7 @@ exports.init = function () {
         }
     }
     
-    function parse(file, cb) {
+    function parse(file, wfname, cb) {
        var parser = new xml2js.Parser();
        
        parser.on('end', function(result) {
@@ -40,15 +40,17 @@ exports.init = function () {
            
            // move info about parents to 'job' elements
            foreach(wf.job, function(job) {
-               job['@'].job_id = ++job_id;
+               job['@'].status = 'waiting'; // initial status of all jobs - waiting for input data
+               job['@'].job_id = ++job_id; 
+               job['@'].uri = '/workflow/'+wfname+'/task-'+job_id;
                foreach(wf.child, function(child) {
                    if (job['@'].id == child['@'].ref) { 
                        job['@'].parents = child.parent; // assumes that child element always has some parent(s)
                            
-                       console.log(child['@'].ref);
+                       /*console.log(child['@'].ref);
                        foreach(child.parent, function(parent) {
                            console.log('    ' + parent['@'].ref);
-                       });
+                       });*/
                    }
                });
                
@@ -59,6 +61,7 @@ exports.init = function () {
            wf.data = [];
            foreach(wf.job, function(job) {
                foreach(job.uses, function(job_data) {
+                   job_data['@'].status = 'not_ready';
                    found = undefined;
                    foreach(wf.data, function(data) {
                        if (data.name == job_data['@'].file && data.size == job_data['@'].size) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
@@ -77,10 +80,11 @@ exports.init = function () {
                });
            });
 
-           // assign identifiers to data elements
-           var id = 1;
+           // assign identifiers and URIs to data elements
+           var id = 0;
            foreach(wf.data, function(data) {
-               data.id = id++;
+               data.id = ++id;
+               data.uri = '/workflow/'+wfname+'/data-'+id;
            });
            
            // add data element id to each 'uses' element of each job
@@ -89,6 +93,7 @@ exports.init = function () {
                    foreach(wf.data, function(data) {
                        if (data.name == job_data['@'].file && data.size == job_data['@'].size) {
                            job_data['@'].id = data.id;
+                           job_data.uri = data.uri;
                        }
                    });
                });

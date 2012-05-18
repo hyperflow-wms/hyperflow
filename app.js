@@ -31,6 +31,9 @@ else {
 }
 
 var adag = require('./adag_parser').init();
+var urlReq = require('./req_url');
+
+var timers = require('timers');
 
 // global data
 var contentType = 'text/html';
@@ -48,6 +51,7 @@ app.configure(function() {
     app.use(express.methodOverride());
     app.use(app.router);
     app.use(express.static(__dirname + '/public'));
+    app.disable('strict routing');
 });
 
 app.configure('development', function() {
@@ -128,18 +132,18 @@ app.get('/microblog/', function(req, res) {
     });
 });
 
-app.get('/workflow/', function(req, res) {
+app.get('/workflow', function(req, res) {
 
     var file = 'Montage_25.xml';
 
-    adag.parse(file, function(result) {
+    adag.parse(file, 'Montage_25', function(result) {
         res.header('content-type', 'application/json');
         res.send(JSON.stringify(result));
     });
 });
 
 
-app.get('/workflow/:w/', function(req, res) {
+app.get('/workflow/:w', function(req, res) {
     getWfJson(req.params.w, function(wf) {
         var ctype = acceptsXml(req);
         res.header('content-type', ctype);
@@ -152,7 +156,7 @@ app.get('/workflow/:w/', function(req, res) {
 });
 
 
-app.get('/workflow/:w/task-:i/', function(req, res) {
+app.get('/workflow/:w/task-:i', function(req, res) {
     var id = req.params.i;
 
     getWfJson(req.params.w, function(wf) {
@@ -167,7 +171,76 @@ app.get('/workflow/:w/task-:i/', function(req, res) {
     });
 });
 
-app.get('/workflow/:w/data-:j/', function(req, res) {
+/*
+Representation of the following form can be posted to a task's URI in order 
+to notify that input data (identified by a link passed in the representation)
+is ready. The passed link MUST be identical to one of input data links
+from the task's representation. When all task's input data are ready,
+task's status is changed to 'running' and a computing backend is invoked
+
+<form method="post" action="..." class="input-data-link">
+  <input type="text" name="input-data-link" value="" required="true"/>
+  <input type="submit" value="Send" />
+</form>
+*/
+app.post('/workflow/:w/task-:i', function(req, res) {
+    var id, link;
+    var found = undefined;
+    var all_ready = true;
+    id = req.params.i;
+    link = req.body['input-data-link'];
+    
+    getWfJson(req.params.w, function(wf) {
+        foreach(wf.job[id].uses, function(job_data) {
+            if (job_data['@'].link == 'input' && job_data['@'].uri == link) {
+                found = job_data;
+            }
+        });
+        if (!found) {
+            res.status = 400;
+            res.send('bad input data link: no match');
+        } else {
+            found['@'].status='ready';
+            foreach(wf.job[id].uses, function(job_data) {
+                if (job_data['@'].status != 'ready') {
+                    all_ready = false;
+                }
+            });
+            
+            // All inputs are ready! ==> Emulate the execution of the workflow task
+            if (all_ready) {
+                setTimeout(function() {
+                    wf.job[id]['@'].status = 'finished';
+            
+                    // POST to all dependant tasks which consume outputs of this task
+                    foreach(wf.job[id].uses, function(job_data) {
+                        if (job_data['@'].link == 'output') {
+                            foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
+                                var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
+                                urlReq.urlReq(uri, {
+                                    method: 'POST',
+                                    params: {
+                                        'input-data-link': job_data['@'].uri
+                                    }
+                                }, function(body, res) {
+                                    // do your stuff
+                                });
+            
+                            });
+            
+                        }
+            
+            
+                    });
+                }, wf.job[id]['@'].runtime * 1000);
+            }
+            res.redirect('/workflow/'+req.params.w, 302);
+        }
+    });
+});
+
+
+app.get('/workflow/:w/data-:j', function(req, res) {
     var data_id = req.params.j;
     getWfJson(req.params.w, function(wf) {
         var ctype = acceptsXml(req);
@@ -180,7 +253,7 @@ app.get('/workflow/:w/data-:j/', function(req, res) {
     });
 });
 
-app.post('/workflow/:w/', function(req, res) {
+app.post('/workflow/:w', function(req, res) {
 
     getWfJson(req.params.w, function(wf) {
         var ctype = acceptsXml(req);
@@ -491,7 +564,7 @@ function getWfJson(wfname, cb) {
     if (wfname in workflow_cache) {
         cb(workflow_cache[wfname]);
     } else {
-        adag.parse(wfname + '.xml', function(w) {
+        adag.parse(wfname + '.xml', wfname, function(w) {
             workflow_cache[wfname] = w;
             cb(workflow_cache[wfname]);
         });
