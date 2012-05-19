@@ -224,6 +224,10 @@ app.post('/workflow/:w/task-:i', function(req, res) {
         if (!found) {
             res.status = 400;
             res.send('bad input data link: no match');
+        }
+        if (found && found['@'].status == 'ready') { // data sent more than once
+            res.status = 409;
+            res.send('Conflict: data already submitted before. No action taken.');
         } else {
             found['@'].status='ready';
             foreach(wf.job[id].uses, function(job_data) {
@@ -267,7 +271,7 @@ app.post('/workflow/:w/task-:i', function(req, res) {
                     });
                 }, wf.job[id]['@'].runtime * 1000);
             }
-            res.redirect(wf.job[id]['@'].uri, 302);
+            res.redirect(/workflow/+req.params.w+'/task-'+req.params.i, 302);
         }
     });
 });

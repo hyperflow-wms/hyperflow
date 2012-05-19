@@ -57,14 +57,61 @@ exports.init = function () {
            });
            
            // create an  array of workflow data elements
-           var found;
+           var found, idx;
            wf.data = [];
            foreach(wf.job, function(job) {
                foreach(job.uses, function(job_data) {
                    job_data['@'].status = 'not_ready';
+                   if (job_data['@'].link == 'output') {
+                       idx = wf.data.push({
+                           'id': -1,
+                           'name': job_data['@'].file,
+                           'size': job_data['@'].size,
+                           'from': [],
+                           'to': []
+                       });
+                       wf.data[idx-1].from.push({
+                           'job_name': job['@'].name,
+                           'job_id': job['@'].job_id,
+                           'job_uri': job['@'].uri
+                       }); // task from which this data is received
+                   }
+               });
+           });           
+           foreach(wf.job, function(job) {
+               foreach(job.uses, function(job_data) {
+                   if (job_data['@'].link == 'input') {
+                       found = undefined;
+                       foreach(wf.data, function(data) {
+                           if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+                               found = data; // data element already in the array
+                           }
+                       });
+                       if (!found) {
+                           idx = wf.data.push({
+                               'id': -1,
+                               'name': job_data['@'].file,
+                               'size': job_data['@'].size,
+                               'from': [],
+                               'to': []
+                           });
+                           found = wf.data[idx - 1];
+                       }
+                       found.to.push({
+                           'job_name': job['@'].name,
+                           'job_id': job['@'].job_id,
+                           'job_uri': job['@'].uri
+                       }); // task to which this data is passed 
+                   }
+               });
+           });
+           
+/*           foreach(wf.job, function(job) {
+               foreach(job.uses, function(job_data) {
+                   job_data['@'].status = 'not_ready';
                    found = undefined;
                    foreach(wf.data, function(data) {
-                       if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+                       if (data.name == job_data['@'].file && data.size == job_data['@'].size ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
                            found = data; // data element already in the array
                        }
                    });
@@ -79,7 +126,7 @@ exports.init = function () {
                    }
                });
            });
-
+*/
            // assign identifiers and URIs to data elements
            var id = 0;
            foreach(wf.data, function(data) {
@@ -88,16 +135,35 @@ exports.init = function () {
            });
            
            // add data element id and uri to each 'uses' element of each job
-           foreach(wf.job, function(job) {
-               foreach(job.uses, function(job_data) {
-                   foreach(wf.data, function(data) {
-                       if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */) {
+           foreach(wf.data, function(data) {
+               foreach (data.to, function(job_input) {
+                   foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
+                       if (job_data['@'].link == 'input' && job_data['@'].file == data.name) {
+                           job_data['@'].id = data.id;
+                           job_data['@'].uri = data.uri;
+                       }
+                   });
+               });
+               foreach (data.from, function(job_input) {
+                   foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
+                       if (job_data['@'].link == 'output' && job_data['@'].file == data.name) {
                            job_data['@'].id = data.id;
                            job_data['@'].uri = data.uri;
                        }
                    });
                });
            });
+           
+           /*foreach(wf.job, function(job) {
+               foreach(job.uses, function(job_data) {
+                   foreach(wf.data, function(data) {
+                       if (data.name == job_data['@'].file  && data.size == job_data['@'].size ) {
+                           job_data['@'].id = data.id;
+                           job_data['@'].uri = data.uri;
+                       }
+                   });
+               });
+           });*/
            cb(wf);
         });
         
