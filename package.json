@@ -5,7 +5,7 @@
      "node": "0.6.x"
    },
    "dependencies": {
-    "express": "",
+    "express": "2.5.x",
     "cradle": "",
     "ejs": "",
     "eyes":"",

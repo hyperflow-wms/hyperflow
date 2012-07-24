@@ -602,5 +602,5 @@ function getWfJson(wfname, cb) {
 if (!module.parent) {
     app.listen(process.env.PORT, function() {
     });
-    console.log("Express server listening on port %d", process.env.PORT);
+    console.log("Express server listening on port %d", app.address().port);
 }
