@@ -6951,13 +6951,13 @@
     <uses file="fit.txt" link="output" register="true" transfer="true" optional="false" type="data" size="264"/>
     <uses file="diff.txt" link="output" register="true" transfer="true" optional="false" type="data" size="291874"/>
   </job>
-  <job id="ID00828" namespace="Montage" name="mConcatFit" version="1.0" runtime="52.96">
+  <job id="ID00828" namespace="Montage" name="mConcatFit" version="1.0" runtime="5.296">
     <uses file="fits_list.tbl" link="input" register="true" transfer="true" optional="false" type="data" size="18047"/>
     <uses file="fit.txt" link="input" register="true" transfer="true" optional="false" type="data" size="271"/>
     <uses file="diff.txt" link="input" register="true" transfer="true" optional="false" type="data" size="184735"/>
     <uses file="fits.tbl" link="output" register="true" transfer="true" optional="false" type="data" size="138988"/>
   </job>
-  <job id="ID00829" namespace="Montage" name="mBgModel" version="1.0" runtime="89.12">
+  <job id="ID00829" namespace="Montage" name="mBgModel" version="1.0" runtime="8.912">
     <uses file="pimages.tbl" link="input" register="true" transfer="true" optional="false" type="data" size="27814"/>
     <uses file="fits.tbl" link="input" register="true" transfer="true" optional="false" type="data" size="138988"/>
     <uses file="corrections.tbl" link="output" register="true" transfer="true" optional="false" type="data" size="8827"/>

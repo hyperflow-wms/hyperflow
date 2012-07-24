@@ -165,7 +165,8 @@ app.post('/workflow/:w', function(req, res) {
         foreach(wf.data, function(data) {
             if (data.from.length == 0) {
                 foreach(data.to, function(job) {
-                    urlReq.urlReq('http://0.0.0.0:' + app.address().port + job.job_uri, {
+			console.log('posting to: '+ req.headers.host + '/' + job.job_uri);
+                    urlReq.urlReq('http://'+req.headers.host + job.job_uri, {
                         method: 'POST',
                         params: {
                             'input-data-link': data.uri
@@ -254,7 +255,8 @@ app.post('/workflow/:w/task-:i', function(req, res) {
                             job_data['@'].status = 'ready';
                             foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
                                 var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
-                                urlReq.urlReq('http://0.0.0.0:'+app.address().port+uri, {
+			console.log('posting to: '+ req.headers.host + '/' + uri);
+                                urlReq.urlReq('http://'+req.headers.host+uri, {
                                     method: 'POST',
                                     params: {
                                         'input-data-link': job_data['@'].uri
