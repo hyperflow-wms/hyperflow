@@ -5,24 +5,135 @@ body {
   font-family: sans-serif;
 }
 
-div#workflow-tasks span.task-status-waiting {
+div#workflow-tasks ul {
+  float:left;
+  width:100%;
+  padding:0;
+  margin:0;
+  list-style-type:none;
+}
+
+div#workflow-tasks a {
+  float:left;
+  width:8em;
+  text-decoration:none;
+  color:black;
+  font-weight: bold;
+  padding:0.2em 0.6em;
+  border-right:0px solid black;
+  border-left:0px solid black;
+  border-top:0px solid black;
+  border-bottom:0px solid black;
+  margin-bottom:2px;
+  margin-top:15px;
+}
+
+div#workflow-tasks ul li.task-status-waiting a {
     background-color: red;
 }
 
-div#workflow-tasks span.task-status-running {
+div#workflow-tasks ul li.task-status-running a {
     background-color: Aqua;
 }
 
-div#workflow-tasks span.task-status-finished {
+div#workflow-tasks ul li.task-status-finished a {
     background-color:GreenYellow;
 }
 
-span.data-status-not_ready {
+div#workflow-tasks ul li.task-status-waiting a:hover 
+{background-color:DarkRed;}
+
+div#workflow-tasks ul li.task-status-running a:hover 
+{background-color:DarkCyan;}
+
+div#workflow-tasks ul li.task-status-finished a:hover 
+{background-color:Green;}
+
+div#workflow-tasks ul li {
+  display:inline;
+}
+
+
+div#workflow-task-inputs ul, 
+div#workflow-task-outputs ul {
+  float:left;
+  width:100%;
+  padding:0pt;
+  margin:0;
+  list-style-type:none;
+}
+
+div#workflow-task-inputs a,
+div#workflow-task-outputs a
+{
+  float:left;
+  width:8em;
+  height:4em;
+  text-decoration:none;
+  color:white;
+  background-color:red;
+  padding:0.2em 0.6em;
+  border-right:1px solid white;
+  border-left:1px solid white;
+  border-top:1px solid white;
+  border-bottom:0px solid white;
+  margin: 0px;
+}
+
+
+
+div#workflow-task-inputs ul li, 
+div#workflow-task-outputs ul li {
+  display:inline;
+}
+
+
+div#workflow-task-inputs ul li.data-status-ready a,
+div#workflow-task-outputs ul li.data-status-ready a {
+    background-color: GreenYellow;
+}
+
+div#workflow-task-inputs ul li.data-status-ready a:hover,
+div#workflow-task-outputs ul li.data-status-ready a:hover
+{background-color:Green;}
+
+div#workflow-task-inputs ul li.data-status-not_ready a,
+div#workflow-task-outputs ul li.data-status-not_ready a {
     background-color: Red;
 }
 
-span.data-status-ready {
-    background-color: GreenYellow;
+div#workflow-task-inputs ul li.data-status-not_ready a:hover,
+div#workflow-task-outputs ul li.data-status-not_ready a:hover
+{background-color:DarkRed;}
+
+div#workflow-task-inputs ul li.list-name {
+  float:left;
+  width:8em;
+  height:4em;
+  text-decoration:none;
+  color:black;
+  padding:0.2em 0.6em;
+  border-right:1px solid white;
+  border-left:1px solid white;
+  border-top:1px solid white;
+  border-bottom:0px solid white;
+  background-color: coral;
+  margin: 0px;
+}
+
+div#workflow-task-outputs ul li.list-name {
+  float:left;
+  width:8em;
+  height:4em;
+  text-decoration:none;
+  color:black;
+  padding:0.2em 0.6em;
+  border-left:1px solid white;
+  border-right:1px solid white;
+  border-top:1px solid white;
+  border-bottom:0px solid white;
+  background-color: coral;
+  margin: 0px;
 }
 
 div#queries {

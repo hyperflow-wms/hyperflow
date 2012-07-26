@@ -1,5 +1,4 @@
-/* 2001-07-25 (mca) : collection+json */
-/* Designing Hypermedia APIs by Mike Amundsen (2011) */
+/* 2012 (bb) : hypermedia workflow */
 
 'use strict';
 
@@ -41,6 +40,12 @@ var contentType = 'text/html';
 var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 
 var workflow_cache = {}; // cache for parsed json workfow representations (database substitute)
+
+var instances = {
+  max : 3,
+  current : 0,
+  data : [],
+};
 
 // Configuration
 app.configure(function() {
@@ -165,8 +170,7 @@ app.post('/workflow/:w', function(req, res) {
         foreach(wf.data, function(data) {
             if (data.from.length == 0) {
                 foreach(data.to, function(job) {
-			console.log('posting to: '+ req.headers.host + '/' + job.job_uri);
-                    urlReq.urlReq('http://'+req.headers.host + job.job_uri, {
+                    urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
                         method: 'POST',
                         params: {
                             'input-data-link': data.uri
@@ -181,6 +185,14 @@ app.post('/workflow/:w', function(req, res) {
     });
 });
 
+app.get('/workflow/:w/instance-:i', function(req, res) {
+	var id = req.params.i;
+	instances.current = (instances.current + 1) % instances.max; 
+	//if (
+
+	//if (instances.data.length < 
+
+});
 
 app.get('/workflow/:w/task-:i', function(req, res) {
     var id = req.params.i;
@@ -255,7 +267,6 @@ app.post('/workflow/:w/task-:i', function(req, res) {
                             job_data['@'].status = 'ready';
                             foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
                                 var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
-			console.log('posting to: '+ req.headers.host + '/' + uri);
                                 urlReq.urlReq('http://'+req.headers.host+uri, {
                                     method: 'POST',
                                     params: {
@@ -325,7 +336,7 @@ app.post('/microblog/messages/', function(req, res) {
         var text, item;
 
         // get data array
-        text = req.body.message;
+	text = req.body.message;
         if (text !== '') {
             item = {};
             item.type = 'post';
