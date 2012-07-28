@@ -1,23 +1,19 @@
 <div id="workflow-tasks">
    <ul class="single">
-     <li>
-       <span class="name">
-          <%=wftask['@'].name%>
-       </span>
+        <li class="task-status-<%=wftask['@'].status%>">
+            <a rel="self" href="<%=wftask['@'].uri%>">
+               <span class="name">
+                   <%=wftask['@'].name%>
+               </span>
+            </a>
+        </li>
        <div id="workflow-task-inputs">
           <ul class="all">
+             <li class="list-name">Inputs</li>
              <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
                  <% if (wftask.uses[j]['@'].link == 'input') { %>
-                    <li>In
-                       <a rel="workflow-task-data input" href="/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/">/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/</a>
-                       <% if (wftask.uses[j]['@'].status == 'ready') { %>
-                         <span class="data-status">Data ready!</span>
-                       <% } else { %>
-                         <form method="post" action="<%=wftask['@'].uri%>" class="input-data-link">
-                            <input type="text" name="input-data-link" value="<%=wftask.uses[j]['@'].uri%>" required="true"/>
-                            <input type="submit" value="Send this data!" />
-                         </form>
-                       <% } %>
+                    <li class="data-status-<%=wftask.uses[j]['@'].status%>">
+                       <a rel="workflow-task-data input" href="<%=wftask.uses[j]['@'].uri%>/"><%=wftask.uses[j]['@'].file%></a>
                     </li>
                  <% } %>
              <% } %>
@@ -25,10 +21,11 @@
        </div>
        <div id="workflow-task-outputs">
           <ul class="all">
+             <li class="list-name">Outputs</li>
              <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
                  <% if (wftask.uses[j]['@'].link == 'output') { %>
-                    <li>Out
-                       <a rel="workflow-task-data output" href="/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/">/workflow/<%=wfname%>/data-<%=wftask.uses[j]['@'].id%>/</a>
+                    <li class="data-status-<%=wftask.uses[j]['@'].status%>">
+                       <a rel="workflow-task-data output" href="<%=wftask.uses[j]['@'].uri%>/"><%=wftask.uses[j]['@'].file%></a>
                     </li>
                  <% } %>
              <% } %>
@@ -36,4 +33,7 @@
        </div>
      </li>
    </ul>
+   <div id="parent-workflow-instance">
+      <a rel="workflow-instance" href="<%=wfuri%>">Belongs to workflow instance</a>
+   </div>
 </div>

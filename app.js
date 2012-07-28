@@ -41,11 +41,7 @@ var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get h
 
 var workflow_cache = {}; // cache for parsed json workfow representations (database substitute)
 
-var instances = {
-  max : 3,
-  current : 0,
-  data : [],
-};
+var instances = [];
 
 // Configuration
 app.configure(function() {
@@ -114,28 +110,8 @@ function validateUser(req, res, next) {
 }
 
 // Routes
+//
 /* starting page */
-app.get('/microblog/', function(req, res) {
-
-    var ctype;
-
-    var view = '/_design/microblog/_view/posts_all';
-
-    var options = {};
-    options.descending = 'true';
-
-    ctype = acceptsXml(req);
-
-    db.view('microblog/posts_all', function(err, doc) {
-        res.header('content-type', ctype);
-        res.render('index', {
-            title: 'Home',
-            site: baseUrl,
-            items: doc
-        });
-    });
-});
-
 app.get('/workflow', function(req, res) {
 
     var file = 'Montage_25.xml';
@@ -154,322 +130,205 @@ app.get('/workflow/:w', function(req, res) {
         res.render('workflow', {
             title: req.params.w,
             wfname: req.params.w,
-            wftasks: wf.job
         });
     });
 });
 
 
-/* HACK: emulates workflow execution the workflow, i.e. posts to all tasks
+/* 
+ * Create a new instance of a workflow
+ */
+app.post('/workflow/:w', function(req, res) {
+	getWfJson(req.params.w, function(wf) {
+		var inst;
+		if (req.params.w in instances) {
+			inst = instances[req.params.w];
+			inst.current = (inst.current + 1) % inst.max; 
+		} else {
+			instances[req.params.w] = {"current": 0, "max": 3, "data": []};
+			inst = instances[req.params.w];
+		}
+		inst.data[inst.current] = wf;
+		createWfInstance(inst.data[inst.current], req.params.w, baseUrl, inst.current);
+		res.redirect(req.url+"instances/"+inst.current, 302); // redirect to the newly created workflow instance
+	});
+});
+
+/* Runs a workflow instance 
+ * HACK: emulates workflow execution the workflow, i.e. posts to all tasks
  * all input data which is not produced by any other task (assuming it is the
  * workflow input data normally provided by the user). 
  * FIXME: this should be done by a properly written client.
  */
-app.post('/workflow/:w', function(req, res) {
-    getWfJson(req.params.w, function(wf) {
-        foreach(wf.data, function(data) {
-            if (data.from.length == 0) {
-                foreach(data.to, function(job) {
-                    urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
-                        method: 'POST',
-                        params: {
-                            'input-data-link': data.uri
-                        }
-                    }, function(body, res) {
-                        // do your stuff
-                    });
-                });
-            }
-        });
-        res.redirect(req.url, 302); // redirect after making all POSTs
-    });
+app.post('/workflow/:w/instances/:i', function(req, res) {
+				if (!wfInstanceExists(req.params.w, req.params.i)) {
+								res.statusCode = 404;
+								res.end();
+				} else {
+								var wf = getWfInstance(req.params.w, req.params.i);
+								foreach(wf.data, function(data) {
+												if (data.from.length == 0) {
+																foreach(data.to, function(job) {
+																				urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
+																								method: 'POST',
+																								params: {
+																												'input-data-link': data.uri
+																								}
+																								}, function(body, res) {
+																												// do your stuff
+																								});
+																});
+												}
+								});
+								res.redirect(req.url, 302); // redirect after making all POSTs
+				}
 });
 
-app.get('/workflow/:w/instance-:i', function(req, res) {
+
+app.get('/workflow/:w/instances/:i', function(req, res) {
 	var id = req.params.i;
-	instances.current = (instances.current + 1) % instances.max; 
-	//if (
-
-	//if (instances.data.length < 
-
+	if (!(req.params.w in instances)) {
+		res.statusCode = 404;
+		res.end();
+	} else if (!(id in instances[req.params.w].data)) {
+		res.statusCode = 404;
+		res.end();
+	} else {
+		var inst = instances[req.params.w];
+		var wf = inst.data[inst.current];
+		var ctype = acceptsXml(req);
+		res.header('content-type', ctype);
+		res.render('workflow-instance', {
+			title: req.params.w,
+		  nr: id,
+			wfname: req.params.w,
+			wftasks: wf.job
+		});
+	}
 });
 
-app.get('/workflow/:w/task-:i', function(req, res) {
-    var id = req.params.i;
 
-    getWfJson(req.params.w, function(wf) {
-        var ctype = acceptsXml(req);
-        res.header('content-type', ctype);
-        res.render('workflow-task', {
-            nr: id,
-            wfname: req.params.w,
-            title: ' workflow task',
-            wftask: wf.job[id - 1] // FIXME - 404 if doesn't exist
-        });
-    });
+app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
+				var id = req.params.i;
+				if (!(wfInstanceExists(req.params.w, req.params.j))) {
+								res.statuscode = 404;
+								res.send("Instance doesn't exist");
+				} else {
+								var wf = getWfInstance(req.params.w, req.params.j);
+								var ctype = acceptsXml(req);
+								res.header('content-type', ctype);
+								res.render('workflow-task', {
+												nr: id,
+												wfname: req.params.w,
+												title: ' workflow task',
+												wftask: wf.job[id - 1], // FIXME - 404 if doesn't exist
+												wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
+								});
+				}
 });
 
 /*
-Representation of the following form can be posted to a task's URI in order 
-to notify that input data (identified by a link passed in the representation)
-is ready. The passed link MUST be identical to one of input data links
-from the task's representation. When all task's input data are ready,
-task's status is changed to 'running' and a computing backend is invoked
+Representation of the following form can be posted to a task's URI in order to
+notify that input data (identified by a link passed in the representation) is
+ready. The passed link MUST be identical to one of input data links from the
+task's representation. When all task's input data are ready, task's status is
+changed to 'running' and a computing backend is invoked
 
 <form method="post" action="..." class="input-data-link">
   <input type="text" name="input-data-link" value="" required="true"/>
   <input type="submit" value="Send" />
 </form>
 */
-app.post('/workflow/:w/task-:i', function(req, res) {
+app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
     var id, link;
     var found = undefined;
     var all_ready = true;
     id = req.params.i-1;
     link = req.body['input-data-link'];
-    
-    getWfJson(req.params.w, function(wf) {
-        foreach(wf.job[id].uses, function(job_data) {
-            if (job_data['@'].link == 'input' && job_data['@'].uri == link) {
-                found = job_data;
-            }
-        });
-        if (!found) {
-            res.status = 400;
-            res.send('bad input data link: no match');
-        }
-        if (found && found['@'].status == 'ready') { // data sent more than once
-            res.status = 409;
-            res.send('Conflict: data already submitted before. No action taken.');
-        } else {
-            found['@'].status='ready';
-            foreach(wf.job[id].uses, function(job_data) {
-                if (job_data['@'].link == 'input' && job_data['@'].status != 'ready') {
-                    all_ready = false;
-                }
-            });
-            
-            // All inputs are ready! ==> Emulate the execution of the workflow task
-            if (all_ready) {
-                wf.job[id]['@'].status = 'running';
-                
-                /* The following setTimeout must be replaced with the actual invocation of the
-                 * computing backend of the workflow task. The completion callback passed to
-                 * the invocation will, however, basically be the same (POST to all dependent 
-                 * tasks information that new data has been produced). 
-                 */
-                setTimeout(function() {
-                    wf.job[id]['@'].status = 'finished';
-                
-                    // POST to all dependant tasks which consume outputs of this task
-                    foreach(wf.job[id].uses, function(job_data) {
-                        if (job_data['@'].link == 'output') {
-                            job_data['@'].status = 'ready';
-                            foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
-                                var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
-                                urlReq.urlReq('http://'+req.headers.host+uri, {
-                                    method: 'POST',
-                                    params: {
-                                        'input-data-link': job_data['@'].uri
-                                    }
-                                }, function(body, res) {
-                                    // do your stuff
-                                });
-            
-                            });
-            
-                        }
-            
-            
-                    });
-                }, wf.job[id]['@'].runtime * 1000);
-            }
-            res.redirect(/workflow/+req.params.w+'/task-'+req.params.i, 302);
-        }
-    });
+
+		if (!(wfInstanceExists(req.params.w, req.params.j))) {
+						res.statuscode = 404;
+						res.end();
+		} else {
+						var wf = getWfInstance(req.params.w, req.params.j);  
+						foreach(wf.job[id].uses, function(job_data) {
+										if (job_data['@'].link == 'input' && job_data['@'].uri == link) {
+														found = job_data;
+										}
+						});
+						if (!found) {
+										res.status = 400;
+										res.send('bad input data link: no match');
+						}
+						if (found && found['@'].status == 'ready') { // data sent more than once
+										res.status = 409;
+										res.send('Conflict: data already submitted before. No action taken.');
+						} else {
+										found['@'].status='ready';
+										foreach(wf.job[id].uses, function(job_data) {
+														if (job_data['@'].link == 'input' && job_data['@'].status != 'ready') {
+																		all_ready = false;
+														}
+										});
+
+										// All inputs are ready! ==> Emulate the execution of the workflow task
+										if (all_ready) {
+														wf.job[id]['@'].status = 'running';
+
+														/* The following setTimeout must be replaced with the actual invocation of the
+														 * computing backend of the workflow task. The completion callback passed to
+														 * the invocation will, however, basically be the same (POST to all dependent 
+														 * tasks information that new data has been produced). 
+														 */
+														setTimeout(function() {
+																		wf.job[id]['@'].status = 'finished';
+
+																		// POST to all dependant tasks which consume outputs of this task
+																		foreach(wf.job[id].uses, function(job_data) {
+																						if (job_data['@'].link == 'output') {
+																										job_data['@'].status = 'ready';
+																										foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
+																														var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
+																														urlReq.urlReq('http://'+req.headers.host+uri, {
+																																		method: 'POST',
+																																		params: {
+																																						'input-data-link': job_data['@'].uri
+																																		}
+																																		}, function(body, res) {
+																																						// do your stuff
+																																		});
+
+																										});
+
+																						}
+
+
+																		});
+														}, wf.job[id]['@'].runtime * 1000);
+										}
+										res.redirect(wf.baseUri+'/task-'+req.params.i, 302);
+						}
+		}
 });
 
 
-app.get('/workflow/:w/data-:j', function(req, res) {
-    var data_id = req.params.j;
-    getWfJson(req.params.w, function(wf) {
-        var ctype = acceptsXml(req);
-        res.header('content-type', ctype);
-        res.render('workflow-data', {
-            title: 'workflow data',
-            wfname: req.params.w,
-            data: wf.data[data_id - 1] // FIXME: 404 if doesn't exist
-        });
-    });
+app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
+				if (!(wfInstanceExists(req.params.w, req.params.i))) {
+								res.statuscode = 404;
+								res.end();
+				} else {
+								var data_id = req.params.j;
+								var wf = getWfInstance(req.params.w, req.params.i);  
+								var ctype = acceptsXml(req);
+								res.header('content-type', ctype);
+								res.render('workflow-data', {
+												title: 'workflow data',
+												wfname: req.params.w,
+												data: wf.data[data_id - 1] // FIXME: 404 if doesn't exist
+								});
+				}
 });
 
-
-
-/* single message page */
-app.get('/microblog/messages/:i', function(req, res) {
-
-    var view, options, id, ctype;
-    id = req.params.i;
-
-    view = '/_design/microblog/_view/posts_by_id';
-    options = {};
-    options.descending = 'true';
-    options.key = String.fromCharCode(34) + id + String.fromCharCode(34);
-
-    ctype = acceptsXml(req);
-
-    db.view('microblog/posts_by_id', function(err, doc) {
-        res.header('content-type', ctype);
-        res.render('message', {
-            title: id,
-            site: baseUrl,
-            items: doc
-        });
-    });
-});
-
-// add a message
-app.post('/microblog/messages/', function(req, res) {
-
-    validateUser(req, res, function(req, res) {
-
-        var text, item;
-
-        // get data array
-	text = req.body.message;
-        if (text !== '') {
-            item = {};
-            item.type = 'post';
-            item.text = text;
-            item.user = req.credentials[0];
-            item.dateCreated = now();
-
-            // write to DB
-            db.save(item, function(err, doc) {
-                if (err) {
-                    res.status = 400;
-                    res.send(err);
-                }
-                else {
-                    res.redirect('/microblog/', 302);
-                }
-            });
-        }
-        else {
-            return badReqest(res);
-        }
-    });
-});
-
-/* single user profile page */
-app.get('/microblog/users/:i', function(req, res) {
-
-    var view, options, id, ctype;
-    id = req.params.i;
-    ctype = acceptsXml(req);
-
-    view = '/_design/microblog/_view/users_by_id';
-    options = {};
-    options.descending = 'true';
-    options.key = String.fromCharCode(34) + id + String.fromCharCode(34);
-
-    db.view('microblog/users_by_id', function(err, doc) {
-        res.header('content-type', ctype);
-        res.render('user', {
-            title: id,
-            site: baseUrl,
-            items: doc
-        });
-    });
-});
-
-/* user messages page */
-app.get('/microblog/user-messages/:i', function(req, res) {
-
-    var view, options, id, ctype;
-
-    id = req.params.i;
-    ctype = acceptsXml(req);
-
-    view = '/_design/microblog/_view/posts_by_user';
-    options = {};
-    options.descending = 'true';
-    options.key = String.fromCharCode(34) + id + String.fromCharCode(34);
-
-    db.view('microblog/posts_by_user', function(err, doc) {
-        res.header('content-type', ctype);
-        res.render('user-messages', {
-            title: id,
-            site: baseUrl,
-            items: doc
-        });
-    });
-});
-
-/* get user list page */
-app.get('/microblog/users/', function(req, res) {
-    var ctype;
-
-    var view = '/_design/microblog/_view/users_by_id';
-
-    ctype = acceptsXml(req);
-
-    db.view('microblog/users_by_id', function(err, doc) {
-        res.header('content-type', ctype);
-        res.render('users', {
-            title: 'User List',
-            site: baseUrl,
-            items: doc
-        });
-    });
-});
-
-/* post to user list page */
-app.post('/microblog/users/', function(req, res) {
-
-    var item, id;
-
-    id = req.body.user;
-    if (id === '') {
-        res.status = 400;
-        res.send('missing user');
-    }
-    else {
-        item = {};
-        item.type = 'user';
-        item.password = req.body.password;
-        item.name = req.body.name;
-        item.email = req.body.email;
-        item.description = req.body.description;
-        item.imageUrl = req.body.avatar;
-        item.websiteUrl = req.body.website;
-        item.dateCreated = today();
-
-        // write to DB
-        db.save(req.body.user, item, function(err, doc) {
-            if (err) {
-                res.status = 400;
-                res.send(err);
-            }
-            else {
-                res.redirect('/microblog/users/', 302);
-            }
-        });
-    }
-});
-
-/* get user register page */
-app.get('/microblog/register/', function(req, res) {
-
-    var ctype;
-    ctype = acceptsXml(req);
-
-    res.header('content-type', ctype);
-    res.render('register', {
-        title: 'Register',
-        site: baseUrl
-    });
-});
 
 /* support various content-types from clients */
 
@@ -607,6 +466,122 @@ function getWfJson(wfname, cb) {
             cb(workflow_cache[wfname]);
         });
     }
+}
+
+function wfInstanceExists(wfname, num) {
+				if (!(wfname in instances)) {
+								return false;
+				}
+				if ((!num in instances[wfname].data)) {
+								return false;
+				}
+				return true;
+}
+
+function getWfInstance(wfname, num) {
+				if (!(wfname in instances)) {
+								return undefined;
+				}
+				if (!(num in instances[wfname].data)) {
+								return undefined;
+				}
+				return instances[wfname].data[num];
+}
+
+// when invoked, 'wf' creates a template of the worklow
+// this function modifies the template to represent an instance of this wf
+function createWfInstance(wf, wfname, baseUrl, inst_id) {
+				var baseUri = baseUrl + '/workflow/'+wfname+'/instances/'+inst_id;
+				var job_id = 0;
+				wf.baseUri = baseUri;
+				// move info about parents to 'job' elements
+				foreach(wf.job, function(job) {
+								job['@'].status = 'waiting'; // initial status of all jobs - waiting for input data
+								job['@'].job_id = ++job_id; 
+								job['@'].uri = baseUri+'/task-'+job_id;
+								foreach(wf.child, function(child) {
+												if (job['@'].id == child['@'].ref) { 
+																job['@'].parents = child.parent; // assumes that child element always has some parent(s)
+												}
+								});
+				});
+
+				// create an array of workflow data elements
+				var found, idx;
+				wf.data = [];
+				foreach(wf.job, function(job) {
+								foreach(job.uses, function(job_data) {
+												job_data['@'].status = 'not_ready';
+												if (job_data['@'].link == 'output') {
+																idx = wf.data.push({
+																				'id': -1,
+																				'name': job_data['@'].file,
+																				'size': job_data['@'].size,
+																				'from': [],
+																				'to': []
+																});
+																wf.data[idx-1].from.push({
+																				'job_name': job['@'].name,
+																				'job_id': job['@'].job_id,
+																				'job_uri': job['@'].uri
+																}); // task from which this data is received
+												}
+								});
+				});           
+				foreach(wf.job, function(job) {
+								foreach(job.uses, function(job_data) {
+												if (job_data['@'].link == 'input') {
+																found = undefined;
+																foreach(wf.data, function(data) {
+																				if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+																								found = data; // data element already in the array
+																				}
+																});
+																if (!found) {
+																				idx = wf.data.push({
+																								'id': -1,
+																								'name': job_data['@'].file,
+																								'size': job_data['@'].size,
+																								'from': [],
+																								'to': []
+																				});
+																				found = wf.data[idx - 1];
+																}
+																found.to.push({
+																				'job_name': job['@'].name,
+																				'job_id': job['@'].job_id,
+																				'job_uri': job['@'].uri
+																}); // task to which this data is passed 
+												}
+								});
+				});
+
+				// assign identifiers and URIs to data elements
+				var id = 0;
+				foreach(wf.data, function(data) {
+								data.id = ++id;
+								data.uri = baseUri+'/data-'+id;
+				});
+
+				// add data element id and uri to each 'uses' element of each job
+				foreach(wf.data, function(data) {
+								foreach (data.to, function(job_input) {
+												foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
+																if (job_data['@'].link == 'input' && job_data['@'].file == data.name) {
+																				job_data['@'].id = data.id;
+																				job_data['@'].uri = data.uri;
+																}
+												});
+								});
+								foreach (data.from, function(job_input) {
+												foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
+																if (job_data['@'].link == 'output' && job_data['@'].file == data.name) {
+																				job_data['@'].id = data.id;
+																				job_data['@'].uri = data.uri;
+																}
+												});
+								});
+				});
 }
 
 // Only listen on $ node app.js

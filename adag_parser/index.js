@@ -34,10 +34,23 @@ exports.init = function () {
        var parser = new xml2js.Parser();
        
        parser.on('end', function(result) {
+							 // WARNING! Presently the callback is called right away, which means all the
+							 // remaining code in this function is OBSOLETE. Now it has been moved to 
+							 // createWfInstance method in app.js
+							 cb(result);
+							 return;
+
+							 ///////////////////////////////////
+							 // CODE BELOW NO LONGER ECECUTED //
+							 ///////////////////////////////////
+							 
            //var i, j, k, children, parents;
            var wf = result;
            var job_id = 0;
            
+					 // add baseUrl to the workflow template representation
+					 wf.baseUrl = baseUrl;
+
            // move info about parents to 'job' elements
            foreach(wf.job, function(job) {
                job['@'].status = 'waiting'; // initial status of all jobs - waiting for input data
@@ -56,7 +69,7 @@ exports.init = function () {
                
            });
            
-           // create an  array of workflow data elements
+           // create an array of workflow data elements
            var found, idx;
            wf.data = [];
            foreach(wf.job, function(job) {
@@ -135,6 +148,8 @@ exports.init = function () {
            });
            
            // add data element id and uri to each 'uses' element of each job
+					 // TODO: remove it from here and leave it only on creating WF instance
+					 // representation from WF template
            foreach(wf.data, function(data) {
                foreach (data.to, function(job_input) {
                    foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
