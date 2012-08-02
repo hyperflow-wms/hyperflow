@@ -1,8 +1,20 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
-<div class="workflow">
+<div id="workflow">
+  <div id="workflow-instances">
+    <ul class="all">
+      <li class="list-name">Current instances</li>
+      <% for(i=0,x=inst.max;i<x;i++) { %>
+        <% if (i in inst.data) { %>
+          <li class="instance-status-<%=inst.data[i].status%>">
+             <a rel="workflow-instance" href="<%=inst.data[i].uri%>/">Instance <%=i%></a>
+          </li>
+        <% } %>
+      <% } %>
+    </ul>
+  </div>
   <form class="workflow-execute" action="/workflow/<%=wfname%>/" method="post">
     <p class="buttons">
-      <input type="submit" value="Create instance" />
+      <input type="submit" value="Create a new instance" />
     </p>
   </form>
 </div>

@@ -29,25 +29,32 @@ div#workflow-tasks a {
   margin-top:15px;
 }
 
-div#workflow-tasks ul li.task-status-waiting a {
+div#workflow-tasks ul li.task-status-waiting a, 
+div#workflow-instances ul li.instance-status-ready a {
     background-color: red;
 }
 
-div#workflow-tasks ul li.task-status-running a {
+div#workflow-tasks ul li.task-status-running a,
+div#workflow-instances ul li.instance-status-running a {
     background-color: Aqua;
 }
 
-div#workflow-tasks ul li.task-status-finished a {
+div#workflow-tasks ul li.task-status-finished a,
+div#workflow-instances ul li.instance-status-finished a {
     background-color:YellowGreen;
 }
 
-div#workflow-tasks ul li.task-status-waiting a:hover 
-{background-color:DarkRed;}
+div#workflow-tasks ul li.task-status-waiting a:hover, 
+div#workflow-instances ul li.instance-status-ready a:hover {
+  background-color:DarkRed;
+}
 
-div#workflow-tasks ul li.task-status-running a:hover 
+div#workflow-tasks ul li.task-status-running a:hover,
+div#workflow-instances ul li.instance-status-running a:hover 
 {background-color:DarkCyan;}
 
-div#workflow-tasks ul li.task-status-finished a:hover 
+div#workflow-tasks ul li.task-status-finished a:hover,
+div#workflow-instances ul li.instance-status-finished a:hover 
 {background-color:Green;}
 
 div#workflow-tasks ul li {
@@ -56,6 +63,7 @@ div#workflow-tasks ul li {
 
 div#workflow-task-inputs ul, 
 div#workflow-task-outputs ul,
+div#workflow-instances ul,
 div#workflow-data ul {
   float:left;
   width:100%;
@@ -67,6 +75,7 @@ div#workflow-data ul {
 div#workflow-task-inputs a,
 div#workflow-task-outputs a,
 div#parent-workflow-instance a,
+div#workflow-instances a,
 div#workflow-data a,
 div#workflow-data span.name,
 div#workflow-data span.size
@@ -89,11 +98,12 @@ div#workflow-data a,
 div#workflow-data span.name,
 div#workflow-data span.size
 {
-				background-color: lightblue;
+  background-color: lightblue;
 }
 
 div#workflow-task-inputs ul li, 
 div#workflow-task-outputs ul li, 
+div#workflow-instances ul li, 
 div#workflow-data ul li {
   display:inline;
 }
@@ -118,7 +128,7 @@ div#workflow-task-outputs ul li.data-status-not_ready a:hover
 {background-color:DarkRed;}
 
 div#parent-workflow-instance a {
-	color: black;
+  color: black;
   background-color: lightblue;
 }
 
@@ -161,6 +171,21 @@ div#workflow-task-outputs ul li.list-name {
 }
 
 div#workflow-data ul li.list-name {
+  float:left;
+  width:8em;
+  height:4em;
+  text-decoration:none;
+  color:black;
+  padding:0.2em 0.6em;
+  border-left:0px solid Moccasin;
+  border-right:1px solid Moccasin;
+  border-top:1px solid Moccasin;
+  border-bottom:0px solid Moccasin;
+  background-color: peru;
+  margin: 0px;
+}
+
+div#workflow-instances ul li.list-name {
   float:left;
   width:8em;
   height:4em;
