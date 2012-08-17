@@ -1,8 +1,13 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div id="workflow">
+  <form class="workflow-execute" action="/workflow/<%=wfname%>/" method="post">
+    <p class="buttons">
+      <input class="button" type="submit" title="At the moment only 3 instances are allowed" value="Create a new instance" />
+    </p>
+  </form>
   <div id="workflow-instances">
     <ul class="all">
-      <li class="list-name">Current instances</li>
+      <li title="Colors: Red=ready, Blue=running Green=finished" class="list-name">Current instances</li>
       <% for(i=0,x=inst.max;i<x;i++) { %>
         <% if (i in inst.data) { %>
           <li class="instance-status-<%=inst.data[i].status%>">
@@ -12,9 +17,4 @@
       <% } %>
     </ul>
   </div>
-  <form class="workflow-execute" action="/workflow/<%=wfname%>/" method="post">
-    <p class="buttons">
-      <input type="submit" value="Create a new instance" />
-    </p>
-  </form>
 </div>

@@ -1,5 +1,6 @@
 /* (bb) 2012) */
 
+
 body {
   background-color: Moccasin;
   font-family: sans-serif;
@@ -198,4 +199,49 @@ div#workflow-instances ul li.list-name {
   border-bottom:0px solid Moccasin;
   background-color: peru;
   margin: 0px;
+}
+
+
+.button {
+  float:left;
+  width:10em;
+  height:4em;
+  text-decoration:none;
+  padding:0.2em 0.6em;
+  border-right:1px solid Moccasin;
+  border-left:0px solid Moccasin;
+  border-top:1px solid Moccasin;
+  border-bottom:0px solid Moccasin;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  font-family: sans-serif;
+	-moz-box-shadow:inset 0px 1px 0px 0px #bbdaf7;
+	-webkit-box-shadow:inset 0px 1px 0px 0px #bbdaf7;
+	box-shadow:inset 0px 1px 0px 0px #bbdaf7;
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #79bbff), color-stop(1, #378de5) );
+	background:-moz-linear-gradient( center top, #79bbff 5%, #378de5 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#79bbff', endColorstr='#378de5');
+	background-color:#79bbff;
+	-moz-border-radius:6px;
+	-webkit-border-radius:6px;
+	border-radius:6px;
+	display:inline-block;
+	color:#ffffff;
+	font-weight:bold;
+	text-shadow:1px 1px 0px #528ecc;
+	white-space:normal;
+	vertical-align:middle;
+}
+
+.button:hover {
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #378de5), color-stop(1, #79bbff) );
+	background:-moz-linear-gradient( center top, #378de5 5%, #79bbff 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#378de5', endColorstr='#79bbff');
+	background-color:#378de5;
+}
+
+.button:active {
+	position:relative;
+	top:1px;
+	cursor: pointer;
 }
