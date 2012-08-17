@@ -198,10 +198,10 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
 	var id = req.params.i;
 	if (!(req.params.w in instances)) {
 		res.statusCode = 404;
-		res.end();
+		res.send("Instance doesn't exist");
 	} else if (!(id in instances[req.params.w].data)) {
 		res.statusCode = 404;
-		res.end();
+		res.send("Instance doesn't exist");
 	} else {
 		var inst = instances[req.params.w];
 		var wf = inst.data[id];
