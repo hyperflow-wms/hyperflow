@@ -21,7 +21,7 @@
             </span>!-->
         </li>
  
-        <div class="workflow-task-inputs">
+        <div id="workflow-task-inputs">
           <ul class="all">
              <li class="list-name">Inputs</li>
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
@@ -34,7 +34,7 @@
              <% } %>
           </ul>
        </div>
-       <div class="workflow-task-outputs">
+       <div id="workflow-task-outputs">
           <ul class="all">
              <li class="list-name">Outputs</li>
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
