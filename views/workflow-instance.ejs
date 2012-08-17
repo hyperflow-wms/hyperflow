@@ -1,7 +1,7 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div class="workflow-instance">
   <div id="workflow-tasks">
-    <% if (status == 'ready') { %>
+    <% if (status === 'ready') { %>
       <form class="workflow-instance-run" action="/workflow/<%=wfname%>/instances/<%=nr%>" method="post">
         <p class="buttons">
           <input class="button" type="submit" value="Run"/>
@@ -21,7 +21,7 @@
             </span>!-->
         </li>
  
-        <div id="workflow-task-inputs">
+        <div class="workflow-task-inputs">
           <ul class="all">
              <li class="list-name">Inputs</li>
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
@@ -34,11 +34,11 @@
              <% } %>
           </ul>
        </div>
-       <div id="workflow-task-outputs">
+       <div class="workflow-task-outputs">
           <ul class="all">
              <li class="list-name">Outputs</li>
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
-                 <% if (wftasks[i].uses[j]['@'].link == 'output') { %>
+                 <% if (wftasks[i].uses[j]['@'].link === 'output') { %>
                     <li class="data-status-<%=wftasks[i].uses[j]['@'].status%>">
                        <a rel="workflow-task-data output" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].file%></a>
                        <!--<span class="data-status-<%=wftasks[i].uses[j]['@'].status%>">Data <%=wftasks[i].uses[j]['@'].status%>!</span>!-->
@@ -47,8 +47,6 @@
              <% } %>
           </ul>
        </div>
-
-
       <% } %>
     </ul>   
   </div>
