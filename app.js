@@ -212,9 +212,8 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
 			nr: id,
 			wfname: req.params.w,
 			wftasks: wf.job,
-			status: wf.status
+			stat: wf.status
 		}, function(err, html) {
-			console.log(html);
 			res.statuscode = 200;
 			res.send(html);
 		});

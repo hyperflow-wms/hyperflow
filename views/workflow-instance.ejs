@@ -1,7 +1,7 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div class="workflow-instance">
   <div id="workflow-tasks">
-    <% if (status === 'ready') { %>
+    <% if (stat === 'ready') { %>
       <form class="workflow-instance-run" action="/workflow/<%=wfname%>/instances/<%=nr%>" method="post">
         <p class="buttons">
           <input class="button" type="submit" value="Run"/>
