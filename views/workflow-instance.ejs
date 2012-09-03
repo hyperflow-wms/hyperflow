@@ -1,7 +1,11 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div class="workflow-instance">
+<% if (stat == 'running') { %>
+  <div id="workflow-tasks" onclick="updateWf('http://<%=host%>/workflow/<%=wfname%>/instances/<%=nr%>/delta-<%=now%>')">
+<% } else { %>
   <div id="workflow-tasks">
-    <% if (stat === 'ready') { %>
+<% } %>
+    <% if (stat == 'ready') { %>
       <form class="workflow-instance-run" action="/workflow/<%=wfname%>/instances/<%=nr%>" method="post">
         <p class="buttons">
           <input class="button" type="submit" value="Run"/>
@@ -10,38 +14,33 @@
     <% } %>
     <ul class="all">
       <% for(i=0,x=wftasks.length;i<x;i++) { %>
-        <li class="task-status-<%=wftasks[i]['@'].status%>">
+        <li id="task-<%=wftasks[i]['@'].job_id%>" class="task-status-<%=wftasks[i]['@'].status%>">
             <a rel="workflow-task" href="<%=wftasks[i]['@'].uri%>">
                <span class="name">
                    <%=wftasks[i]['@'].name%>
                </span>
             </a>
-            <!--<span class="task-status-<%=wftasks[i]['@'].status%>">
-               <%=wftasks[i]['@'].status%>
-            </span>!-->
         </li>
  
         <div id="workflow-task-inputs">
-          <ul class="all">
+          <ul id="workflow-task-inputs" class="all">
              <li class="list-name">Inputs</li>
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
                  <% if (wftasks[i].uses[j]['@'].link == 'input') { %>
-                    <li class="data-status-<%=wftasks[i].uses[j]['@'].status%>">
+                    <li class="data-<%=wftasks[i].uses[j]['@'].id%> data-status-<%=wftasks[i].uses[j]['@'].status%>">
                        <a rel="workflow-task-data input" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].file%></a>
-                       <!--<span class="data-status-<%=wftasks[i].uses[j]['@'].status%>">Data <%=wftasks[i].uses[j]['@'].status%>!</span>!-->
                     </li>
                  <% } %>
              <% } %>
           </ul>
        </div>
        <div id="workflow-task-outputs">
-          <ul class="all">
+          <ul id="workflow-task-outputs" class="all">
              <li class="list-name">Outputs</li>
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
                  <% if (wftasks[i].uses[j]['@'].link === 'output') { %>
-                    <li class="data-status-<%=wftasks[i].uses[j]['@'].status%>">
+                    <li class="data-<%=wftasks[i].uses[j]['@'].id%> data-status-<%=wftasks[i].uses[j]['@'].status%>">
                        <a rel="workflow-task-data output" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].file%></a>
-                       <!--<span class="data-status-<%=wftasks[i].uses[j]['@'].status%>">Data <%=wftasks[i].uses[j]['@'].status%>!</span>!-->
                     </li>
                  <% } %>
              <% } %>
@@ -50,4 +49,7 @@
       <% } %>
     </ul>   
   </div>
+  <a rel="delta" href="/workflow/<%=wfname%>/instances/<%=nr%>/delta-<%=now%>">
+  delta
+  </a>
 </div>
