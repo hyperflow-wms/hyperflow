@@ -182,11 +182,10 @@ exports.init = function () {
 			cb(wf);
 		});
 
-		fs.readFile(file, function(err, data) {
+	    fs.readFile(file, function(err, data) {
 			if (err) throw err;
 			parser.parseString(data);
-		});
-
+		})
 	}
 
 	//public methods

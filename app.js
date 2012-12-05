@@ -29,6 +29,7 @@ else {
 	}).database('html5-microblog');
 }
 
+var pwf = require('./pegasusgen_wf_factory').init();
 var adag = require('./adag_parser').init();
 var deltaWf = require('./deltawf').init();
 var urlReq = require('./req_url');
@@ -130,6 +131,20 @@ app.get('/workflow', function(req, res) {
 
 
 app.get('/workflow/:w', function(req, res) {
+    pwf.getTemplate(req.params.w, function(err, result) {
+       if (err) {
+           res.statusCode = 404;
+           res.send(err);
+       }
+       var ctype = acceptsXml(req);
+       res.header('content-type', ctype);
+       res.render('workflow', {
+           title: req.params.w,
+           wfname: req.params.w,
+           inst: {"current": 0, "max": 3, "data": []} // FIXME, return real instance data
+		});
+    });
+    
 	getWfJson(req.params.w, function(wf) {
 		if (!(req.params.w in instances)) {
 			instances[req.params.w] = {"current": 0, "max": 3, "data": []};
