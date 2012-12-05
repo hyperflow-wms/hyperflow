@@ -553,6 +553,7 @@ function getWfInstance(wfname, num) {
 
 // Creates representation of a new workflow instance 
 // On input, parameter 'wf' represents the worklfow template. On output, it represents the new instance.
+// FIXME: this should really go to a nice module
 function createWfInstance(wf, wfname, baseUrl, inst_id) {
 	var baseUri = baseUrl + '/workflow/'+wfname+'/instances/'+inst_id;
 	var job_id = 0;
