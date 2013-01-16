@@ -1,4 +1,7 @@
-/* 2012 (bb) : hypermedia workflow */
+/*
+** Hypermedia workflow
+** Author: Bartosz Balis (2012)
+*/
 
 'use strict';
 
@@ -29,7 +32,7 @@ else {
 	}).database('html5-microblog');
 }
 
-var adag = require('./adag_parser').init();
+var pwf = require('./pegasusgen_wf_factory').init();
 var deltaWf = require('./deltawf').init();
 var urlReq = require('./req_url');
 
@@ -44,10 +47,6 @@ var _ = require('underscore');
 var contentType = 'text/html';
 //var baseUrl = 'http://localhost:'+process.env.PORT;
 var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
-
-var workflow_cache = {}; // cache for parsed json workfow representations (database substitute)
-
-var instances = [];
 
 // Configuration
 app.configure(function() {
@@ -119,29 +118,40 @@ function validateUser(req, res, next) {
 //
 /* starting page */
 app.get('/workflow', function(req, res) {
-
-	var file = 'Montage_25.xml';
-
-	adag.parse(file, 'Montage_25', function(result) {
-		res.header('content-type', 'application/json');
-		res.send(JSON.stringify(result));
+	pwf.getTemplate('Montage_25', function(err, result) {
+        if (err) {
+            res.statusCode = 404;
+            res.send(err.toString());
+       } else {
+            res.statusCode = 200;
+            res.header('content-type', 'application/json');
+            res.send(JSON.stringify(result));
+        }
 	});
 });
 
 
 app.get('/workflow/:w', function(req, res) {
-	getWfJson(req.params.w, function(wf) {
-		if (!(req.params.w in instances)) {
-			instances[req.params.w] = {"current": 0, "max": 3, "data": []};
-		}
-		var ctype = acceptsXml(req);
-		res.header('content-type', ctype);
-		res.render('workflow', {
-			title: req.params.w,
-			wfname: req.params.w,
-			inst: instances[req.params.w]
-		});
-	});
+    pwf.getTemplate(req.params.w, function(err, result) {
+       if (err) {
+           res.statusCode = 404;
+           res.send(err.toString());
+       } else {
+            var instList = pwf.getInstanceList(req.params.w);
+            if (instList instanceof Error) {
+                res.statusCode = 404; // FIXME: 404 or other error code?
+                res.send(err.toString());
+            } else {
+                var ctype = acceptsXml(req);
+                res.header('content-type', ctype);
+                res.render('workflow', {
+                    title: req.params.w,
+                    wfname: req.params.w,
+                    inst: instList 
+                });
+            }
+       }
+    });
 });
 
 
@@ -149,20 +159,15 @@ app.get('/workflow/:w', function(req, res) {
  * Create a new instance of a workflow
  */
 app.post('/workflow/:w', function(req, res) {
-	getWfJson(req.params.w, function(wf) {
-		var inst;
-		if (req.params.w in instances) {
-			inst = instances[req.params.w];
-			inst.current = (inst.current + 1) % inst.max; 
-		} else {
-			instances[req.params.w] = {"current": 0, "max": 3, "data": []};
-			inst = instances[req.params.w];
-		}
-		inst.data[inst.current] = clone(wf);
-		createWfInstance(inst.data[inst.current], req.params.w, baseUrl, inst.current);
-		deltaWf.create(req.params.w+'-'+inst.current); // delta resource. FIXME! Is it enough for unique id?
-		res.redirect(req.url+"instances/"+inst.current, 302); // redirect to the newly created workflow instance
-	});
+    pwf.createInstance(req.params.w, baseUrl, function(err, id) {
+        if (err) {
+           res.statusCode = 404;
+           res.send(err.toString());
+        } else {
+            deltaWf.create(req.params.w+'-'+id); // delta resource. FIXME! Is it enough for unique id?
+            res.redirect(req.url+"instances/"+id, 302); // redirect to the newly created workflow instance
+        }
+    });
 });
 
 
@@ -173,14 +178,14 @@ app.post('/workflow/:w', function(req, res) {
  * FIXME: this should be done by a properly written client.
  */
 app.post('/workflow/:w/instances/:i', function(req, res) {
-	if (!wfInstanceExists(req.params.w, req.params.i)) {
-		res.statusCode = 404;
-		res.send("Instance doesn't exist");
-	} else {
-		var wf = getWfInstance(req.params.w, req.params.i);
+    var wf = pwf.getInstance(req.params.w, req.params.i);
+    if (wf instanceof Error) {
+        res.statusCode = 404;
+        res.send(wf.toString());
+    } else {
 		wf.status = 'running';
 		foreach(wf.data, function(data) {
-			if (data.from.length == 0) {
+			if (data.from.length === 0) {
 				foreach(data.to, function(job) {
 					deltaWf.addEvent(req.params.w+'-'+req.params.i, "data-"+data.id, "ready");  // FIXME: the same event can be added many times (works ok, but more processing)
 					urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
@@ -200,31 +205,26 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:i', function(req, res) {
-	var id = req.params.i;
-	if (!(req.params.w in instances)) {
-		res.statusCode = 404;
-		res.send("Instance doesn't exist");
-	} else if (!(id in instances[req.params.w].data)) {
-		res.statusCode = 404;
-		res.send("Instance doesn't exist");
-	} else {
-		var inst = instances[req.params.w];
-		var wf = inst.data[id];
-		var ctype = acceptsXml(req);
+    var inst = pwf.getInstance(req.params.w, req.params.i);
+    if (inst instanceof Error) {
+        res.statusCode = 404;
+		res.send(inst.toString());
+    } else {
+        var ctype = acceptsXml(req);
 		res.header('content-type', ctype);
 		res.render('workflow-instance', {
 			title: req.params.w,
-			nr: id,
+			nr: req.params.i,
 			host: req.headers.host,
 			wfname: req.params.w,
-			wftasks: wf.job,
-			stat: wf.status,
+			wftasks: inst.job,
+			stat: inst.status,
 			now: (new Date()).getTime()
 		}, function(err, html) {
 			res.statuscode = 200;
 			res.send(html);
 		});
-	}
+    }
 });
 
 
@@ -237,37 +237,43 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
 // (-> not really, the client has to know the meaning of keys and values, so it's 
 // domain-specific. Unless it's defined specifically as "wfdelta+json").
 app.get('/workflow/:w/instances/:i/delta-:j', function(req, res) {
-	var now = (new Date()).getTime();
-	var delta = deltaWf.getDelta(req.params.w+'-'+req.params.i, req.params.j);		
-	res.header('content-type', 'application/wfdelta+json');
-	var x = { 
-		"delta" : delta,
-		"link": {
-			"href": "http://"+req.headers.host+"/workflow/"+req.params.w+"/instances/"+req.params.i+"/delta-"+now,
-			"type": "wfdelta+json",
-			"method": "GET",
-			"rel": "wfdelta",
-			"title": "History of changes to status of workflow tasks and data"
-		}
-	}
-	res.send(JSON.stringify(x));
+    var inst = pwf.getInstance(req.params.w, req.params.i);
+    if (inst instanceof Error) {
+        res.statusCode = 404;
+        res.send(inst.toString());
+    } else {
+        var now = (new Date()).getTime();
+        var delta = deltaWf.getDelta(req.params.w+'-'+req.params.i, req.params.j);		
+        res.header('content-type', 'application/wfdelta+json');
+        var x = { 
+            "delta" : delta,
+            "link": {
+                "href": "http://"+req.headers.host+"/workflow/"+req.params.w+"/instances/"+req.params.i+"/delta-"+now,
+                "type": "wfdelta+json",
+                "method": "GET",
+                "rel": "wfdelta",
+                "title": "History of changes to status of workflow tasks and data"
+            }
+        };
+        res.send(JSON.stringify(x));
+    }
 });
 
 
 app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
-	var id = req.params.i;
-	if (!(wfInstanceExists(req.params.w, req.params.j))) {
-		res.statuscode = 404;
-		res.send("Instance doesn't exist");
-	} else {
-		var wf = getWfInstance(req.params.w, req.params.j);
+    var id = req.params.i;
+    var inst = pwf.getInstance(req.params.w, req.params.j);
+    if (inst instanceof Error) {
+        res.statusCode = 404;
+        res.send(inst.toString());
+    } else {
 		var ctype = acceptsXml(req);
 		res.header('content-type', ctype);
 		res.render('workflow-task', {
 			nr: id,
 			wfname: req.params.w,
 			title: ' workflow task',
-			wftask: wf.job[id - 1], // FIXME - 404 if doesn't exist
+			wftask: inst.job[id - 1], // FIXME - 404 if doesn't exist
 			wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
 		});
 	}
@@ -292,11 +298,14 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 	id = req.params.i-1;
 	link = req.body['input-data-link'];
 
-	if (!(wfInstanceExists(req.params.w, req.params.j))) {
-		res.statuscode = 404;
-		res.send("Instance doesn't exist");
-	} else {
-		var wf = getWfInstance(req.params.w, req.params.j);  
+    var wf = pwf.getInstance(req.params.w, req.params.j);
+    if (wf instanceof Error) {
+        res.statusCode = 404;
+        res.send(wf.toString());
+    } else {
+        // FIXME: this part heavily depends on Pegasus-specific representation  
+        // of (synthetic) workflow. Should be changed to a generic wf 
+        // representation, or hidden behind API of a workflow factory
 		foreach(wf.job[id].uses, function(job_data) {
 			if (job_data['@'].link == 'input' && job_data['@'].uri == link) {
 				found = job_data;
@@ -331,7 +340,7 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 					wf.job[id]['@'].status = 'finished';
 					deltaWf.addEvent(req.params.w+'-'+req.params.j, 'task-'+req.params.i, 'finished');
 					wf.nTasksLeft--;
-					if (wf.nTasksLeft == 0) {
+					if (wf.nTasksLeft === 0) {
 						wf.status = 'finished';
 						console.log(deltaWf.getDelta(req.params.w+'-'+req.params.j, 0));
 					}
@@ -367,18 +376,18 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
-	if (!(wfInstanceExists(req.params.w, req.params.i))) {
-		res.statuscode = 404;
-		res.send("Instance doesn't exist");
-	} else {
+    var inst = pwf.getInstance(req.params.w, req.params.i);
+    if (inst instanceof Error) {
+        res.statusCode = 404;
+        res.send(inst.toString());
+    } else {
 		var data_id = req.params.j;
-		var wf = getWfInstance(req.params.w, req.params.i);  
 		var ctype = acceptsXml(req);
 		res.header('content-type', ctype);
 		res.render('workflow-data', {
 			title: 'workflow data',
 			wfname: req.params.w,
-			data: wf.data[data_id - 1] // FIXME: 404 if doesn't exist
+			data: inst.data[data_id - 1] // FIXME: 404 if doesn't exist
 		});
 	}
 });
@@ -509,145 +518,6 @@ function foreach(what, cb) {
 	else {
 		cb(what);
 	}
-}
-
-
-/*
-   function getWfJson(wfname, cb) {
-   adag.parse(wfname + '.xml', wfname, baseUrl, function(w) {
-   cb(w);
-   });
-   }
-   */
-
-function getWfJson(wfname, cb) {
-	if (wfname in workflow_cache) {
-		cb(workflow_cache[wfname]);
-	} else {
-		adag.parse(wfname + '.xml', wfname, baseUrl, function(w) {
-			workflow_cache[wfname] = w;
-			cb(workflow_cache[wfname]);
-		});
-	}
-}
-
-function wfInstanceExists(wfname, num) {
-	if (!(wfname in instances)) {
-		return false;
-	}
-	if ((!num in instances[wfname].data)) {
-		return false;
-	}
-	return true;
-}
-
-function getWfInstance(wfname, num) {
-	if (!(wfname in instances)) {
-		return undefined;
-	}
-	if (!(num in instances[wfname].data)) {
-		return undefined;
-	}
-	return instances[wfname].data[num];
-}
-
-// Creates representation of a new workflow instance 
-// On input, parameter 'wf' represents the worklfow template. On output, it represents the new instance.
-// FIXME: this should really go to a nice module
-function createWfInstance(wf, wfname, baseUrl, inst_id) {
-	var baseUri = baseUrl + '/workflow/'+wfname+'/instances/'+inst_id;
-	var job_id = 0;
-	wf.uri = baseUri;
-	wf.status = 'ready'; // initial status of workflow instance -- ready but not yet running
-	wf.nTasksLeft = wf.job.length;
-	// move info about parents to 'job' elements
-	foreach(wf.job, function(job) {
-		job['@'].status = 'waiting'; // initial status of all jobs - waiting for input data
-		job['@'].job_id = ++job_id; 
-		job['@'].uri = baseUri+'/task-'+job_id;
-		foreach(wf.child, function(child) {
-			if (job['@'].id == child['@'].ref) { 
-				job['@'].parents = child.parent; // assumes that child element always has some parent(s)
-			}
-		});
-	});
-
-	// create an array of workflow data elements
-	var found, idx;
-	wf.data = [];
-	foreach(wf.job, function(job) {
-		foreach(job.uses, function(job_data) {
-			job_data['@'].status = 'not_ready';
-			if (job_data['@'].link == 'output') {
-				idx = wf.data.push({
-					'id': -1,
-					'name': job_data['@'].file,
-					'size': job_data['@'].size,
-					'from': [],
-					'to': []
-				});
-				wf.data[idx-1].from.push({
-					'job_name': job['@'].name,
-					'job_id': job['@'].job_id,
-					'job_uri': job['@'].uri
-				}); // task from which this data is received
-			}
-		});
-	});           
-	foreach(wf.job, function(job) {
-		foreach(job.uses, function(job_data) {
-			if (job_data['@'].link == 'input') {
-				found = undefined;
-				foreach(wf.data, function(data) {
-					if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
-						found = data; // data element already in the array
-					}
-				});
-				if (!found) {
-					idx = wf.data.push({
-						'id': -1,
-						'name': job_data['@'].file,
-						'size': job_data['@'].size,
-						'from': [],
-						'to': []
-					});
-					found = wf.data[idx - 1];
-				}
-				found.to.push({
-					'job_name': job['@'].name,
-					'job_id': job['@'].job_id,
-					'job_uri': job['@'].uri
-				}); // task to which this data is passed 
-			}
-		});
-	});
-
-	// assign identifiers and URIs to data elements
-	var id = 0;
-	foreach(wf.data, function(data) {
-		data.id = ++id;
-		data.uri = baseUri+'/data-'+id;
-	});
-
-	// add data element id and uri to each 'uses' element of each job
-	foreach(wf.data, function(data) {
-		foreach (data.to, function(job_input) {
-			foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
-				if (job_data['@'].link == 'input' && job_data['@'].file == data.name) {
-					job_data['@'].id = data.id;
-					job_data['@'].uri = data.uri;
-				}
-			});
-		});
-		foreach (data.from, function(job_input) {
-			foreach(wf.job[job_input.job_id-1].uses, function(job_data) {
-				if (job_data['@'].link == 'output' && job_data['@'].file == data.name) {
-					job_data['@'].id = data.id;
-					job_data['@'].uri = data.uri;
-				}
-			});
-		});
-	});
 }
 
 function clone(obj) {
