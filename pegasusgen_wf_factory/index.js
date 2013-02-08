@@ -75,7 +75,18 @@ exports.init = function() {
             return new Error("Error: no instances of workflow " + wfname + " found.")
         }
     }
-    
+
+    return {
+        createInstance: public_createInstance,
+        getTemplate: public_getTemplate,
+        getInstance: public_getInstance,
+        getInstanceList: public_getInstanceList
+    };
+
+    //////////////////////////////////////////////////////////////////////////
+    ///////////////////////// private functions //////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
     function createWfInstance(wf, wfname, baseUrl, inst_id) {
         var baseUri = baseUrl + '/workflow/' + wfname + '/instances/' + inst_id;
         var job_id = 0;
@@ -173,18 +184,6 @@ exports.init = function() {
         });
     }
 
-
-
-    return {
-        createInstance: public_createInstance,
-        getTemplate: public_getTemplate,
-        getInstance: public_getInstance,
-        getInstanceList: public_getInstanceList
-    };
-
-    //////////////////////////////////////////////////////////////////////////
-    ///////////////////////// private functions //////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
 
     function clone(obj) {
         // Handle the 3 simple types, and null or undefined

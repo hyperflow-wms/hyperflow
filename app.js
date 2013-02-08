@@ -32,7 +32,9 @@ else {
 	}).database('html5-microblog');
 }
 
-var pwf = require('./pegasusgen_wf_factory').init();
+//var pwf = require('./pegasusgen_wf_factory').init();
+var pwf = require('./pegasusdax_wf_factory').init();
+var executor = require('./executor_simple').init();
 var deltaWf = require('./deltawf').init();
 var urlReq = require('./req_url');
 
@@ -118,7 +120,7 @@ function validateUser(req, res, next) {
 //
 /* starting page */
 app.get('/workflow', function(req, res) {
-	pwf.getTemplate('Montage_25', function(err, result) {
+	pwf.getTemplate('Montage_65r', function(err, result) {
         if (err) {
             res.statusCode = 404;
             res.send(err.toString());
@@ -331,7 +333,12 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 				wf.job[id]['@'].status = 'running';
 				deltaWf.addEvent(req.params.w+'-'+req.params.j, 'task-'+req.params.i, 'running');
 
-				/* The following setTimeout must be replaced with the actual invocation of the
+                // testing of simple executor
+                executor.execute(wf.job[id], "server.example.com", function(err, res) {
+                    console.log(res);
+                });
+                
+                /* The following setTimeout must be replaced with the actual invocation of the
 				 * computing backend of the workflow task. The completion callback passed to
 				 * the invocation will, however, basically be the same (POST to all dependent 
 				 * tasks information that new data has been produced). 
@@ -344,7 +351,7 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 						wf.status = 'finished';
 						console.log(deltaWf.getDelta(req.params.w+'-'+req.params.j, 0));
 					}
-
+                    
 					// POST to all dependant tasks which consume outputs of this task
 					foreach(wf.job[id].uses, function(job_data) {
 						if (job_data['@'].link == 'output') {
