@@ -3,7 +3,8 @@
  ** Author: Bartosz Balis (2013)
  */
 var fs = require('fs'),
-    xml2js = require('xml2js');
+    xml2js = require('xml2js'),
+    spawn = require('child_process').spawn;
 
 exports.init = function() {
 
@@ -17,13 +18,26 @@ exports.init = function() {
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-
     function public_execute(task, server, cb) {
-        var cmd = task['@'].name + " " + task.argument['#'];
-        task.argument.filename.forEach(function(filename) {
-            cmd += " " + filename['@'].file;
-        });
-        cb(null, cmd);
+        var args = [server, 'cd', 'montage-working/0.5/input', ';', task['@'].name, task.argument];
+        /*task.argument.filename.forEach(function(filename) {
+            args.push(filename['@'].file);
+        });*/
+
+	var proc = spawn('ssh', args);
+	proc.stdout.on('data', function(data) {
+		console.log(task['@'].name + '-'+ task['@'].id + ' stdout:' + data);
+	});
+	proc.stderr.on('data', function(data) {
+		console.log(task['@'].name + '-'+ task['@'].id + ' stdout:' + data);
+	});
+	proc.on('exit', function(code) {
+		console.log(task['@'].name + '-'+ task['@'].id + ' stdout:' + code);
+		cb(null, code);
+	});
+	setTimeout(function() {
+
+	}, 1000);
     }
     
 

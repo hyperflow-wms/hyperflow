@@ -28,7 +28,7 @@
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
                  <% if (wftasks[i].uses[j]['@'].link == 'input') { %>
                     <li class="data-<%=wftasks[i].uses[j]['@'].id%> data-status-<%=wftasks[i].uses[j]['@'].status%>">
-                       <a rel="workflow-task-data input" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].file%></a>
+                       <a rel="workflow-task-data input" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].name%></a>
                     </li>
                  <% } %>
              <% } %>
@@ -40,7 +40,7 @@
              <% for(j=0,y=wftasks[i].uses.length;j<y;j++) { %>
                  <% if (wftasks[i].uses[j]['@'].link === 'output') { %>
                     <li class="data-<%=wftasks[i].uses[j]['@'].id%> data-status-<%=wftasks[i].uses[j]['@'].status%>">
-                       <a rel="workflow-task-data output" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].file%></a>
+                       <a rel="workflow-task-data output" href="<%=wftasks[i].uses[j]['@'].uri%>/"><%=wftasks[i].uses[j]['@'].name%></a>
                     </li>
                  <% } %>
              <% } %>

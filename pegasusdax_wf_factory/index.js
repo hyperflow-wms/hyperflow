@@ -115,7 +115,7 @@ exports.init = function() {
                 if (job_data['@'].link == 'output') {
                     idx = wf.data.push({
                         'id': -1,
-                        'name': job_data['@'].file,
+                        'name': job_data['@'].name,
                         'size': 0, // FIXME: temporary (for compatibility with syntetic workflows)
                         'from': [],
                         'to': []
@@ -134,14 +134,14 @@ exports.init = function() {
                 if (job_data['@'].link == 'input') {
                     found = undefined;
                     foreach(wf.data, function(data) {
-                        if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+                        if (data.name == job_data['@'].name /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
                             found = data; // data element already in the array
                         }
                     });
                     if (!found) {
                         idx = wf.data.push({
                             'id': -1,
-                            'name': job_data['@'].file,
+                            'name': job_data['@'].name,
                             'size': 0, // FIXME: temporary (for compatibility with syntetic workflows)
                             'from': [],
                             'to': []
@@ -168,7 +168,7 @@ exports.init = function() {
         foreach(wf.data, function(data) {
             foreach(data.to, function(job_input) {
                 foreach(wf.job[job_input.job_id - 1].uses, function(job_data) {
-                    if (job_data['@'].link == 'input' && job_data['@'].file == data.name) {
+                    if (job_data['@'].link == 'input' && job_data['@'].name == data.name) {
                         job_data['@'].id = data.id;
                         job_data['@'].uri = data.uri;
                     }
@@ -176,7 +176,7 @@ exports.init = function() {
             });
             foreach(data.from, function(job_input) {
                 foreach(wf.job[job_input.job_id - 1].uses, function(job_data) {
-                    if (job_data['@'].link == 'output' && job_data['@'].file == data.name) {
+                    if (job_data['@'].link == 'output' && job_data['@'].name == data.name) {
                         job_data['@'].id = data.id;
                         job_data['@'].uri = data.uri;
                     }
@@ -302,7 +302,7 @@ exports.init = function() {
                     if (job_data['@'].link == 'output') {
                         idx = wf.data.push({
                             'id': -1,
-                            'name': job_data['@'].file,
+                            'name': job_data['@'].name,
                             'size': job_data['@'].size,
                             'from': [],
                             'to': []
@@ -320,14 +320,14 @@ exports.init = function() {
                     if (job_data['@'].link == 'input') {
                         found = undefined;
                         foreach(wf.data, function(data) {
-                            if (data.name == job_data['@'].file /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
+                            if (data.name == job_data['@'].name /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
                                 found = data; // data element already in the array
                             }
                         });
                         if (!found) {
                             idx = wf.data.push({
                                 'id': -1,
-                                'name': job_data['@'].file,
+                                'name': job_data['@'].name,
                                 'size': job_data['@'].size,
                                 'from': [],
                                 'to': []
@@ -356,7 +356,7 @@ exports.init = function() {
             foreach(wf.data, function(data) {
                 foreach(data.to, function(job_input) {
                     foreach(wf.job[job_input.job_id - 1].uses, function(job_data) {
-                        if (job_data['@'].link == 'input' && job_data['@'].file == data.name) {
+                        if (job_data['@'].link == 'input' && job_data['@'].name == data.name) {
                             job_data['@'].id = data.id;
                             job_data['@'].uri = data.uri;
                         }
@@ -364,7 +364,7 @@ exports.init = function() {
                 });
                 foreach(data.from, function(job_input) {
                     foreach(wf.job[job_input.job_id - 1].uses, function(job_data) {
-                        if (job_data['@'].link == 'output' && job_data['@'].file == data.name) {
+                        if (job_data['@'].link == 'output' && job_data['@'].name == data.name) {
                             job_data['@'].id = data.id;
                             job_data['@'].uri = data.uri;
                         }

@@ -333,17 +333,9 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 				wf.job[id]['@'].status = 'running';
 				deltaWf.addEvent(req.params.w+'-'+req.params.j, 'task-'+req.params.i, 'running');
 
-                // testing of simple executor
-                executor.execute(wf.job[id], "server.example.com", function(err, res) {
-                    console.log(res);
-                });
-                
-                /* The following setTimeout must be replaced with the actual invocation of the
-				 * computing backend of the workflow task. The completion callback passed to
-				 * the invocation will, however, basically be the same (POST to all dependent 
-				 * tasks information that new data has been produced). 
-				 */
-				setTimeout(function() {
+
+				// testing of simple executor
+				executor.execute(wf.job[id], "balis@192.168.252.130", function(err, res) {
 					wf.job[id]['@'].status = 'finished';
 					deltaWf.addEvent(req.params.w+'-'+req.params.j, 'task-'+req.params.i, 'finished');
 					wf.nTasksLeft--;
@@ -374,7 +366,7 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 
 
 					});
-				}, wf.job[id]['@'].runtime * 1000);
+				}); //, wf.job[id]['@'].runtime * 1000); --> used to be setTimeout
 			}
 			res.redirect(wf.uri+'/task-'+req.params.i, 302);
 		}

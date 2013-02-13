@@ -1,4 +1,9 @@
-/* 2012 (bb) : hypermedia workflow, delta resource implementation */
+/* Hypermedia workflow. 
+ ** Implements a 'delta' resource for hypermedia workflow which
+ ** returns changes occurred in the status of workflow resources
+ ** since the last check.
+ ** Author: Bartosz Balis (2013)
+ */
 
 exports.init = function() {
 	var deltaAll = []; // table of all delta resources (private)
@@ -14,7 +19,7 @@ exports.init = function() {
 			var now=new Date().getTime(); 
 			deltaAll[id].events.push({'time': now, 'key': key, 'value': value});
 		} else {
-			throw("ENODELTA");
+			return new Error("Delta resource not found");
 		}
 	}
 
@@ -28,7 +33,7 @@ exports.init = function() {
 			});
 			return res;
 		} else {
-			throw("ENODELTA");
+			return new Error("Delta resource not found");
 		}
 	}
 
