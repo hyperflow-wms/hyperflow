@@ -125,9 +125,17 @@ app.get('/workflow', function(req, res) {
             res.statusCode = 404;
             res.send(err.toString());
        } else {
-            res.statusCode = 200;
-            res.header('content-type', 'application/json');
-            res.send(JSON.stringify(result));
+           pwf.createInstance('Montage_65r', '', function(err, id) {
+               if (err) {
+                   res.statusCode = 404;
+                   res.send(err.toString());
+                } else {
+                    deltaWf.create('Montage_65r'+'-'+id); // delta resource. FIXME! Is it enough for unique id?
+                    res.statusCode = 200;
+                    res.header('content-type', 'application/json');
+                    res.send(JSON.stringify(pwf.getInstance('Montage_65r', id)));
+                }
+            });
         }
 	});
 });
