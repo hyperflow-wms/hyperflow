@@ -148,22 +148,24 @@ exports.init = function() {
         // add task to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
         rcl.zadd(wfKey+":tasks", 0 /* score */, taskKey, function(err, ret) { });
 
-        var dataId, dataKey, keyExists;
+        var dataId, dataKey;
         job.uses.forEach(function(job_data) {
             // we add key wf:{id}:data:names:{name} because in Pegasus names are unique
             // it may not be true for other workflow systems. 
             // TODO: perhaps instance factories should implement a standard API hiding
             // specific redis models which may be different for different wf systems?
-            rcl.hexists(wfKey+":data:names:", job_data['name'], function(err, ret) {
-                keyExists = ret;
+            rcl.hexists(wfKey+":data:names", job_data['@'].name, function(err, keyExists) {
                 if (!keyExists) {
+		    console.log("NOT found: ret=", keyExists+", "+wfKey+", "+job_data['@'].name);
                     rcl.hincrby(wfKey, "nextDataId", 1, function(err, ret) {
                         dataId = ret;
                         dataKey = wfKey+":data:"+dataId;
+			rcl.hset(wfKey+":data:names", job_data['@'].name, dataKey, function(err, ret) { });
                         processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
                     });
                 } else {
-                    rcl.hget(wfKey+":data:names:", job_data['name'], function(err, ret) {
+                    rcl.hget(wfKey+":data:names", job_data['@'].name, function(err, ret) {
+			    console.log("Found: "+wfKey+", "+job_data['@'].name);
                         dataKey = ret;
                         processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
                     });
@@ -173,7 +175,6 @@ exports.init = function() {
     }
 
     function processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey) {
-        rcl.hset(wfKey+":data:names:", job_data['name'], dataKey, function(err, ret) { });
         rcl.hset(dataKey, "uri", baseUri + '/data-' + dataId, function(err, ret) { });
         rcl.hset(dataKey, "status", "not_ready", function(err, ret) { });
 
