@@ -5,6 +5,7 @@
 var fs = require('fs'),
     xml2js = require('xml2js')
     redis = require('redis'),
+    async = require('async'),
     rcl = redis.createClient();
 
 rcl.on("error", function (err) {
@@ -126,17 +127,18 @@ exports.init = function() {
         wf.nTasksLeft = wf.job.length; // # garbage
 
         var taskKey;
-        wf.job.forEach(function(job) {
+        async.eachSeries(wf.job, function(job, nextJob) {
             var taskId;
             rcl.hincrby(wfKey, "nextJobId", 1, function(err, ret) {
                 taskId = ret;
                 taskKey = wfKey+":task:"+taskId;
-                processJob(job, wfname, baseUri, wfKey, taskKey, taskId);
+		console.log("taskKey="+taskKey);
+                processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextJob);
             });
-        });
+	}, function done(err) { console.log('Done processing jobs.'); });
     }
 
-    function processJob(job, wfname, baseUri, wfKey, taskKey, taskId) {
+    function processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextJob) {
         rcl.hset(taskKey, "uri", baseUri+"/task-"+taskId, function(err, ret) { });
         rcl.hset(taskKey, "name", job['@'].name, function(err, ret) { });
         rcl.hset(taskKey, "status", "waiting", function(err, ret) { });
@@ -149,37 +151,42 @@ exports.init = function() {
         rcl.zadd(wfKey+":tasks", 0 /* score */, taskKey, function(err, ret) { });
 
         var dataId, dataKey;
-        job.uses.forEach(function(job_data) {
+        async.eachSeries(job.uses, function(job_data, next) {
             // we add key wf:{id}:data:names:{name} because in Pegasus names are unique
             // it may not be true for other workflow systems. 
             // TODO: perhaps instance factories should implement a standard API hiding
             // specific redis models which may be different for different wf systems?
             rcl.hexists(wfKey+":data:names", job_data['@'].name, function(err, keyExists) {
                 if (!keyExists) {
-		    console.log("NOT found: ret=", keyExists+", "+wfKey+", "+job_data['@'].name);
+		    console.log("NOT found: ret="+keyExists+", "+wfKey+", "+job_data['@'].name);
                     rcl.hincrby(wfKey, "nextDataId", 1, function(err, ret) {
                         dataId = ret;
                         dataKey = wfKey+":data:"+dataId;
 			rcl.hset(wfKey+":data:names", job_data['@'].name, dataKey, function(err, ret) { });
+			console.log("   dataKey="+dataKey);
                         processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
+			next();
                     });
                 } else {
-                    rcl.hget(wfKey+":data:names", job_data['@'].name, function(err, ret) {
-			    console.log("Found: "+wfKey+", "+job_data['@'].name);
-                        dataKey = ret;
-                        processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
-                    });
-                }
+			console.log("Found: "+wfKey+", "+job_data['@'].name);
+			rcl.hget(wfKey+":data:names", job_data['@'].name, function(err, ret) {
+				dataKey = ret;
+				console.log("   dataKey="+dataKey);
+				processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
+				next();
+			});
+		}
             });
-        });
+        }, function done(err) { nextJob(); });
     }
 
     function processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey) {
         rcl.hset(dataKey, "uri", baseUri + '/data-' + dataId, function(err, ret) { });
+        rcl.hset(dataKey, "name", job_data['@'].name, function(err, ret) { });
         rcl.hset(dataKey, "status", "not_ready", function(err, ret) { });
 
         if (job_data['@'].link == 'input') {
-            // add this data key to the sorted set of dependencies of this task
+            // add this data key to the sorted set of dependencies of this task.
             // score: i*1000+j, where i == 0 (dep. not fulfilled) or 1 (dep. fulfilled)
             // j == 0..999 ==> type of dependency (for future use). 0 = data element 
             rcl.zadd(taskKey+":ins", 0 /* score i=0,j=0 */, dataKey);
