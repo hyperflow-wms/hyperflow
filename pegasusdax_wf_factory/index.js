@@ -37,10 +37,10 @@ exports.init = function() {
                             return;
                         }
                         workflow_cache[wfname] = result; // ### FIXME: garbage
+
                         rcl.exists("wftempl:"+wfname, function(err, keyExists) {
                             if (!keyExists) {
                                 rcl.hset("wftempl:"+wfname, "name", wfname, function(err, ret) { });
-                                rcl.hset("wftempl:"+wfname, "nextId", "0", function(err, ret) { });
                                 rcl.hset("wftempl:"+wfname, "maxInstances", "3", function(err, ret) { });
                             }
                         }); 
@@ -61,7 +61,7 @@ exports.init = function() {
     function public_createInstance(wfname, baseUrl, cb) { 
         var inst; // ### garbage
         var instanceId;
-        rcl.hincrby("wftempl:"+wfname, "nextId", 1, function(err, ret) {
+        rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
             instanceId = ret.toString();
             console.log("ret=", ret);
             console.log("instanceId=", instanceId);
@@ -126,16 +126,20 @@ exports.init = function() {
         wf.status = 'ready'; // initial status of workflow instance -- ready but not yet running ## garbage
         wf.nTasksLeft = wf.job.length; // # garbage
 
-        var taskKey;
+        var taskKey, taskId;
         async.eachSeries(wf.job, function(job, nextJob) {
-            var taskId;
             rcl.hincrby(wfKey, "nextJobId", 1, function(err, ret) {
                 taskId = ret;
                 taskKey = wfKey+":task:"+taskId;
 		console.log("taskKey="+taskKey);
                 processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextJob);
             });
-	}, function done(err) { console.log('Done processing jobs.'); });
+	}, function done(err) { 
+		getTasks(1, 33, 40, function(err, reply) {
+			console.log(reply[0].uri);
+		});
+		console.log('Done processing jobs.'); 
+	});
     }
 
     function processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextJob) {
@@ -147,8 +151,9 @@ exports.init = function() {
         // mapping data for simple ssh-based execution. In the future will probably be
         // a separate mapping data structure
         rcl.hset(taskKey, "execSSHAddr", "balis@192.168.252.130", function(err, ret) { });
-        // add task to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
-        rcl.zadd(wfKey+":tasks", 0 /* score */, taskKey, function(err, ret) { });
+        // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
+	// only task Id (not key) is added which allows redis to optimize memory consumption (so I read)
+        rcl.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
 
         var dataId, dataKey;
         async.eachSeries(job.uses, function(job_data, next) {
@@ -171,6 +176,7 @@ exports.init = function() {
 			console.log("Found: "+wfKey+", "+job_data['@'].name);
 			rcl.hget(wfKey+":data:names", job_data['@'].name, function(err, ret) {
 				dataKey = ret;
+				dataId = dataKey.split(":")[3];
 				console.log("   dataKey="+dataKey);
 				processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
 				next();
@@ -189,7 +195,7 @@ exports.init = function() {
             // add this data key to the sorted set of dependencies of this task.
             // score: i*1000+j, where i == 0 (dep. not fulfilled) or 1 (dep. fulfilled)
             // j == 0..999 ==> type of dependency (for future use). 0 = data element 
-            rcl.zadd(taskKey+":ins", 0 /* score i=0,j=0 */, dataKey);
+            rcl.zadd(taskKey+":ins", 0 /* score i=0,j=0 */, dataId, function(err, ret) { });
 
             // add this task key to the set of sinks of this data element
             rcl.sadd(dataKey+":sinks", taskKey);
@@ -197,11 +203,85 @@ exports.init = function() {
         if (job_data['@'].link == 'output') {
             // a similar set for all "products" (entities other tasks may be
             // dependent on). Score: 0..9999 ==> type of product. 0 = data element
-            rcl.zadd(taskKey+":outs", 0 /* score */, dataKey);
+            rcl.zadd(taskKey+":outs", 0 /* score */, dataId, function(err, ret) { });
 
             // add this job key as a source of this data element
             rcl.set(dataKey+":source", taskKey);
         }
+    }
+
+    // returns json representation of the wf instance: a list of tasks with ids from  from task 
+    function getTasks(wfId, from, to, cb) {
+	    var tasks = [], ins = [], outs = [];
+	    var asyncTasks = [];
+	    var taskKeys;
+	    var i;
+	    for (i=from; i<=to; ++i) {
+		    // The following "push" needs to be wrapped in an anynomous function to create a separate scope
+		    // for each value of "i". See http://stackoverflow.com/questions/2568966
+		    (function(i) {
+			    var taskKey = "wf:"+wfId+":task:"+i;
+			    asyncTasks.push(function(callback) {
+				    rcl.hmget(taskKey, "uri", "name", "status", function(err, reply) {
+					    if (err) {
+						    tasks[i-from] = err;
+						    callback(err);
+					    } else {
+						    tasks[i-from] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+						    callback(null, reply);
+					    }
+				    });
+			    });
+			    asyncTasks.push(function(callback) {
+				    rcl.zrange(taskKey+":ins", 0, -1, function(err, reply) {
+					    if (err) {
+						    ins[i-from] = err;
+						    callback(err);
+					    } else {
+						    ins[i-from] = reply;
+						    callback(null, reply);
+					    }
+				    });
+			    });
+			    asyncTasks.push(function(callback) {
+				    rcl.zrange(taskKey+":outs", 0, -1, function(err, reply) {
+					    if (err) {
+						    outs[i-from] = err;
+						    callback(err);
+					    } else {
+						    outs[i-from] = reply;
+						    callback(null, reply);
+					    }
+				    });
+			    });
+		    })(i);
+	    }
+	    async.parallel(asyncTasks, function(err, result) {
+		    if (err) {
+			    console.log(err);
+			    cb(err);
+		    } else {
+			    for (var i=from; i<=to; ++i) {
+				    console.log(tasks);
+				    console.log(ins);
+				    console.log(outs);
+				    //console.log(tasks[i-from].uri);
+				    //console.log(result[i-from]);
+			    }
+			    cb(null, tasks);
+		    }
+	    });
+    }
+
+    // returns the number of tasks for w workflow
+    function getNumTasks(wfId, cb) {
+	    rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
+		    if (err) {
+			    cb(err, null);
+		    } else {
+			    cb(null, ret);
+		    }
+	    });
     }
 
 
