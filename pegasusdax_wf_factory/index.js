@@ -115,11 +115,11 @@ exports.init = function() {
         var inst_id = instanceId; // ### garbage
         var baseUri = baseUrl + '/workflow/' + wfname + '/instances/' + instanceId;
         var wfKey = "wf:"+instanceId;
-        console.log("wfKey=", wfKey);
-        rcl.hset(wfKey, "uri", baseUri, function(err, ret) { });
-        rcl.hset(wfKey, "nextJobId", "0", function(err, ret) { });
-        rcl.hset(wfKey, "nextDataId", "0", function(err, ret) { });
-        rcl.hset(wfKey, "status", "waiting", function(err, ret) { });
+        rcl.hmset(wfKey, "uri", baseUri, 
+                         "nextJobId", "0", 
+                         "nextDataId", "0", 
+                         "status", "waiting", 
+                         function(err, ret) { });
 
         var job_id = 0; // ### garbage
         wf.uri = baseUri; // ### garbage
@@ -131,28 +131,30 @@ exports.init = function() {
             rcl.hincrby(wfKey, "nextJobId", 1, function(err, ret) {
                 taskId = ret;
                 taskKey = wfKey+":task:"+taskId;
-		console.log("taskKey="+taskKey);
                 processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextJob);
             });
-	}, function done(err) { 
-		getTasks(1, 33, 40, function(err, reply) {
-			console.log(reply[0].uri);
-		});
-		console.log('Done processing jobs.'); 
-	});
+        }, function done(err) { 
+            // test
+            getTasks(1, 1, 143, function(err, reply) {
+                console.log(reply[0].uri);
+            });
+            console.log('Done processing jobs.'); 
+        });
     }
 
     function processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextJob) {
-        rcl.hset(taskKey, "uri", baseUri+"/task-"+taskId, function(err, ret) { });
-        rcl.hset(taskKey, "name", job['@'].name, function(err, ret) { });
-        rcl.hset(taskKey, "status", "waiting", function(err, ret) { });
-        rcl.hset(taskKey, "execName", job['@'].name, function(err, ret) { });
-        rcl.hset(taskKey, "execArgs", job['@'].argument, function(err, ret) { });
-        // mapping data for simple ssh-based execution. In the future will probably be
-        // a separate mapping data structure
-        rcl.hset(taskKey, "execSSHAddr", "balis@192.168.252.130", function(err, ret) { });
+        rcl.hmset(taskKey, "uri", baseUri+"/task-"+taskId, 
+                "name", job['@'].name, 
+                "status", "waiting", 
+                "execName", job['@'].name, 
+                "execArgs", job['@'].argument, 
+                // mapping data for simple ssh-based execution. In the future will probably be
+                // a separate mapping data structure
+                "execSSHAddr", "balis@192.168.252.130", 
+                function(err, ret) { });
+
         // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
-	// only task Id (not key) is added which allows redis to optimize memory consumption (so I read)
+        // only task Id (not key) is added which allows redis to optimize memory consumption (so I read)
         rcl.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
 
         var dataId, dataKey;
@@ -163,125 +165,162 @@ exports.init = function() {
             // specific redis models which may be different for different wf systems?
             rcl.hexists(wfKey+":data:names", job_data['@'].name, function(err, keyExists) {
                 if (!keyExists) {
-		    console.log("NOT found: ret="+keyExists+", "+wfKey+", "+job_data['@'].name);
                     rcl.hincrby(wfKey, "nextDataId", 1, function(err, ret) {
                         dataId = ret;
                         dataKey = wfKey+":data:"+dataId;
-			rcl.hset(wfKey+":data:names", job_data['@'].name, dataKey, function(err, ret) { });
-			console.log("   dataKey="+dataKey);
-                        processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
-			next();
+                        rcl.hset(wfKey+":data:names", job_data['@'].name, dataId, function(err, ret) { });
+                        processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey, function done(err, replies) {
+                            next();
+                        });
                     });
                 } else {
-			console.log("Found: "+wfKey+", "+job_data['@'].name);
-			rcl.hget(wfKey+":data:names", job_data['@'].name, function(err, ret) {
-				dataKey = ret;
-				dataId = dataKey.split(":")[3];
-				console.log("   dataKey="+dataKey);
-				processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey);
-				next();
-			});
-		}
+                    rcl.hget(wfKey+":data:names", job_data['@'].name, function(err, ret) {
+                        dataId = ret;
+                        dataKey = wfKey+":data:"+dataId;
+                        processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey, function done(err, replies) {
+                            next();
+                        });
+                    });
+                }
             });
         }, function done(err) { nextJob(); });
     }
 
-    function processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey) {
-        rcl.hset(dataKey, "uri", baseUri + '/data-' + dataId, function(err, ret) { });
-        rcl.hset(dataKey, "name", job_data['@'].name, function(err, ret) { });
-        rcl.hset(dataKey, "status", "not_ready", function(err, ret) { });
+    function processData(job_data, baseUri, taskKey, dataKey, dataId, wfKey, cb) {
+        var multi = rcl.multi();
+        multi.hmset(dataKey, "uri", baseUri + '/data-' + dataId, 
+                "name", job_data['@'].name, 
+                "status", "not_ready", 
+                function(err, ret) { });
+
+        // add this data id to the sorted set of all workflw data
+        // score: 0 (data not ready) or 1 (data ready)
+        multi.zadd(wfKey+":data", 0 /* score */, dataId, function(err, ret) { });
 
         if (job_data['@'].link == 'input') {
-            // add this data key to the sorted set of dependencies of this task.
+            // add this data id to the sorted set of dependencies of this task.
             // score: i*1000+j, where i == 0 (dep. not fulfilled) or 1 (dep. fulfilled)
             // j == 0..999 ==> type of dependency (for future use). 0 = data element 
-            rcl.zadd(taskKey+":ins", 0 /* score i=0,j=0 */, dataId, function(err, ret) { });
+            multi.zadd(taskKey+":ins", 0 /* score i=0,j=0 */, dataId, function(err, ret) { });
 
             // add this task key to the set of sinks of this data element
-            rcl.sadd(dataKey+":sinks", taskKey);
+            multi.sadd(dataKey+":sinks", taskKey);
         }
         if (job_data['@'].link == 'output') {
             // a similar set for all "products" (entities other tasks may be
             // dependent on). Score: 0..9999 ==> type of product. 0 = data element
-            rcl.zadd(taskKey+":outs", 0 /* score */, dataId, function(err, ret) { });
+            multi.zadd(taskKey+":outs", 0 /* score */, dataId, function(err, ret) { });
 
             // add this job key as a source of this data element
-            rcl.set(dataKey+":source", taskKey);
+            multi.set(dataKey+":source", taskKey);
         }
+        multi.exec(function(err, replies) {
+            if (err) {
+                cb(err);
+            } else {
+                cb(null, replies);
+            }
+        });
     }
 
-    // returns json representation of the wf instance: a list of tasks with ids from  from task 
+    // returns a list of tasks with ids within [from..to], and their ins and outs
     function getTasks(wfId, from, to, cb) {
-	    var tasks = [], ins = [], outs = [];
-	    var asyncTasks = [];
-	    var taskKeys;
-	    var i;
-	    for (i=from; i<=to; ++i) {
-		    // The following "push" needs to be wrapped in an anynomous function to create a separate scope
-		    // for each value of "i". See http://stackoverflow.com/questions/2568966
-		    (function(i) {
-			    var taskKey = "wf:"+wfId+":task:"+i;
-			    asyncTasks.push(function(callback) {
-				    rcl.hmget(taskKey, "uri", "name", "status", function(err, reply) {
-					    if (err) {
-						    tasks[i-from] = err;
-						    callback(err);
-					    } else {
-						    tasks[i-from] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
-						    callback(null, reply);
-					    }
-				    });
-			    });
-			    asyncTasks.push(function(callback) {
-				    rcl.zrange(taskKey+":ins", 0, -1, function(err, reply) {
-					    if (err) {
-						    ins[i-from] = err;
-						    callback(err);
-					    } else {
-						    ins[i-from] = reply;
-						    callback(null, reply);
-					    }
-				    });
-			    });
-			    asyncTasks.push(function(callback) {
-				    rcl.zrange(taskKey+":outs", 0, -1, function(err, reply) {
-					    if (err) {
-						    outs[i-from] = err;
-						    callback(err);
-					    } else {
-						    outs[i-from] = reply;
-						    callback(null, reply);
-					    }
-				    });
-			    });
-		    })(i);
-	    }
-	    async.parallel(asyncTasks, function(err, result) {
-		    if (err) {
-			    console.log(err);
-			    cb(err);
-		    } else {
-			    for (var i=from; i<=to; ++i) {
-				    console.log(tasks);
-				    console.log(ins);
-				    console.log(outs);
-				    //console.log(tasks[i-from].uri);
-				    //console.log(result[i-from]);
-			    }
-			    cb(null, tasks);
-		    }
-	    });
+        var tasks = [], ins = [], outs = [], data  = [];
+        var asyncTasks = [];
+        for (var i=from; i<=to; ++i) {
+            // The following "push" calls need to be wrapped in an anynomous function to create 
+            // a separate scope for each value of "i". See http://stackoverflow.com/questions/2568966
+            (function(i) {
+                var taskKey = "wf:"+wfId+":task:"+i;
+                var multi;
+                // Retrieve task info
+                asyncTasks.push(function(callback) {
+                    rcl.hmget(taskKey, "uri", "name", "status", function(err, reply) {
+                        if (err) {
+                            tasks[i-from] = err;
+                            callback(err);
+                        } else {
+                            tasks[i-from] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+                            callback(null, reply);
+                        }
+                    });
+                });
+                // Retrieve all inputs of the task
+                asyncTasks.push(function(callback) {
+                    rcl.sort(taskKey+":ins", function(err, reply) {
+                        if (err) {
+                            ins[i-from] = err;
+                            callback(err);
+                        } else {
+                            // This part is currently not optimized: for each task information about each 
+                            // input data element is retrieved separately. This means that if a data element 
+                            // is an input for 1000 tasks, it will be retrieved from redis 1000 times. 
+                            // This redundancy saves some other processing though. 
+                            // Need to be tested for very large workflows.
+                            multi = rcl.multi();
+                            reply.forEach(function(x) {
+                                multi.hmget("wf:"+wfId+":data:"+x, "uri", "name", "status", function(err, reply) { });
+                            });
+                            multi.exec(function(err, replies) {
+                                var j=0;
+                                ins[i-from]=[];
+                                replies.forEach(function(x) {
+                                    console.log(x);
+                                    ins[i-from].push({"uri": x[0], "name": x[1], "status": x[2]});
+                                    j++; 
+                                });
+                                callback(null, reply);
+                            });
+                        }
+                    });
+                });
+                // Retrieve all outputs of the task
+                asyncTasks.push(function(callback) {
+                    rcl.sort(taskKey+":outs", function(err, reply) {
+                        if (err) {
+                            outs[i-from] = err;
+                            callback(err);
+                        } else {
+                            // Same comment as for "ins", see above
+                            multi = rcl.multi();
+                            reply.forEach(function(x) {
+                                multi.hmget("wf:"+wfId+":data:"+x, "uri", "name", "status", function(err, reply) { });
+                            });
+                            multi.exec(function(err, replies) {
+                                var j=0;
+                                outs[i-from]=[];
+                                replies.forEach(function(x) {
+                                    console.log(x);
+                                    outs[i-from].push({"uri": x[0], "name": x[1], "status": x[2]});
+                                    j++; 
+                                });
+                                callback(null, reply);
+                            });
+                        }
+                    });
+                });
+            })(i);
+        }
+        async.parallel(asyncTasks, function done(err, result) {
+            if (err) {
+                console.log(err);
+                cb(err);
+            } else {
+                console.log(ins);
+                cb(null, tasks);
+            }
+        });
     }
 
     // returns the number of tasks for w workflow
     function getNumTasks(wfId, cb) {
-	    rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
-		    if (err) {
-			    cb(err, null);
-		    } else {
-			    cb(null, ret);
-		    }
-	    });
+        rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
+            if (err) {
+                cb(err, null);
+            } else {
+                cb(null, ret);
+            }
+        });
     }
 
 
