@@ -215,26 +215,36 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:i', function(req, res) {
-    var inst = pwf.getInstance(req.params.w, req.params.i);
-    if (inst instanceof Error) {
-        res.statusCode = 404;
-		res.send(inst.toString());
-    } else {
-        var ctype = acceptsXml(req);
-		res.header('content-type', ctype);
-		res.render('workflow-instance', {
-			title: req.params.w,
-			nr: req.params.i,
-			host: req.headers.host,
-			wfname: req.params.w,
-			wftasks: inst.job,
-			stat: inst.status,
-			now: (new Date()).getTime()
-		}, function(err, html) {
-			res.statuscode = 200;
-			res.send(html);
-		});
-    }
+	pwf.getTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
+		if (err) {
+			res.statusCode = 404;
+			res.send(err.toString());
+		} else {
+			var ctype = acceptsXml(req);
+			res.header('content-type', ctype);
+			var start, end;
+			start = (new Date()).getTime();
+			res.render('workflow-instance', {
+				title: req.params.w,
+				nr: req.params.i,
+				host: req.headers.host,
+				wfname: req.params.w,
+				wftasks: tasks,
+				wfins: ins,
+				wfouts: outs,
+				stat: 'running', // FIXME: properly retrieve wf status
+				now: (new Date()).getTime()
+			}, function(err, html) {
+				if (err) {
+					console.log("Rendering error: "+err);
+				}
+				end = (new Date()).getTime();
+				console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
+				res.statuscode = 200;
+				res.send(html);
+			});
+		}
+	});
 });
 
 
@@ -349,7 +359,7 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 					wf.nTasksLeft--;
 					if (wf.nTasksLeft === 0) {
 						wf.status = 'finished';
-						console.log(deltaWf.getDelta(req.params.w+'-'+req.params.j, 0));
+						//console.log(deltaWf.getDelta(req.params.w+'-'+req.params.j, 0));
 					}
                     
 					// POST to all dependant tasks which consume outputs of this task
