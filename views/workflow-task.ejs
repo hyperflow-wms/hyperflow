@@ -1,33 +1,29 @@
 <div id="workflow-tasks">
    <ul class="single">
-        <li class="task-status-<%=wftask['@'].status%>">
-            <a rel="self" href="<%=wftask['@'].uri%>">
+        <li class="task-status-<%=task.status%>">
+            <a rel="self" href="<%=task.uri%>">
                <span class="name">
-                   <%=wftask['@'].name%>
+                   <%=task.name%>
                </span>
             </a>
         </li>
        <div id="workflow-task-inputs">
           <ul class="all">
              <li class="list-name">Inputs</li>
-             <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
-                 <% if (wftask.uses[j]['@'].link == 'input') { %>
-                    <li class="data-status-<%=wftask.uses[j]['@'].status%>">
-                       <a rel="workflow-task-data input" href="<%=wftask.uses[j]['@'].uri%>/"><%=wftask.uses[j]['@'].file%></a>
+             <% for(j=0,y=ins.length;j<y;j++) { %>
+                    <li class="data-status-<%=ins[j].status%>">
+                       <a rel="workflow-task-data input" href="<%=ins[j].uri%>/"><%=ins[j].name%></a>
                     </li>
-                 <% } %>
              <% } %>
           </ul>
        </div>
        <div id="workflow-task-outputs">
           <ul class="all">
              <li class="list-name">Outputs</li>
-             <% for(j=0,y=wftask.uses.length;j<y;j++) { %>
-                 <% if (wftask.uses[j]['@'].link == 'output') { %>
-                    <li class="data-status-<%=wftask.uses[j]['@'].status%>">
-                       <a rel="workflow-task-data output" href="<%=wftask.uses[j]['@'].uri%>/"><%=wftask.uses[j]['@'].file%></a>
+             <% for(j=0,y=outs.length;j<y;j++) { %>
+                    <li class="data-status-<%=outs[j].status%>">
+                       <a rel="workflow-task-data output" href="<%=outs[j].uri%>/"><%=outs[j].name%></a>
                     </li>
-                 <% } %>
              <% } %>
           </ul>
        </div>

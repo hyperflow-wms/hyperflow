@@ -13,9 +13,9 @@
     <div id="produced-by">
       <ul class="all">
         <li class="list-name">Produced by</li>
-        <% for(j=0,y=data.from.length;j<y;j++) { %>
+        <% for(j=0,y=source.length;j<y;j++) { %>
           <li>
-            <a rel="workflow-task data-producer" href="<%=data.from[j].job_uri%>/"><%=data.from[j].job_uri%></a>
+            <a rel="workflow-task data-producer" href="<%=source[j].uri%>/"><%=source[j].uri%></a>
           </li>
         <% } %>
       </ul>
@@ -23,9 +23,9 @@
       <div id="consumed-by">
         <ul class="all">
           <li class="list-name">Consumed by</li>
-          <% for(j=0,y=data.to.length;j<y;j++) { %>
+          <% for(j=0,y=sinks.length;j<y;j++) { %>
             <li>
-              <a rel="workflow-task data-consumer" href="<%=data.to[j].job_uri%>/"><%=data.to[j].job_uri%></a>
+              <a rel="workflow-task data-consumer" href="<%=sinks[j].uri%>/"><%=sinks[j].uri%></a>
             </li>
           <% } %>
         </ul>

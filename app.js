@@ -215,6 +215,19 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:i', function(req, res) {
+	pwf.getWfInstanceInfo(req.params.i, function(err, reply) {
+		console.log("InstanceInfo="+reply);
+		console.log(reply.uri);
+		for (var i in reply) {
+			console.log(i);
+		}
+	});
+	/*pwf.getTaskInfo(req.params.i, 1, function(err, task, ins, outs) {
+		console.log("TaskInfo:");
+		console.log(task);
+		console.log(ins);
+		console.log(outs);
+	});*/
 	pwf.getTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
 		if (err) {
 			res.statusCode = 404;
@@ -281,8 +294,30 @@ app.get('/workflow/:w/instances/:i/delta-:j', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
-    var id = req.params.i;
-    var inst = pwf.getInstance(req.params.w, req.params.j);
+    var wfId = req.params.j, taskId = req.params.i;
+    pwf.getTaskInfo(wfId, taskId, function(err, wftask, taskins, taskouts) {
+	    if (err) {
+		    res.statusCode = 404;
+		    res.send(err.toString());
+	    } else {
+		    console.log(wftask);
+		    console.log(taskins);
+		    console.log(taskouts);
+		    var ctype = acceptsXml(req);
+		    res.header('content-type', ctype);
+		    res.render('workflow-task', {
+			    nr: taskId,
+			    wfname: req.params.w,
+			    title: ' workflow task',
+			    task: wftask, // FIXME - 404 if doesn't exist
+			    ins: taskins,
+			    outs: taskouts,
+			    wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
+		    });
+	    }
+    });
+
+    /*var inst = pwf.getInstance(req.params.w, req.params.j);
     if (inst instanceof Error) {
         res.statusCode = 404;
         res.send(inst.toString());
@@ -297,6 +332,7 @@ app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
 			wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
 		});
 	}
+	*/
 });
 
 /*
@@ -393,20 +429,23 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
-    var inst = pwf.getInstance(req.params.w, req.params.i);
-    if (inst instanceof Error) {
-        res.statusCode = 404;
-        res.send(inst.toString());
-    } else {
-		var data_id = req.params.j;
-		var ctype = acceptsXml(req);
-		res.header('content-type', ctype);
-		res.render('workflow-data', {
-			title: 'workflow data',
-			wfname: req.params.w,
-			data: inst.data[data_id - 1] // FIXME: 404 if doesn't exist
-		});
+    var wfId = req.params.i, dataId = req.params.j;
+    pwf.getDataInfo(wfId, dataId, function(err, wfData, dSource, dSinks) {
+	if (err) {
+	    res.statusCode = 404;
+	    res.send(inst.toString());
+	} else {
+	    var ctype = acceptsXml(req);
+	    res.header('content-type', ctype);
+	    res.render('workflow-data', {
+		title: 'workflow data',
+		wfname: req.params.w,
+		data: wfData,
+		source: dSource,
+		sinks: dSinks
+	    });
 	}
+    });
 });
 
 
