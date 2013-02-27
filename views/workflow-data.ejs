@@ -15,7 +15,7 @@
         <li class="list-name">Produced by</li>
         <% for(j=0,y=source.length;j<y;j++) { %>
           <li>
-            <a rel="workflow-task data-producer" href="<%=source[j].uri%>/"><%=source[j].uri%></a>
+            <a rel="workflow-task data-producer" href="<%=source[j].uri%>/"><%=source[j].name%></a>
           </li>
         <% } %>
       </ul>
@@ -25,7 +25,7 @@
           <li class="list-name">Consumed by</li>
           <% for(j=0,y=sinks.length;j<y;j++) { %>
             <li>
-              <a rel="workflow-task data-consumer" href="<%=sinks[j].uri%>/"><%=sinks[j].uri%></a>
+              <a rel="workflow-task data-consumer" href="<%=sinks[j].uri%>/"><%=sinks[j].name%></a>
             </li>
           <% } %>
         </ul>

@@ -37,29 +37,19 @@ exports.init = function() {
                             return;
                         }
                         workflow_cache[wfname] = result; // ### FIXME: garbage
-
-                        rcl.exists("wftempl:"+wfname, function(err, keyExists) {
-                            if (!keyExists) {
-                                rcl.hset("wftempl:"+wfname, "name", wfname, function(err, ret) { });
-                                rcl.hset("wftempl:"+wfname, "maxInstances", "3", function(err, ret) { });
-                            }
-                        }); 
+			rcl.hset("wftempl:"+wfname, "name", wfname, function(err, ret) { });
+			rcl.hset("wftempl:"+wfname, "maxInstances", "3", function(err, ret) { });
                     });
                 }
             });
         } 
-
-        // first access: initialization of workflow instance data ### FIXME: garbage
-        if (!(wfname in instances)) {
-            instances[wfname] = {"current": 0, "max": 3, "data": []};
-        }
 
         cb(null, workflow_cache[wfname]);
     }
 
     // creates a new workflow instance
     function public_createInstance(wfname, baseUrl, cb) { 
-        var inst; // ### garbage
+	var inst; // ### garbage
         var instanceId;
         rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
             if (err) {
@@ -67,21 +57,17 @@ exports.init = function() {
 	    }
             instanceId = ret.toString();
             console.log("instanceId=", instanceId);
-            // ### garbage
-            if (wfname in instances) {
-                inst = instances[wfname];
-                inst.current = (inst.current + 1) % inst.max; 
-            } else {
-                instances[wfname] = {"current": 0, "max": 3, "data": []};
-                inst = instances[wfname];
-            }
-            inst.data[inst.current] = clone(workflow_cache[wfname]);
-
-            console.log("instanceId=", instanceId);
-            createWfInstance(inst.data[inst.current], wfname, baseUrl, instanceId);
-            createWfInstanceOLD(inst.data[inst.current], wfname, baseUrl, instanceId);
-            cb(null, instanceId);
-        });
+	    public_getTemplate(wfname, function(err, wfTempl) {
+		if (err) {
+		    cb(err);
+		} else {
+		    //createWfInstanceOLD(inst.data[inst.current], wfname, baseUrl, instanceId);
+		    createWfInstance(wfTempl, wfname, baseUrl, instanceId, function(err) {
+			cb(null, instanceId);
+		    });
+		}
+	    });
+	});
     }
 
     function public_getInstance(wfname, id) {
@@ -95,11 +81,7 @@ exports.init = function() {
     }
 
     function public_getInstanceList(wfname) {
-        if (wfname in instances) {
-            return instances[wfname];
-        } else {
-            return new Error("Error: no instances of workflow " + wfname + " found.")
-        }
+	return [];
     }
 
     // returns a list of tasks with ids within [from..to], and their ins and outs
@@ -239,10 +221,12 @@ exports.init = function() {
     // TODO: generalize this and getTaskInfo into getNodeInfo (every node can be described 
     // in terms of attributes, ins and outs). 
     function public_getDataInfo(wfId, dataId, cb) {
-	var data, source, sinks, dataKey, tasks = {};
+	var data, sources, sinks, dataKey, taskKeyPfx, tasks = {};
 	var multi = rcl.multi();
 
 	dataKey = "wf:"+wfId+":data:"+dataId;
+	taskKeyPfx = "wf:"+wfId+":task:";
+
 	// Retrieve data element info
 	multi.hgetall(dataKey, function(err, reply) {
 	    if (err) {
@@ -251,74 +235,47 @@ exports.init = function() {
 		data = reply;
 	    }
 	});
-	multi.get(dataKey+":source", function(err, reply) {
+
+	// this is a great feature: sort+get (even for hashes)!
+	multi.sort(dataKey+":sources", "get", taskKeyPfx+"*->uri",
+			               "get", taskKeyPfx+"*->name",
+			               "get", taskKeyPfx+"*->status",
+	function(err, reply) {
 	    if (err) {
-		source = err;
+		sources = err;
 	    } else {
-		source = [];
-		if (source) {
-		    source.push(reply);
+		sources = [];
+		for (var i=0; i<reply.length; i+=3) {
+			sources.push({"uri": reply[i], "name": reply[i+1], "status": reply[i+2]});
 		}
-		console.log("sources: "+source);
+		//console.log("sources[0]: "+sources[0]);
 	    }
 	});
-	multi.sort(dataKey+":sinks", function(err, reply) {
+
+	multi.sort(dataKey+":sinks", "get", taskKeyPfx+"*->uri",
+			             "get", taskKeyPfx+"*->name",
+			             "get", taskKeyPfx+"*->status",
+	function(err, reply) {
 	    if (err) {
 		sinks = err;
 	    } else {
-		sinks = reply ? reply: []; 
-		console.log("sinks: "+sinks);
+	        sinks = [];	
+		for (var i=0; i<reply.length; i+=3) {
+			sinks.push({"uri": reply[i], "name": reply[i+1], "status": reply[i+2]});
+		}
+		//console.log("sinks[0]: "+sinks[0]);
 	    }
 	});
+
         multi.exec(function(err, replies) {
             if (err) {
                 cb(err);
             } else {
-		for (var i=0; i<source.length; ++i) {
-		    console.log("i="+i+", task="+source[i]);
-		    (function(i) {
-			var taskKey = "wf:"+wfId+":task:"+source[i];
-			multi.hmget(taskKey, "uri", "name", "status", function(err, reply) {
-			    if (err) {
-				tasks[source[i]] = err;
-			    } else {
-				tasks[source[i]] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
-			    }
-			});
-		    })(i);
-		}
-		for (var i=0; i<sinks.length; ++i) {
-		    console.log("i="+i+", task="+sinks[i]);
-		    (function(i) {
-			var taskKey = "wf:"+wfId+":task:"+sinks[i];
-			multi.hmget(taskKey, "uri", "name", "status", function(err, reply) {
-			    if (err) {
-				tasks[sinks[i]] = err;
-			    } else {
-				tasks[sinks[i]] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
-			    }
-			});
-		    })(i);
-		}
-
-		multi.exec(function(err, replies) {
-		    if (err) {
-			console.log(err);
-			cb(err);
-		    } else {
-			// replace ids of data elements with their attributes
-			for (var i=0; i<source.length; ++i) {
-			    source[i] = tasks[source[i]];
-			}
-			for (var i=0; i<sinks.length; ++i) {
-			    sinks[i] = tasks[sinks[i]];
-			}
-			cb(null, data, source, sinks);
-		    }
-		});
-            }
-        });
+		cb(null, data, sources, sinks);
+	    }
+	});
     }
+		
 
     return {
         createInstance: public_createInstance,
@@ -337,18 +294,12 @@ exports.init = function() {
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    function createWfInstance(wf, wfname, baseUrl, instanceId) {
-        var inst_id = instanceId; // ### garbage
+    function createWfInstance(wf, wfname, baseUrl, instanceId, cb) {
         var baseUri = baseUrl + '/workflow/' + wfname + '/instances/' + instanceId;
         var wfKey = "wf:"+instanceId;
         rcl.hmset(wfKey, "uri", baseUri, 
                          "status", "waiting", 
                          function(err, ret) { });
-
-        var job_id = 0; // ### garbage
-        wf.uri = baseUri; // ### garbage
-        wf.status = 'ready'; // initial status of workflow instance -- ready but not yet running ## garbage
-        wf.nTasksLeft = wf.job.length; // # garbage
 
         var taskKey, taskId;
         async.eachSeries(wf.job, function(job, nextTask) {
@@ -362,7 +313,12 @@ exports.init = function() {
             /*public_getTasks(1, 1, -1, function(err, tasks, ins, outs) {
                 console.log(tasks[0].uri);
             });*/
-            console.log('Done processing jobs.'); 
+	    if (err) {
+		cb(err); 
+	    } else {
+		console.log('Done processing jobs.'); 
+		cb(null);
+	    }
         });
     }
 
@@ -437,7 +393,7 @@ exports.init = function() {
             multi.zadd(taskKey+":outs", 0 /* score */, dataId, function(err, ret) { });
 
             // add this job key as a source of this data element
-            multi.set(dataKey+":source", taskId);
+            multi.sadd(dataKey+":sources", taskId);
         }
         multi.exec(function(err, replies) {
             if (err) {

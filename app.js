@@ -193,24 +193,24 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
         res.statusCode = 404;
         res.send(wf.toString());
     } else {
-		wf.status = 'running';
-		foreach(wf.data, function(data) {
-			if (data.from.length === 0) {
-				foreach(data.to, function(job) {
-					deltaWf.addEvent(req.params.w+'-'+req.params.i, "data-"+data.id, "ready");  // FIXME: the same event can be added many times (works ok, but more processing)
-					urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
-						method: 'POST',
-						params: {
-							'input-data-link': data.uri
-						}
-						}, function(body, res) {
-							// do your stuff
-						});
-				});
+	wf.status = 'running';
+	foreach(wf.data, function(data) {
+	    if (data.from.length === 0) {
+		foreach(data.to, function(job) {
+		    deltaWf.addEvent(req.params.w+'-'+req.params.i, "data-"+data.id, "ready");  // FIXME: the same event can be added many times (works ok, but more processing)
+		    urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
+			method: 'POST',
+			params: {
+			    'input-data-link': data.uri
 			}
+			}, function(body, res) {
+			    // do your stuff
+			});
 		});
-		res.redirect(req.url, 302); // redirect after making all POSTs
-	}
+	    }
+	});
+	res.redirect(req.url, 302); // redirect after making all POSTs
+    }
 });
 
 
