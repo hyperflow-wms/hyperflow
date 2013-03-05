@@ -36,6 +36,7 @@ else {
 var pwf = require('./pegasusdax_wf_factory').init();
 var executor = require('./executor_simple').init();
 var deltaWf = require('./deltawf').init();
+var wflib = require('./wflib').init();
 var urlReq = require('./req_url');
 
 var timers = require('timers');
@@ -215,7 +216,7 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
 
 
 app.get('/workflow/:w/instances/:i', function(req, res) {
-	pwf.getWfInstanceInfo(req.params.i, function(err, reply) {
+	wflib.getWfInstanceInfo(req.params.i, function(err, reply) {
 		console.log("InstanceInfo="+reply);
 		console.log(reply.uri);
 		for (var i in reply) {
@@ -228,7 +229,7 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
 		console.log(ins);
 		console.log(outs);
 	});*/
-	pwf.getTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
+	wflib.getWfTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
 		if (err) {
 			res.statusCode = 404;
 			res.send(err.toString());
@@ -295,7 +296,7 @@ app.get('/workflow/:w/instances/:i/delta-:j', function(req, res) {
 
 app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
     var wfId = req.params.j, taskId = req.params.i;
-    pwf.getTaskInfo(wfId, taskId, function(err, wftask, taskins, taskouts) {
+    wflib.getTaskInfo(wfId, taskId, function(err, wftask, taskins, taskouts) {
 	    if (err) {
 		    res.statusCode = 404;
 		    res.send(err.toString());
@@ -430,7 +431,7 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 
 app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
     var wfId = req.params.i, dataId = req.params.j;
-    pwf.getDataInfo(wfId, dataId, function(err, wfData, dSource, dSinks) {
+    wflib.getDataInfo(wfId, dataId, function(err, wfData, dSource, dSinks) {
 	if (err) {
 	    res.statusCode = 404;
 	    res.send(inst.toString());

@@ -15,6 +15,7 @@
     "async":"",
     "redis":"0.8.x",
     "xml2js":"0.1.x",
+    "automata":"",
     "underscore":"1.3.x"
    }
 }
