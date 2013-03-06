@@ -57,7 +57,7 @@ function TaskLogic() {
 		}
 		setTimeout(function() { 
 		    session.dispatch( {msgId: "RuFi"} );
-		}, 10000);
+		}, 100);
 	    });
 	})(this);
     };
@@ -104,10 +104,17 @@ function TaskLogic() {
 		    if (err) {
 			throw err;
 		    }
-		    for (var j=1,x=task.sinks[task.outs[i]]; j<=x.length-1; j += 2) {
+		    wflib.getDataSinks(task.wfId, task.outs[i], function(err, x) {
+			for (var j=0; j<x.length; j+=2) {
+			    task.tasks[x[j]].dispatch({ msgId: "ReRe", wfId: task.wfId, taskId: x[j], inId: x[j+1] } );
+			    console.log("sending to task "+x[j]+", port "+x[j+1]);
+			}
+		    });
+
+		    /*for (var j=1,x=task.sinks[task.outs[i]]; j<=x.length-1; j += 2) {
 			task.tasks[x[j]].dispatch({ msgId: "ReRe", wfId: task.wfId, taskId: x[j], inId: x[j+1] } );
 			console.log("sending to task "+x[j]+", port "+x[j+1]);
-		    }
+		    }*/
 		});
 	    })(this,i);
 	}
@@ -199,7 +206,7 @@ exports.init = function() {
 					throw err;
 				    }
 				    //if (i<10) { console.log("i="+i+",j="+j+",sources="+sources[ins[i][j]]); }
-				    console.log("i="+i);
+				    //console.log("i="+i);
 				    tasks[i].dispatch( { msgId: "ReRe", wfId: wfId, taskId: i, inId: j } );
 				});
 			    })(i,j);

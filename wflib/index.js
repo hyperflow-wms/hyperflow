@@ -71,8 +71,66 @@ exports.init = function() {
 	});
     }
 
-    // returns full task info
     function public_getTaskInfo(wfId, taskId, cb) {
+	var taskKey = "wf:"+wfId+":task:"+taskId;
+	var task, ins, outs, data = {};
+
+	var multi = rcl.multi();
+
+	// Retrieve task info
+	multi.hgetall(taskKey, function(err, reply) {
+	    if (err) {
+		cb(err);
+	    } else {
+		cb(null, reply);
+	    }
+	});
+    }
+
+    function public_getTaskIns(wfId, taskId, withports, cb) {
+	var taskKey = "wf:"+wfId+":task:"+taskId;
+	if (withports) {
+	    rcl.zrangebyscore(taskKey+":ins", 0, "+inf", "withscores", function(err, ret) { 
+		if (err) {
+		    cb(err);
+		} else {
+		    cb(null, ret);
+		}
+	    });
+	} else {
+	    rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+		if (err) {
+		    cb(err);
+		} else {
+		    cb(null, ret);
+		}
+	    });
+	}
+    }
+
+    function public_getTaskOuts(wfId, taskId, withports, cb) {
+	var taskKey = "wf:"+wfId+":task:"+taskId;
+	if (withports) {
+	    rcl.zrangebyscore(taskKey+":outs", 0, "+inf", "withscores", function(err, ret) { 
+		if (err) {
+		    cb(err);
+		} else {
+		    cb(null, ret);
+		}
+	    });
+	} else {
+	    rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+		if (err) {
+		    cb(err);
+		} else {
+		    cb(null, ret);
+		}
+	    });
+	}
+    }
+
+    // returns full task info
+    function public_getTaskInfoFull(wfId, taskId, cb) {
 	var taskKey = "wf:"+wfId+":task:"+taskId;
 	var task, ins, outs, data = {};
 
@@ -257,16 +315,16 @@ exports.init = function() {
 			dataKey = "wf:"+wfId+":data:"+i;
 			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
 			    sources[i] = ret;
+			    //console.log(i+";"+ret);
 			    sources[i].unshift(null);
 			});
-			multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
+			/*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
 			    if (err) {
 				console.log("aaa   "+err);
 			    }
-			    console.log(i+";"+ret);
 			    sinks[i] = ret;
-			    sinks[i].unshift(null);
-			});
+			    //sinks[i].unshift(null);
+			});*/
 		    })(i);
 		}
 		multi.exec(function(err, reps) {
@@ -280,7 +338,109 @@ exports.init = function() {
 	    });
 	});
     }
-		
+
+    /*
+     * returns task map, e.g.:
+     * ins  = [1,4] ==> input data ids
+     * outs = [2,3] ==> output data ids
+     * sources = { 1: [], 4: [] }  
+     *                      ==> which task(s) (if any) produced a given input
+     * sinks   = { 2: [108,1,33,3], 3: [108,2,33,4] } 
+     *                      ==> which task(s) (if any) consume a given output
+     *                          108,1 means task 108, port id 1
+     */
+    function public_getTaskMap(wfId, taskId, cb) {
+	var ins = [], outs = [], sources = {}, sinks = {};
+	var multi = rcl.multi();
+	var taskKey = "wf:"+wfId+":task:"+taskId;
+	multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+	    //console.log(ret);
+	    ins = ret;
+	});
+	multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+	    //console.log(ret);
+	    outs = ret;
+	});
+	multi.exec(function(err, reps) {
+	    if (err) {
+		cb(err);
+	    } else {
+		for (var i in ins) {
+		    (function(i) {
+			//console.log(ins[i]);
+			var dataKey = "wf:"+wfId+":data:"+ins[i];
+			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
+			    sources[ins[i]] = ret;
+			});
+		    })(i);
+		}
+		for (var i in outs) {
+		    (function(i) {
+			var dataKey = "wf:"+wfId+":data:"+outs[i];
+			multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
+			    sinks[outs[i]] = ret;
+			});
+		    })(i);
+		}
+		multi.exec(function(err, reps) {
+		    cb(null, ins, outs, sources, sinks);
+		});
+	    }
+	});
+    }
+
+    function public_getDataSources(wfId, dataId, cb) {
+	var dataKey = "wf:"+wfId+":data:"+dataId;
+	rcl.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
+	    if (err) {
+		cb(err);
+	    } else {
+		cb(null, ret);
+	    }
+	});
+    }
+
+    // Retrieves a list of data sinks (tasks). This list can sometimes be very big.
+    // Workaround: retrieves a chunk of 1000 elements at a time from redis, because on windows 
+    // larger replies sometimes don't work (probably a bug...)
+    function public_getDataSinks(wfId, dataId, cb) {
+	var replies = [], reply = [];
+	var dataKey = "wf:"+wfId+":data:"+dataId;
+	var multi = rcl.multi();
+
+	rcl.zcard(dataKey+":sinks", function(err, rep) {
+	    for (var i=0,j=1; i<=rep; i+=1000,j++) {
+		(function(i,j) {
+		    multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "1000", function(err, ret) { 
+			replies[j] = ret;
+			//console.log(replies[j].length);
+		    });
+		})(i,j);
+	    }
+	    multi.exec(function(err, replies) {
+		if (err) {
+		    cb(err);
+		} else {
+		    for (var i=0; i<replies.length; ++i) {
+			reply = reply.concat(replies[i]);
+		    }
+		    /*if (i>2) {
+			setTimeout(function() { 
+			    console.log(reply); 
+			    console.log("timeout!"); 
+			    cb(null, reply) }, 
+			    5000); 
+			return;
+		    }*/
+		    //console.log(reply);
+		    cb(null, reply);
+		}
+	    });
+	});
+    }
+
+
+
 
     return {
 	getWfInfo: public_getWfInfo,
@@ -288,10 +448,16 @@ exports.init = function() {
 	setWfInstanceState: public_setWfInstanceState,
 	getWfTasks: public_getWfTasks,
 	getTaskInfo: public_getTaskInfo,
+	getTaskIns: public_getTaskIns,
+	getTaskOuts: public_getTaskOuts,
+	getTaskInfoFull: public_getTaskInfoFull,
 	setTaskState: public_setTaskState,
 	getDataInfo: public_getDataInfo,
 	setDataState: public_setDataState,
-	getWfMap: public_getWfMap
+        getDataSources: public_getDataSinks,
+        getDataSinks: public_getDataSinks,
+	getWfMap: public_getWfMap,
+	getTaskMap: public_getTaskMap
     };
 
     //////////////////////////////////////////////////////////////////////////

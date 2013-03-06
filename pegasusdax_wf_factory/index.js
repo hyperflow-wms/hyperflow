@@ -182,6 +182,11 @@ exports.init = function() {
         // score: 0 (data not ready) or 1 (data ready)
         multi.zadd(wfKey+":data", 0 /* score */, dataId, function(err, ret) { });
 
+	// if bit n is set in this bitmap, data with id=n has no source task 
+	multi.setbit(wfKey+":data:nosource", dataId, 1);
+	// if bit n is set in this bitmap, data with id=n has no sink task 
+	multi.setbit(wfKey+":data:nosink", dataId, 1);
+
         if (job_data['@'].link == 'input') {
             // add this data id to the sorted set of inputs of this task.
 	    // score: task's port id the input is mapped to
@@ -193,6 +198,9 @@ exports.init = function() {
 
             // add this task key to the set of sinks of this data element
             multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
+
+	    // bitmap: if bit n is set data with id=n has no sink task 
+	    multi.setbit(wfKey+":data:nosink", dataId, 0);
         }
         if (job_data['@'].link == 'output') {
 	    // add this data id to the sorted set of outputs of this task.
@@ -201,6 +209,9 @@ exports.init = function() {
 
             // add this job key as a source of this data element
 	    multi.zadd(dataKey+":sources", outId /* score: port Id */, taskId, function(err, ret) { });
+
+	    // bitmap: if bit n is set data with id=n has no source task 
+	    multi.setbit(wfKey+":data:nosource", dataId, 0);
         }
         multi.exec(function(err, replies) {
             if (err) {

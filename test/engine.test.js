@@ -1,4 +1,4 @@
 var engine = require('../engine').init();
 
-engine.createInstance(2, function() {
+engine.runInstance(34, true, function(err) {
 });
