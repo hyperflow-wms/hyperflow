@@ -37,6 +37,7 @@ var pwf = require('./pegasusdax_wf_factory').init();
 var executor = require('./executor_simple').init();
 var deltaWf = require('./deltawf').init();
 var wflib = require('./wflib').init();
+var engine = require('./engine').init();
 var urlReq = require('./req_url');
 
 var timers = require('timers');
@@ -189,76 +190,50 @@ app.post('/workflow/:w', function(req, res) {
  * FIXME: this should be done by a properly written client.
  */
 app.post('/workflow/:w/instances/:i', function(req, res) {
-    var wf = pwf.getInstance(req.params.w, req.params.i);
-    if (wf instanceof Error) {
-        res.statusCode = 404;
-        res.send(wf.toString());
-    } else {
-	wf.status = 'running';
-	foreach(wf.data, function(data) {
-	    if (data.from.length === 0) {
-		foreach(data.to, function(job) {
-		    deltaWf.addEvent(req.params.w+'-'+req.params.i, "data-"+data.id, "ready");  // FIXME: the same event can be added many times (works ok, but more processing)
-		    urlReq.urlReq('http://' + req.headers.host + job.job_uri, {
-			method: 'POST',
-			params: {
-			    'input-data-link': data.uri
-			}
-			}, function(body, res) {
-			    // do your stuff
-			});
-		});
-	    }
-	});
+    engine.runInstance(req.params.i, true /* emulate execution? */, function(err) {
+	if (err) {
+	    res.statusCode = 404;
+	    res.send(wf.toString());
+	}
 	res.redirect(req.url, 302); // redirect after making all POSTs
-    }
+    });
 });
 
 
 app.get('/workflow/:w/instances/:i', function(req, res) {
-	wflib.getWfInstanceInfo(req.params.i, function(err, reply) {
-		console.log("InstanceInfo="+reply);
-		console.log(reply.uri);
-		for (var i in reply) {
-			console.log(i);
-		}
-	});
-	/*pwf.getTaskInfo(req.params.i, 1, function(err, task, ins, outs) {
-		console.log("TaskInfo:");
-		console.log(task);
-		console.log(ins);
-		console.log(outs);
-	});*/
+    wflib.getWfInstanceInfo(req.params.i, function(err, reply) {
+	var wfInstanceStatus = reply.status;
 	wflib.getWfTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
-		if (err) {
-			res.statusCode = 404;
-			res.send(err.toString());
-		} else {
-			var ctype = acceptsXml(req);
-			res.header('content-type', ctype);
-			var start, end;
-			start = (new Date()).getTime();
-			res.render('workflow-instance', {
-				title: req.params.w,
-				nr: req.params.i,
-				host: req.headers.host,
-				wfname: req.params.w,
-				wftasks: tasks,
-				wfins: ins,
-				wfouts: outs,
-				stat: 'running', // FIXME: properly retrieve wf status
-				now: (new Date()).getTime()
-			}, function(err, html) {
-				if (err) {
-					console.log("Rendering error: "+err);
-				}
-				end = (new Date()).getTime();
-				console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
-				res.statuscode = 200;
-				res.send(html);
-			});
-		}
+	    if (err) {
+		res.statusCode = 404;
+		res.send(err.toString());
+	    } else {
+		var ctype = acceptsXml(req);
+		res.header('content-type', ctype);
+		var start, end;
+		start = (new Date()).getTime();
+		res.render('workflow-instance', {
+		    title: req.params.w,
+		    nr: req.params.i,
+		    host: req.headers.host,
+		    wfname: req.params.w,
+		    wftasks: tasks,
+		    wfins: ins,
+		    wfouts: outs,
+		    stat: wfInstanceStatus, 
+		    now: (new Date()).getTime()
+		}, function(err, html) {
+		    if (err) {
+			console.log("Rendering error: "+err);
+		    }
+		    end = (new Date()).getTime();
+		    console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
+		    res.statuscode = 200;
+		    res.send(html);
+		});
+	    }
 	});
+    });
 });
 
 

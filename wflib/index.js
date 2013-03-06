@@ -47,7 +47,8 @@ exports.init = function() {
     function public_getWfInfo(wfName, cb) {
     }
 
-    // returns instance URI, number of tasks, number of data elements, ...
+    // returns a JSON object with fields uri, status, nTasks, nData
+    // FIXME: currently also returns nextTaskId, nextDataId
     function public_getWfInstanceInfo(wfId, cb) {
 	var multi = rcl.multi();
         multi.zcard("wf:"+wfId+":tasks", function(err, ret) { });
@@ -62,6 +63,12 @@ exports.init = function() {
                 cb(null, replies[2]);
             }
         });
+    }
+
+    function public_setWfInstanceState(wfId, obj, cb) {
+	rcl.hmset("wf:"+wfId, obj, function(err, rep) {
+	    cb(err, rep);
+	});
     }
 
     // returns full task info
@@ -146,6 +153,12 @@ exports.init = function() {
         });
     }
 
+    function public_setTaskState(wfId, taskId, obj, cb) {
+	rcl.hmset("wf:"+wfId+":task:"+taskId, obj, function(err, rep) {
+	    cb(err, rep);
+	});
+    }
+
     // returns full data element info
     function public_getDataInfo(wfId, dataId, cb) {
 	var data, sources, sinks, dataKey, taskKeyPfx, tasks = {};
@@ -203,10 +216,16 @@ exports.init = function() {
 	});
     }
 
+    function public_setDataState(wfId, dataId, obj, cb) {
+	rcl.hmset("wf:"+wfId+":data:"+dataId, obj, function(err, rep) {
+	    cb(err, rep);
+	});
+    }
+
     // Returns a 'map' of a workflow. Should be passed a callback:
     // function(nTasks, nData, err, ins, outs, sources, sinks), where:
-    // - nTasks        = number of tasks (length of ins and outs arrays)
-    // - nData         = number of data elements (length of sources and sinks arrays)
+    // - nTasks        = number of tasks (also length-1 of ins and outs arrays)
+    // - nData         = number of data elements (also length-1 of sources and sinks arrays)
     // - ins[i][j]     = data id mapped to j-th output port of i-th task
     // - outs[i][j]    = data id mapped to j-th input port of i-th task
     // - sources[i][1] = task id which produces data element with id=i (if none, sources[i]=[])
@@ -266,9 +285,12 @@ exports.init = function() {
     return {
 	getWfInfo: public_getWfInfo,
 	getWfInstanceInfo: public_getWfInstanceInfo,
+	setWfInstanceState: public_setWfInstanceState,
 	getWfTasks: public_getWfTasks,
 	getTaskInfo: public_getTaskInfo,
+	setTaskState: public_setTaskState,
 	getDataInfo: public_getDataInfo,
+	setDataState: public_setDataState,
 	getWfMap: public_getWfMap
     };
 

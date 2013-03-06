@@ -50,9 +50,16 @@ function TaskLogic() {
 
     this.running_onEnter = function(session, state, transition, msg) {
         console.log("Enter state running: "+this.id);
-	setTimeout(function() { 
-	    session.dispatch( {msgId: "RuFi"} );
-	}, 1000);
+	(function(task) {
+	    wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
+		if (err) {
+		    throw err;
+		}
+		setTimeout(function() { 
+		    session.dispatch( {msgId: "RuFi"} );
+		}, 10000);
+	    });
+	})(this);
     };
 
     this.running_onExit = function(session, state, transition, msg) {
@@ -62,11 +69,18 @@ function TaskLogic() {
     };
 
     this.finished_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state finished: "+this.id);
-	numTasks--;
-	if (!numTasks) {
-	    console.log(trace);
-	}
+	(function(task) {
+	    wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
+		if (err) {
+		    throw err;
+		}
+		console.log("Enter state finished: "+task.id);
+		numTasks--;
+		if (!numTasks) {
+		    console.log(trace);
+		}
+	    });
+	})(this);
     };
 
     this.trReRe = function(session, state, transition, msg) {
@@ -85,12 +99,18 @@ function TaskLogic() {
 
     this.trRuFi = function(session, state, transition, msg) {
 	for (var i=1; i<=this.outs.length-1; ++i) {
-	    for (var j=1,x=this.sinks[this.outs[i]]; j<=x.length-1; j += 2) {
-		this.tasks[x[j]].dispatch({ msgId: "ReRe", wfId: this.wfId, taskId: x[j], inId: x[j+1] } );
-		console.log("sending to task "+x[j]+", port "+x[j+1]);
-	    }
+	    (function(task,i) {
+		wflib.setDataState(task.wfId, task.outs[i], { "status": "ready" }, function(err, rep) {
+		    if (err) {
+			throw err;
+		    }
+		    for (var j=1,x=task.sinks[task.outs[i]]; j<=x.length-1; j += 2) {
+			task.tasks[x[j]].dispatch({ msgId: "ReRe", wfId: task.wfId, taskId: x[j], inId: x[j+1] } );
+			console.log("sending to task "+x[j]+", port "+x[j+1]);
+		    }
+		});
+	    })(this,i);
 	}
-        //console.log("Transition RuFi");
     };
 
     return this;
@@ -152,7 +172,7 @@ exports.init = function() {
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    function public_createInstance(wfId, cb) {
+    function public_runInstance(wfId, emulate, cb) {
 	wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
 	    numTasks = nTasks;
 	    var tasks = [];
@@ -168,23 +188,34 @@ exports.init = function() {
 
 	    // TEST: simulate workflow execution: send signal to all tasks' inputs
 	    // which are not produced by any other tasks (sources = [])
-	    for (var i=1; i<=nTasks; ++i) {
-		for (var j=1; j<=ins[i].length-1; ++j) {
-		    //console.log(sources[ins[i][j]].length);
-		    if (sources[ins[i][j]].length == 1) {
-			//if (i<10) { console.log("i="+i+",j="+j+",sources="+sources[ins[i][j]]); }
-			tasks[i].dispatch( { msgId: "ReRe", wfId: wfId, taskId: i, inId: j } );
+	    if (emulate) {
+		for (var i=1; i<=nTasks; ++i) {
+		    for (var j=1; j<=ins[i].length-1; ++j) {
+			//console.log(sources[ins[i][j]].length);
+			if (sources[ins[i][j]].length == 1) {
+			    (function(i,j) {
+				wflib.setDataState(wfId, ins[i][j], { "status": "ready" }, function(err, rep) {
+				    if (err) {
+					throw err;
+				    }
+				    //if (i<10) { console.log("i="+i+",j="+j+",sources="+sources[ins[i][j]]); }
+				    console.log("i="+i);
+				    tasks[i].dispatch( { msgId: "ReRe", wfId: wfId, taskId: i, inId: j } );
+				});
+			    })(i,j);
+			}
 		    }
-			//setTimeout(function() { }, 1);
 		}
 	    }
-	    console.log("Finished");
+	    wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
+		cb(err);
+		console.log("Finished");
+	    });
 	});
-	cb();
     }
 
     return {
-        createInstance: public_createInstance,
+        runInstance: public_runInstance,
     };
 
     //////////////////////////////////////////////////////////////////////////

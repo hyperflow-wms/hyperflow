@@ -1,11 +1,11 @@
 <h2 id="page-title">Workflow <%=wfname%></h2>
 <div class="workflow-instance">
-<% if (stat == 'runningDELETE') { %>
+<% if (stat == 'running') { %>
   <div id="workflow-tasks" onclick="updateWf('http://<%=host%>/workflow/<%=wfname%>/instances/<%=nr%>/delta-<%=now%>')">
 <% } else { %>
   <div id="workflow-tasks">
 <% } %>
-    <% if (stat == 'ready') { %>
+    <% if (stat == 'waiting') { %>
       <form class="workflow-instance-run" action="/workflow/<%=wfname%>/instances/<%=nr%>" method="post">
         <p class="buttons">
           <input class="button" type="submit" value="Run"/>
