@@ -6,15 +6,17 @@ var fs = require('fs'),
     xml2js = require('xml2js'),
     redis = require('redis'),
     async = require('async'),
-    wflib = require('../wflib').init();
-    rcl = redis.createClient();
+    wflib = require('../wflib').init(),
+    rcl;
 
-rcl.on("error", function (err) {
-    console.log("Redis error: " + err);
-});
+exports.init = function(redisClient) {
+    if (redisClient) {
+	rcl = redisClient;
+    }
+    /*rcl.on("error", function (err) {
+	console.log("Redis error: " + err);
+    });*/
 
-
-exports.init = function() {
     var workflow_cache = {}; // cache for parsed json workfow representations (database substitute)
     var instances = []; // table of existing workflow instances 
 
@@ -38,14 +40,15 @@ exports.init = function() {
                             return;
                         }
                         workflow_cache[wfname] = result; // ### FIXME: garbage
-			rcl.hset("wftempl:"+wfname, "name", wfname, function(err, ret) { });
-			rcl.hset("wftempl:"+wfname, "maxInstances", "3", function(err, ret) { });
+			rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
+			    cb(null, workflow_cache[wfname]);
+			});
                     });
                 }
             });
-        } 
-
-        cb(null, workflow_cache[wfname]);
+        } else {
+	    cb(null, workflow_cache[wfname]);
+	}
     }
 
     // creates a new workflow instance
@@ -57,7 +60,7 @@ exports.init = function() {
 	       console.log("Error: "+err);
 	    }
             instanceId = ret.toString();
-            console.log("instanceId=", instanceId);
+            console.log("instanceId="+instanceId);
 	    public_getTemplate(wfname, function(err, wfTempl) {
 		if (err) {
 		    cb(err);
@@ -114,10 +117,45 @@ exports.init = function() {
 	    if (err) {
 		cb(err); 
 	    } else {
-		console.log('Done processing jobs.'); 
-		cb(null);
+		rcl.zcard(wfKey+":data", function(err, nData) {
+		    computeWfInsOuts(instanceId, nData, function(err) {
+			cb(err);
+		    });
+		});
 	    }
-        });
+	});
+    }
+
+    function computeWfInsOuts(wfId, nData, cb) {
+	var multi=rcl.multi();
+	var inPortId=1, outPortId=1;
+	var dataId=1;
+	async.whilst(
+		function condition() { return dataId<=nData; },
+		function iterate(next) {
+		    wflib.getDataInfo(wfId, dataId, function(err, rep) {
+			(function(dataId, inId, outId) {
+			    if (rep.nSources == 0) {
+				console.log(dataId);
+				++inPortId;
+				multi.zadd("wf:"+wfId+":ins", inId, dataId, function(err, rep) { });
+			    }
+			    if (rep.nSinks == 0) {
+				++outPortId;
+				multi.zadd("wf:"+wfId+":outs", outId, dataId, function(err, rep) { });
+			    }
+			})(dataId, inPortId, outPortId);
+			++dataId;
+			next();
+		    });
+		},
+		function done(err) {
+		    multi.exec(function(err, replies) {
+			console.log('Done processing jobs.'); 
+			cb(err);
+		    });
+		}
+	);
     }
 
     function processJob(job, wfname, baseUri, wfKey, taskKey, taskId, nextTask) {
@@ -182,11 +220,6 @@ exports.init = function() {
         // score: 0 (data not ready) or 1 (data ready)
         multi.zadd(wfKey+":data", 0 /* score */, dataId, function(err, ret) { });
 
-	// if bit n is set in this bitmap, data with id=n has no source task 
-	multi.setbit(wfKey+":data:nosource", dataId, 1);
-	// if bit n is set in this bitmap, data with id=n has no sink task 
-	multi.setbit(wfKey+":data:nosink", dataId, 1);
-
         if (job_data['@'].link == 'input') {
             // add this data id to the sorted set of inputs of this task.
 	    // score: task's port id the input is mapped to
@@ -199,8 +232,8 @@ exports.init = function() {
             // add this task key to the set of sinks of this data element
             multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
 
-	    // bitmap: if bit n is set data with id=n has no sink task 
-	    multi.setbit(wfKey+":data:nosink", dataId, 0);
+	    // bitmap: if bit n is set data with id=n has a sink task 
+	    multi.setbit(wfKey+":data:hassink", dataId, 1);
         }
         if (job_data['@'].link == 'output') {
 	    // add this data id to the sorted set of outputs of this task.
@@ -210,8 +243,8 @@ exports.init = function() {
             // add this job key as a source of this data element
 	    multi.zadd(dataKey+":sources", outId /* score: port Id */, taskId, function(err, ret) { });
 
-	    // bitmap: if bit n is set data with id=n has no source task 
-	    multi.setbit(wfKey+":data:nosource", dataId, 0);
+	    // bitmap: if bit n is set data with id=n has a source task 
+	    multi.setbit(wfKey+":data:hassource", dataId, 1);
         }
         multi.exec(function(err, replies) {
             if (err) {

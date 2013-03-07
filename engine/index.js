@@ -193,27 +193,29 @@ exports.init = function() {
 		//});
 	    }
 
-	    // TEST: simulate workflow execution: send signal to all tasks' inputs
-	    // which are not produced by any other tasks (sources = [])
+	    // TEST: simulate workflow execution: send signal to all workflow inputs
 	    if (emulate) {
-		for (var i=1; i<=nTasks; ++i) {
-		    for (var j=1; j<=ins[i].length-1; ++j) {
-			//console.log(sources[ins[i][j]].length);
-			if (sources[ins[i][j]].length == 1) {
-			    (function(i,j) {
-				wflib.setDataState(wfId, ins[i][j], { "status": "ready" }, function(err, rep) {
-				    if (err) {
-					throw err;
+		wflib.getWfIns(wfId, false, function(err, wfIns) {
+		    for (var i=0; i<wfIns.length; ++i) {
+			(function(i) {
+			    wflib.setDataState(wfId, wfIns[i], { "status": "ready" }, function(err, rep) {
+				wflib.getDataSinks(wfId, wfIns[i], function(err, sinks) {
+				    for (var j=0; j<sinks.length; j+=2) {
+					tasks[sinks[j]].dispatch({ 
+					    msgId: "ReRe", 
+					    wfId: wfId, 
+					    taskId: sinks[j], 
+					    inId: sinks[j+1] 
+					});
+					console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
 				    }
-				    //if (i<10) { console.log("i="+i+",j="+j+",sources="+sources[ins[i][j]]); }
-				    //console.log("i="+i);
-				    tasks[i].dispatch( { msgId: "ReRe", wfId: wfId, taskId: i, inId: j } );
 				});
-			    })(i,j);
-			}
+			    });
+			})(i);
 		    }
-		}
+		});
 	    }
+
 	    wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
 		cb(err);
 		console.log("Finished");

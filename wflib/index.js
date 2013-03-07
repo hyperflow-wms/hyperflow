@@ -6,14 +6,19 @@
 var fs = require('fs'),
     redis = require('redis'),
     async = require('async'),
-    rcl = redis.createClient();
+    rcl;
 
-rcl.on("error", function (err) {
-    console.log("Redis error: " + err);
-});
+exports.init = function(redisClient) {
+    // FIXME: only this module should have a connection to redis. Currently app.js creates
+    // the client which has to be passed around other modules. (For testing purposes
+    // optional passing of client could be possible);
+    if (redisClient) {
+	rcl = redisClient;
+    }
+    /*rcl.on("error", function (err) {
+	console.log("redis error: " + err);
+    });*/
 
-
-exports.init = function() {
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
@@ -69,6 +74,30 @@ exports.init = function() {
 	rcl.hmset("wf:"+wfId, obj, function(err, rep) {
 	    cb(err, rep);
 	});
+    }
+
+    function public_getWfIns(wfId, withports, cb) {
+	if (withports) {
+	    rcl.zrangebyscore("wf:"+wfId+":ins", 0, "+inf", "withscores", function(err, ret) { 
+		err ? cb(err): cb(null, ret);
+	    });
+	} else {
+	    rcl.zrangebyscore("wf:"+wfId+":ins", 0, "+inf", function(err, ret) { 
+		err ? cb(err): cb(null, ret);
+	    });
+	}
+    }
+
+    function public_getWfOuts(wfId, withports, cb) {
+	if (withports) {
+	    rcl.zrangebyscore("wf:"+wfId+":outs", 0, "+inf", "withscores", function(err, ret) { 
+		err ? cb(err): cb(null, ret);
+	    });
+	} else {
+	    rcl.zrangebyscore("wf:"+wfId+":outs", 0, "+inf", function(err, ret) { 
+		err ? cb(err): cb(null, ret);
+	    });
+	}
     }
 
     function public_getTaskInfo(wfId, taskId, cb) {
@@ -217,8 +246,43 @@ exports.init = function() {
 	});
     }
 
-    // returns full data element info
     function public_getDataInfo(wfId, dataId, cb) {
+	var data, nSources, nSinks, dataKey; 
+	var multi = rcl.multi();
+
+	dataKey = "wf:"+wfId+":data:"+dataId;
+	taskKeyPfx = "wf:"+wfId+":task:";
+
+	// Retrieve data element info
+	multi.hgetall(dataKey, function(err, reply) {
+	    if (err) {
+		data = err;
+	    } else {
+		data = reply;
+	    }
+	});
+
+	multi.zcard(dataKey+":sources", function(err, ret) {
+		nSources = err ? err : ret;
+	});
+
+	multi.zcard(dataKey+":sinks", function(err, ret) {
+		nSinks = err ? err : ret;
+	});
+
+        multi.exec(function(err, replies) {
+            if (err) {
+                cb(err);
+            } else {
+		data.nSources = nSources;
+		data.nSinks = nSinks;
+		cb(null, data);
+	    }
+	});
+    }
+
+    // returns full data element info
+    function public_getDataInfoFull(wfId, dataId, cb) {
 	var data, sources, sinks, dataKey, taskKeyPfx, tasks = {};
 	var multi = rcl.multi();
 
@@ -447,12 +511,15 @@ exports.init = function() {
 	getWfInstanceInfo: public_getWfInstanceInfo,
 	setWfInstanceState: public_setWfInstanceState,
 	getWfTasks: public_getWfTasks,
+	getWfIns: public_getWfIns,
+	getWfOuts: public_getWfOuts,
 	getTaskInfo: public_getTaskInfo,
+	getTaskInfoFull: public_getTaskInfoFull,
 	getTaskIns: public_getTaskIns,
 	getTaskOuts: public_getTaskOuts,
-	getTaskInfoFull: public_getTaskInfoFull,
 	setTaskState: public_setTaskState,
 	getDataInfo: public_getDataInfo,
+        getDataInfoFull: public_getDataInfoFull,
 	setDataState: public_setDataState,
         getDataSources: public_getDataSinks,
         getDataSinks: public_getDataSinks,

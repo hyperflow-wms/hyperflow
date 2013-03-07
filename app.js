@@ -406,7 +406,7 @@ app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
 
 app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
     var wfId = req.params.i, dataId = req.params.j;
-    wflib.getDataInfo(wfId, dataId, function(err, wfData, dSource, dSinks) {
+    wflib.getDataInfoFull(wfId, dataId, function(err, wfData, dSource, dSinks) {
 	if (err) {
 	    res.statusCode = 404;
 	    res.send(inst.toString());
