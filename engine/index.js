@@ -99,32 +99,14 @@ function TaskLogic() {
 
     this.trRuFi = function(session, state, transition, msg) {
 	for (var i=1; i<=this.outs.length-1; ++i) {
-	    (function(task,i) {
-		wflib.setDataState(task.wfId, task.outs[i], { "status": "ready" }, function(err, rep) {
-		    if (err) {
-			throw err;
-		    }
-		    wflib.getDataSinks(task.wfId, task.outs[i], function(err, x) {
-			for (var j=0; j<x.length; j+=2) {
-			    task.tasks[x[j]].dispatch({ msgId: "ReRe", wfId: task.wfId, taskId: x[j], inId: x[j+1] } );
-			    console.log("sending to task "+x[j]+", port "+x[j+1]);
-			}
-		    });
-
-		    /*for (var j=1,x=task.sinks[task.outs[i]]; j<=x.length-1; j += 2) {
-			task.tasks[x[j]].dispatch({ msgId: "ReRe", wfId: task.wfId, taskId: x[j], inId: x[j+1] } );
-			console.log("sending to task "+x[j]+", port "+x[j+1]);
-		    }*/
-		});
-	    })(this,i);
+	    markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks);
 	}
     };
 
     return this;
 }
 
-
-fsm.registerFSM( {
+var TaskFSM = {
     name: "Task",
     logic: TaskLogic,
 
@@ -164,7 +146,9 @@ fsm.registerFSM( {
 	    onTransition: "trRuFi",
 	},
     ]
-});
+};
+
+fsm.registerFSM(TaskFSM);
 
 	
 exports.init = function() {
@@ -172,7 +156,6 @@ exports.init = function() {
     //////////////////////////////////////////////////////////////////////////
     /////////////////////////////// data /////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
-
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -193,42 +176,46 @@ exports.init = function() {
 		//});
 	    }
 
-	    // TEST: simulate workflow execution: send signal to all workflow inputs
-	    if (emulate) {
-		wflib.getWfIns(wfId, false, function(err, wfIns) {
-		    for (var i=0; i<wfIns.length; ++i) {
-			(function(i) {
-			    wflib.setDataState(wfId, wfIns[i], { "status": "ready" }, function(err, rep) {
-				wflib.getDataSinks(wfId, wfIns[i], function(err, sinks) {
-				    for (var j=0; j<sinks.length; j+=2) {
-					tasks[sinks[j]].dispatch({ 
-					    msgId: "ReRe", 
-					    wfId: wfId, 
-					    taskId: sinks[j], 
-					    inId: sinks[j+1] 
-					});
-					console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
-				    }
-				});
-			    });
-			})(i);
-		    }
-		});
-	    }
-
 	    wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
 		cb(err);
 		console.log("Finished");
 	    });
+
+	    // Emulate workflow execution: change state of all workflow inputs to "ready" and send
+	    // signal to all sink tasks; pretend task Functions are invoked and results computed.
+	    if (emulate) {
+		wflib.getWfIns(wfId, false, function(err, wfIns) {
+		    for (var i=0; i<wfIns.length; ++i) {
+			markDataReadyAndNotifySinks(wfId, wfIns[i], tasks);
+		    }
+		});
+	    }
 	});
     }
 
     return {
         runInstance: public_runInstance,
     };
+};
 
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
-};
 
+function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs) {
+    wflib.setDataState(wfId, dataId, { "status": "ready" }, function(err, rep) {
+	if (err) { throw(err); }
+	wflib.getDataSinks(wfId, dataId, function(err, sinks) {
+	    if (err) { throw(err); }
+	    for (var j=0; j<sinks.length; j+=2) {
+		taskFSMs[sinks[j]].dispatch({ 
+		    msgId: "ReRe", 
+		    wfId: wfId, 
+		    taskId: sinks[j], 
+		    inId: sinks[j+1] 
+		});
+		console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
+	    }
+	});
+    });
+}

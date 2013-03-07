@@ -53,20 +53,25 @@ exports.init = function(redisClient) {
 
     // creates a new workflow instance
     function public_createInstance(wfname, baseUrl, cb) { 
-	var inst; // ### garbage
         var instanceId;
+	var start, finish; 
+	start = (new Date()).getTime();
         rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
             if (err) {
 	       console.log("Error: "+err);
 	    }
             instanceId = ret.toString();
             console.log("instanceId="+instanceId);
+	    var getTemplateStart = (new Date()).getTime();
 	    public_getTemplate(wfname, function(err, wfTempl) {
 		if (err) {
 		    cb(err);
 		} else {
-		    //createWfInstanceOLD(inst.data[inst.current], wfname, baseUrl, instanceId);
+		    var getTemplateFinish = (new Date()).getTime();
+		    console.log("getTemplate exec time: "+(getTemplateFinish-getTemplateStart)+"ms");
 		    createWfInstance(wfTempl, wfname, baseUrl, instanceId, function(err) {
+			finish = (new Date()).getTime();
+			console.log("createInstance exec time: "+(finish-start)+"ms");
 			cb(null, instanceId);
 		    });
 		}
@@ -126,6 +131,7 @@ exports.init = function(redisClient) {
 	});
     }
 
+    // FIXME: have to compute it more efficiently; trials with bitstrings failed...
     function computeWfInsOuts(wfId, nData, cb) {
 	var multi=rcl.multi();
 	var inPortId=1, outPortId=1;
@@ -136,7 +142,6 @@ exports.init = function(redisClient) {
 		    wflib.getDataInfo(wfId, dataId, function(err, rep) {
 			(function(dataId, inId, outId) {
 			    if (rep.nSources == 0) {
-				console.log(dataId);
 				++inPortId;
 				multi.zadd("wf:"+wfId+":ins", inId, dataId, function(err, rep) { });
 			    }
@@ -233,7 +238,7 @@ exports.init = function(redisClient) {
             multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
 
 	    // bitmap: if bit n is set data with id=n has a sink task 
-	    multi.setbit(wfKey+":data:hassink", dataId, 1);
+	    //multi.setbit(wfKey+":data:hassink", dataId, 1);
         }
         if (job_data['@'].link == 'output') {
 	    // add this data id to the sorted set of outputs of this task.
@@ -244,7 +249,7 @@ exports.init = function(redisClient) {
 	    multi.zadd(dataKey+":sources", outId /* score: port Id */, taskId, function(err, ret) { });
 
 	    // bitmap: if bit n is set data with id=n has a source task 
-	    multi.setbit(wfKey+":data:hassource", dataId, 1);
+	    //multi.setbit(wfKey+":data:hassource", dataId, 1);
         }
         multi.exec(function(err, replies) {
             if (err) {
@@ -300,104 +305,5 @@ exports.init = function(redisClient) {
         else {
             cb(what);
         }
-    }
-
-
-    function createWfInstanceOLD(wf, wfname, baseUrl, inst_id) {
-        var baseUri = baseUrl + '/workflow/' + wfname + '/instances/' + inst_id;
-        var job_id = 0;
-        wf.uri = baseUri;
-        wf.status = 'ready'; // initial status of workflow instance -- ready but not yet running
-        wf.nTasksLeft = wf.job.length;
-        // move info about parents to 'job' elements
-        foreach(wf.job, function(job) {
-            job['@'].status = 'waiting'; // initial status of all jobs - waiting for input data
-            job['@'].runtime = '2.0'; // FIXME: temporary (for compatibility with synthetic workflows)
-            job['@'].job_id = ++job_id;
-            job['@'].uri = baseUri + '/task-' + job_id;
-            foreach(wf.child, function(child) {
-                if (job['@'].id == child['@'].ref) {
-                    job['@'].parents = child.parent; // assumes that child element always has some parent(s)
-                }
-            });
-        });
-
-        // create an array of workflow data elements
-        var found, idx;
-        wf.data = [];
-        foreach(wf.job, function(job) {
-            foreach(job.uses, function(job_data) {
-                job_data['@'].status = 'not_ready';
-                if (job_data['@'].link == 'output') {
-                    idx = wf.data.push({
-                        'id': -1,
-                        'name': job_data['@'].name,
-                        'size': 0, // FIXME: temporary (for compatibility with syntetic workflows)
-                            'from': [],
-                        'to': []
-                    });
-                    wf.data[idx - 1].from.push({
-                        'job_name': job['@'].name,
-                        'job_id': job['@'].job_id,
-                        'job_uri': job['@'].uri
-                    }); // task from which this data is received
-                }
-            });
-        });
-
-        foreach(wf.job, function(job) {
-            foreach(job.uses, function(job_data) {
-                if (job_data['@'].link == 'input') {
-                    found = undefined;
-                    foreach(wf.data, function(data) {
-                        if (data.name == job_data['@'].name /* && data.size == job_data['@'].size */ ) { // assumption that if file name and size are the same, the file (data) is the same (no way of knowing this for sure based on the trace file)
-                            found = data; // data element already in the array
-                        }
-                    });
-                    if (!found) {
-                        idx = wf.data.push({
-                            'id': -1,
-                            'name': job_data['@'].name,
-                            'size': 0, // FIXME: temporary (for compatibility with syntetic workflows)
-                                'from': [],
-                            'to': []
-                        });
-                        found = wf.data[idx - 1];
-                    }
-                    found.to.push({
-                        'job_name': job['@'].name,
-                        'job_id': job['@'].job_id,
-                        'job_uri': job['@'].uri
-                    }); // task to which this data is passed 
-                }
-            });
-        });
-
-        // assign identifiers and URIs to data elements
-        var id = 0;
-        foreach(wf.data, function(data) {
-            data.id = ++id;
-            data.uri = baseUri + '/data-' + id;
-        });
-
-        // add data element id and uri to each 'uses' element of each job
-        foreach(wf.data, function(data) {
-            foreach(data.to, function(job_input) {
-                foreach(wf.job[job_input.job_id - 1].uses, function(job_data) {
-                    if (job_data['@'].link == 'input' && job_data['@'].name == data.name) {
-                        job_data['@'].id = data.id;
-                        job_data['@'].uri = data.uri;
-                    }
-                });
-            });
-            foreach(data.from, function(job_input) {
-                foreach(wf.job[job_input.job_id - 1].uses, function(job_data) {
-                    if (job_data['@'].link == 'output' && job_data['@'].name == data.name) {
-                        job_data['@'].id = data.id;
-                        job_data['@'].uri = data.uri;
-                    }
-                });
-            });
-        });
     }
 };

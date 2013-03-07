@@ -411,7 +411,7 @@ exports.init = function(redisClient) {
      *                      ==> which task(s) (if any) produced a given input
      * sinks   = { 2: [108,1,33,3], 3: [108,2,33,4] } 
      *                      ==> which task(s) (if any) consume a given output
-     *                          108,1 means task 108, port id 1
+     *                          "108,1" means task 108, port id 1
      */
     function public_getTaskMap(wfId, taskId, cb) {
 	var ins = [], outs = [], sources = {}, sinks = {};
@@ -502,8 +502,6 @@ exports.init = function(redisClient) {
 	    });
 	});
     }
-
-
 
 
     return {
