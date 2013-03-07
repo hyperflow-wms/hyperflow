@@ -10,8 +10,15 @@
  */
 
 // for express
-var express = require('express');
-var app = module.exports = express.createServer();
+var express = require('express'),
+    cons = require('consolidate'),
+    http = require('http'),
+    app = express();
+
+var redis = require('redis'),
+    rcl = redis.createClient();
+
+var server = http.createServer(app);
 
 // for couch
 var cradle = require('cradle');
@@ -24,19 +31,19 @@ var credentials = {
 var local = false;
 var db;
 if (local === true) {
-	db = new(cradle.Connection)().database('html5-microblog');
+	db = new(cradle.Connection)().database('hyperwf');
 }
 else {
 	db = new(cradle.Connection)(host, port, {
 		auth: credentials
-	}).database('html5-microblog');
+	}).database('hyperwf');
 }
 
 //var pwf = require('./pegasusgen_wf_factory').init();
-var pwf = require('./pegasusdax_wf_factory').init();
+var pwf = require('./pegasusdax_wf_factory').init(rcl);
 var executor = require('./executor_simple').init();
 var deltaWf = require('./deltawf').init();
-var wflib = require('./wflib').init();
+var wflib = require('./wflib').init(rcl);
 var engine = require('./engine').init();
 var urlReq = require('./req_url');
 
@@ -54,6 +61,7 @@ var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get h
 
 // Configuration
 app.configure(function() {
+	app.engine('ejs', cons.ejs);
 	app.set('views', __dirname + '/views');
 	app.set('view engine', 'ejs');
 	app.use(express.bodyParser());
@@ -586,7 +594,7 @@ function clone(obj) {
 
 // Only listen on $ node app.js
 if (!module.parent) {
-	app.listen(process.env.PORT, function() {
+	server.listen(process.env.PORT, function() {
 	});
-	console.log("Express server listening on port %d", app.address().port);
+	console.log("Express server listening on port %d", server.address().port);
 }

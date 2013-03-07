@@ -1,3 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/hyperflow.css' />
+  </head>
+  <body>
+    <h1 id="main-title">Hypermedia workflow</h1>
+
+<!-- specific part !-->
+
 <div id="workflow-tasks">
    <ul class="single">
         <li class="task-status-<%=task.status%>">
@@ -33,3 +44,8 @@
       <a rel="workflow-instance" href="<%=wfuri%>">Belongs to workflow instance</a>
    </div>
 </div>
+
+<!-- specific part end !-->
+
+  </body>
+</html>

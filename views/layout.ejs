@@ -4,55 +4,55 @@
     <title><%= title %></title>
     <link rel='stylesheet' href='/stylesheets/hyperflow.css' />
     <script type="text/javascript">
-						function foreach(what, cb) {
-										function isArray(what) {
-														return Object.prototype.toString.call(what) === '[object Array]';
-										}
+	function foreach(what, cb) {
+	    function isArray(what) {
+		return Object.prototype.toString.call(what) === '[object Array]';
+	    }
 
-										if (isArray(what)) {
-														for (var i = 0, arr = what; i < what.length; i++) {
-																		cb(arr[i]);
-														}
-										}
-										else {
-														cb(what);
-										}
-						}
-						function updateWf(uri) {
-										var xmlhttp;
-										if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
-														xmlhttp=new XMLHttpRequest();
-										}
-										else {// code for IE6, IE5
-														xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-										}
-										xmlhttp.open("GET",uri,true);
+	    if (isArray(what)) {
+		for (var i = 0, arr = what; i < what.length; i++) {
+		    cb(arr[i]);
+		}
+	    }
+	    else {
+		cb(what);
+	    }
+	}
+function updateWf(uri) {
+    var xmlhttp;
+    if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+	xmlhttp=new XMLHttpRequest();
+    }
+    else {// code for IE6, IE5
+	xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    xmlhttp.open("GET",uri,true);
 
-										xmlhttp.onreadystatechange=function() {
-														//window.alert(uri + ' ' + xmlhttp.readyState + ' ' + xmlhttp.status);
-														if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-																		var r=JSON.parse(xmlhttp.responseText);
-																		//console.log(JSON.stringify(r));
-																		foreach(r.delta, function(x) { 
-																						var k = x.k, v = x.v;
-																						if (k.match(/task/)) {
-																										//console.log(k + ',' + v);
-																										var task=document.getElementById(k);
-																										task.className="task-status-"+v;
-																						} else if (k.match(/data/)) {
-																										//console.log(k + ',' + v);
-																										var data=document.getElementsByClassName(k);
-																										for (var i=0,x=data[i]; i<data.length; i++) {
-																														data[i].className=k + " data-status-"+v;
-																										}
-																						}
-																		});
-																		setTimeout(function() { updateWf(r.link.href); }, 5000);
-														} else {
-														}
-										}
-										xmlhttp.send(null);
-						}
+    xmlhttp.onreadystatechange=function() {
+	//window.alert(uri + ' ' + xmlhttp.readyState + ' ' + xmlhttp.status);
+	if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+	    var r=JSON.parse(xmlhttp.responseText);
+	    //console.log(JSON.stringify(r));
+	    foreach(r.delta, function(x) { 
+		    var k = x.k, v = x.v;
+		    if (k.match(/task/)) {
+		    //console.log(k + ',' + v);
+		    var task=document.getElementById(k);
+		    task.className="task-status-"+v;
+		    } else if (k.match(/data/)) {
+		    //console.log(k + ',' + v);
+		    var data=document.getElementsByClassName(k);
+		    for (var i=0,x=data[i]; i<data.length; i++) {
+		    data[i].className=k + " data-status-"+v;
+		    }
+		    }
+		    });
+	    setTimeout(function() { updateWf(r.link.href); }, 5000);
+	} else {
+	}
+    }
+    xmlhttp.send(null);
+}
 		</script>
   </head>
   <body>

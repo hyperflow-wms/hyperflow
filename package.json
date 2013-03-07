@@ -8,7 +8,8 @@
      "PYTHON": "c:/programs/python27"
    },
    "dependencies": {
-    "express": "2.5.x",
+    "express": "3.x",
+    "consolidate":"",
     "cradle": "",
     "ejs": "",
     "eyes":"",
