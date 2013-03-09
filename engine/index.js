@@ -20,6 +20,7 @@ var fs = require('fs'),
     fsm = require('automata'),
     wflib = require('../wflib').init();
 
+var tasks = [];
 var trace = "", numTasks = 0;
 
 function TaskLogic() {
@@ -55,6 +56,10 @@ function TaskLogic() {
 		if (err) {
 		    throw err;
 		}
+
+		// setTimeout to be replaced with invocation of an executor.
+		//executor.execute(wf.job[id], "balis@192.168.252.130", function(err, res) {
+		//});
 		setTimeout(function() { 
 		    session.dispatch( {msgId: "RuFi"} );
 		}, 100);
@@ -99,7 +104,7 @@ function TaskLogic() {
 
     this.trRuFi = function(session, state, transition, msg) {
 	for (var i=1; i<=this.outs.length-1; ++i) {
-	    markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks);
+	    markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks, function() { });
 	}
     };
 
@@ -165,7 +170,6 @@ exports.init = function() {
     function public_runInstance(wfId, emulate, cb) {
 	wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
 	    numTasks = nTasks;
-	    var tasks = [];
 	    for (var i=1; i<=nTasks; ++i) {
 		tasks[i] = fsm.createSession("Task");
 		tasks[i].logic.init(tasks, wfId, i, ins[i], outs[i], sources, sinks);
@@ -186,15 +190,32 @@ exports.init = function() {
 	    if (emulate) {
 		wflib.getWfIns(wfId, false, function(err, wfIns) {
 		    for (var i=0; i<wfIns.length; ++i) {
-			markDataReadyAndNotifySinks(wfId, wfIns[i], tasks);
+			markDataReadyAndNotifySinks(wfId, wfIns[i], tasks, function() { });
 		    }
 		});
 	    }
 	});
     }
 
+    // FIXME: check if input is marked more than once (probably in task FSM implementation)
+    function public_markTaskInputReady(wfId, taskId, dataId, cb) {
+	cb(new Error("Not implemented"));
+    }
+
+    // FIXME: check what happens if data is marked more than once
+    function public_markDataReady(wfId, dataId, cb) {
+	var start = (new Date()).getTime(), finish;
+	markDataReadyAndNotifySinks(wfId, dataId, tasks, function() {
+	    finish = (new Date()).getTime();
+	    console.log("markDataReady exec time: "+(finish-start));
+	    cb(null);
+	});
+    }
+
     return {
         runInstance: public_runInstance,
+	markTaskInputReady: public_markTaskInputReady,
+	markDataReady: public_markDataReady
     };
 };
 
@@ -202,7 +223,7 @@ exports.init = function() {
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs) {
+function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, cb) {
     wflib.setDataState(wfId, dataId, { "status": "ready" }, function(err, rep) {
 	if (err) { throw(err); }
 	wflib.getDataSinks(wfId, dataId, function(err, sinks) {
@@ -216,6 +237,7 @@ function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs) {
 		});
 		console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
 	    }
+	    if (cb) { cb(); } 
 	});
     });
 }

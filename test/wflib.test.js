@@ -6,7 +6,7 @@ var redis = require('redis'),
 
 function init(cb) {
     rcl.select(1, function(err, rep) {
-	rcl.flushall(function(err, rep) {
+	rcl.flushdb(function(err, rep) {
 	    pwf.createInstance('Montage_Huge', '', function(err, id) {
 		cb(err, id);
 	    });

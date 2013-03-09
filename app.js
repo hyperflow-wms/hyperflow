@@ -192,18 +192,14 @@ app.post('/workflow/:w', function(req, res) {
 
 
 /* Runs a workflow instance 
- * Emulates execution of the workflow by posting to all tasks all input data 
- * which is not produced by any other task (assuming it is the workflow input 
- * data normally provided by the user). 
- * FIXME: this should be done by a properly written client.
  */
 app.post('/workflow/:w/instances/:i', function(req, res) {
-    engine.runInstance(req.params.i, true /* emulate execution? */, function(err) {
+    engine.runInstance(req.params.i, false /* emulate execution */, function(err) {
 	if (err) {
 	    res.statusCode = 404;
 	    res.send(wf.toString());
 	}
-	res.redirect(req.url, 302); // redirect after making all POSTs
+	res.redirect(req.url, 302); 
     });
 });
 
@@ -231,9 +227,7 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
 		    stat: wfInstanceStatus, 
 		    now: (new Date()).getTime()
 		}, function(err, html) {
-		    if (err) {
-			throw(err);
-		    }
+		    if (err) { throw(err); }
 		    end = (new Date()).getTime();
 		    console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
 		    res.statuscode = 200;
@@ -280,137 +274,48 @@ app.get('/workflow/:w/instances/:i/delta-:j', function(req, res) {
 app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
     var wfId = req.params.j, taskId = req.params.i;
     wflib.getTaskInfoFull(wfId, taskId, function(err, wftask, taskins, taskouts) {
-	    if (err) {
-		    res.statusCode = 404;
-		    res.send(err.toString());
-	    } else {
-		    console.log(wftask);
-		    console.log(taskins);
-		    console.log(taskouts);
-		    var ctype = acceptsXml(req);
-		    res.header('content-type', ctype);
-		    res.render('workflow-task', {
-			    nr: taskId,
-			    wfname: req.params.w,
-			    title: ' workflow task',
-			    task: wftask, // FIXME - 404 if doesn't exist
-			    ins: taskins,
-			    outs: taskouts,
-			    wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
-		    });
-	    }
-    });
-
-    /*var inst = pwf.getInstance(req.params.w, req.params.j);
-    if (inst instanceof Error) {
-        res.statusCode = 404;
-        res.send(inst.toString());
-    } else {
-		var ctype = acceptsXml(req);
-		res.header('content-type', ctype);
-		res.render('workflow-task', {
-			nr: id,
-			wfname: req.params.w,
-			title: ' workflow task',
-			wftask: inst.job[id - 1], // FIXME - 404 if doesn't exist
-			wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
-		});
+	if (err) {
+	    res.statusCode = 404;
+	    res.send(err.toString());
+	} else {
+	    console.log(wftask);
+	    console.log(taskins);
+	    console.log(taskouts);
+	    var ctype = acceptsXml(req);
+	    res.header('content-type', ctype);
+	    res.render('workflow-task', {
+		nr: taskId,
+		wfname: req.params.w,
+		title: ' workflow task',
+		task: wftask, 
+		ins: taskins,
+		outs: taskouts,
+		wfuri: baseUrl+'/workflow/'+req.params.w+'/instances/'+req.params.j+'/'
+	    });
 	}
-	*/
+    });
 });
 
 /*
    Representation of the following form can be posted to a task's URI in order to
-   notify that input data (identified by a link passed in the representation) is
-   ready. The passed link MUST be identical to one of input data links from the
-   task's representation. When all task's input data are ready, task's status is
-   changed to 'running' and a computing backend is invoked
-
-   <form method="post" action="..." class="input-data-link">
-   <input type="text" name="input-data-link" value="" required="true"/>
+   notify that task's input (identified by its id) is ready
+   <form method="post" action="..." class="data-id">
+   <input type="text" name="data-id" value="" required="true"/>
    <input type="submit" value="Send" />
    </form>
    */
-app.post('/workflow/:w/instances/:j/task-:i', function(req, res) {
-    var id, link;
-    var found = undefined;
-    var all_ready = true;
-    id = req.params.i-1;
-    link = req.body['input-data-link'];
-
-    var wf = pwf.getInstance(req.params.w, req.params.j);
-    if (wf instanceof Error) {
-	res.statusCode = 404;
-	res.send(wf.toString());
-    } else {
-	// FIXME: this part heavily depends on Pegasus-specific representation  
-	// of (synthetic) workflow. Should be changed to a generic wf 
-	// representation, or hidden behind API of a workflow factory
-	foreach(wf.job[id].uses, function(job_data) {
-	    if (job_data['@'].link == 'input' && job_data['@'].uri == link) {
-		found = job_data;
-	    }
-	});
-	if (!found) {
-	    res.status = 400;
-	    res.send('bad input data link: no match');
-	}
-	if (found && found['@'].status == 'ready') { // data sent more than once
-	    res.status = 409;
-	    res.send('Conflict: data already submitted before. No action taken.');
+app.post('/workflow/:w/instances/:i/task-:j', function(req, res) {
+    var dataId = req.body['data-id'];
+    engine.markTaskInputReady(req.params.i, req.params.j, dataId, function(err) {
+	if (err) {
+	    res.statusCode = 404;
+	    res.send();
 	} else {
-	    found['@'].status='ready';
-	    foreach(wf.job[id].uses, function(job_data) {
-		if (job_data['@'].link == 'input' && job_data['@'].status != 'ready') {
-		    all_ready = false;
-		}
-	    });
-
-	    // All inputs are ready! ==> Emulate the execution of the workflow task
-	    if (all_ready) {
-		wf.job[id]['@'].status = 'running';
-		deltaWf.addEvent(req.params.w+'-'+req.params.j, 'task-'+req.params.i, 'running');
-
-
-		// testing of simple executor
-		executor.execute(wf.job[id], "balis@192.168.252.130", function(err, res) {
-		    wf.job[id]['@'].status = 'finished';
-		    deltaWf.addEvent(req.params.w+'-'+req.params.j, 'task-'+req.params.i, 'finished');
-		    wf.nTasksLeft--;
-		    if (wf.nTasksLeft === 0) {
-			wf.status = 'finished';
-			//console.log(deltaWf.getDelta(req.params.w+'-'+req.params.j, 0));
-		    }
-
-		    // POST to all dependant tasks which consume outputs of this task
-		    foreach(wf.job[id].uses, function(job_data) {
-			if (job_data['@'].link == 'output') {
-			    job_data['@'].status = 'ready';
-			    deltaWf.addEvent(req.params.w+'-'+req.params.j, 'data-'+job_data['@'].id, 'ready');
-			    foreach(wf.data[job_data['@'].id - 1].to, function(dependent_job) {
-				var uri = wf.job[dependent_job.job_id - 1]['@'].uri;
-				urlReq.urlReq('http://'+req.headers.host+uri, {
-				    method: 'POST',
-				    params: {
-					'input-data-link': job_data['@'].uri
-				    }
-				    }, function(body, res) {
-					// do your stuff
-				    });
-
-			    });
-
-			}
-
-
-		    });
-		}); //, wf.job[id]['@'].runtime * 1000); --> used to be setTimeout
-	    }
 	    res.redirect(wf.uri+'/task-'+req.params.i, 302);
 	}
-    }
+    });
 });
-
+    
 
 app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
     var wfId = req.params.i, dataId = req.params.j;
@@ -426,8 +331,28 @@ app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
 		wfname: req.params.w,
 		data: wfData,
 		source: dSource,
+		data_id: dataId,
 		sinks: dSinks
 	    });
+	}
+    });
+});
+
+/*
+** Representation of the following form can be posted to a data URI in order to
+** notify that this data is ready. 
+** <form method="post" action="..." class="data-id">
+**   <input type="text" name="data-id" value="" required="true"/>
+**   <input type="submit" value="Send" />
+** </form>
+*/
+app.post('/workflow/:w/instances/:i/data-:j', function(req, res) {
+    engine.markDataReady(req.params.i, req.params.j, function(err) {
+	if (err) {
+	    res.statusCode = 404;
+	    res.send(err.toString());
+	} else {
+	    res.redirect(req.url, 302);
 	}
     });
 });
