@@ -464,9 +464,9 @@ exports.init = function(redisClient) {
 	});
     }
 
-    // Retrieves a list of data sinks (tasks). This list can sometimes be very big.
-    // Workaround: retrieves a chunk of 1000 elements at a time from redis, because on windows 
-    // larger replies sometimes don't work (probably a bug...)
+    // Retrieves a list of data sinks (tasks). FIXME: workaround for very big lists:
+    // retrieves a chunk of 1000 elements at a time from redis, because on windows 
+    // (redis 2.4.x) larger replies sometimes don't work (probably a bug...)
     function public_getDataSinks(wfId, dataId, cb) {
 	var replies = [], reply = [];
 	var dataKey = "wf:"+wfId+":data:"+dataId;
@@ -475,7 +475,9 @@ exports.init = function(redisClient) {
 	rcl.zcard(dataKey+":sinks", function(err, rep) {
 	    for (var i=0,j=1; i<=rep; i+=1000,j++) {
 		(function(i,j) {
-		    multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "1000", function(err, ret) { 
+		    multi.zrangebyscore(
+			dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "1000", 
+			function(err, ret) { 
 			replies[j] = ret;
 			//console.log(replies[j].length);
 		    });
@@ -488,16 +490,53 @@ exports.init = function(redisClient) {
 		    for (var i=0; i<replies.length; ++i) {
 			reply = reply.concat(replies[i]);
 		    }
-		    /*if (i>2) {
-			setTimeout(function() { 
-			    console.log(reply); 
-			    console.log("timeout!"); 
-			    cb(null, reply) }, 
-			    5000); 
-			return;
-		    }*/
 		    //console.log(reply);
 		    cb(null, reply);
+		}
+	    });
+	});
+    }
+
+    // Retrieves a list of remote data sinks (tasks). Such sinks are notified over
+    // HTTP using their full URI. FIXME: workaround for very big lists: 
+    // retrieves a chunk of 1000 elements at a time from redis, because on windows 
+    // (redis 2.4.x) larger replies sometimes don't work (probably a bug...)
+    function public_getRemoteDataSinks(wfId, dataId, cb) {
+	var replies = [], reply = [];
+	var dataKey = "wf:"+wfId+":data:"+dataId;
+	var multi = rcl.multi();
+
+	rcl.zcard(dataKey+":sinks", function(err, rep) {
+	    for (var i=0,j=1; i<=rep; i+=1000,j++) {
+		(function(i,j) {
+		    // if score (port id) = -1, the sink is remote
+		    multi.zrangebyscore(
+			dataKey+":sinks", -1, -1, "withscores", "limit", i, "1000", 
+			function(err, ret) { 
+			    replies[j] = ret;
+			    //console.log(replies[j].length);
+			});
+		})(i,j);
+	    }
+	    multi.exec(function(err, replies) {
+		if (err) {
+		    cb(err);
+		} else {
+		    for (var i=0; i<replies.length; ++i) {
+			reply = reply.concat(replies[i]);
+		    }
+		    // retrieve URIs and store them instead of 
+		    for (var i=0; i<reply.length; i+=2) {
+			(function(i) {
+			    var dataKey = "wf:"+wfId+":data:"+reply[i];
+			    multi.hmget(dataKey, "uri", function(err, rep) {
+				reply[i+1] = rep;
+			    });
+			})(i);
+		    }
+		    multi.exec(function(err, reps) {
+			cb(null, reply);
+		    });
 		}
 	    });
 	});
@@ -521,6 +560,7 @@ exports.init = function(redisClient) {
 	setDataState: public_setDataState,
         getDataSources: public_getDataSinks,
         getDataSinks: public_getDataSinks,
+	getRemoteDataSinks: public_getRemoteDataSinks,
 	getWfMap: public_getWfMap,
 	getTaskMap: public_getTaskMap
     };
