@@ -40,7 +40,7 @@ else {
 }
 
 //var pwf = require('./pegasusgen_wf_factory').init();
-var pwf = require('./pegasusdax_wf_factory').init(rcl);
+var pwf = require('./wf_factory').init(rcl);
 var executor = require('./executor_simple').init();
 var deltaWf = require('./deltawf').init();
 var wflib = require('./wflib').init(rcl);
@@ -135,12 +135,11 @@ app.get('/workflow', function(req, res) {
             res.statusCode = 404;
             res.send(err.toString());
        } else {
-           pwf.createInstance('Montage_65r', '', function(err, id) {
+           wf_factory.createInstanceFromFile('Montage_143.json', '', function(err, id) {
                if (err) {
                    res.statusCode = 404;
                    res.send(err.toString());
                 } else {
-                    deltaWf.create('Montage_65r'+'-'+id); // delta resource. FIXME! Is it enough for unique id?
                     res.statusCode = 200;
                     res.header('content-type', 'application/json');
                     res.send(JSON.stringify(pwf.getInstance('Montage_65r', id)));
@@ -152,25 +151,19 @@ app.get('/workflow', function(req, res) {
 
 
 app.get('/workflow/:w', function(req, res) {
-    pwf.getTemplate(req.params.w, function(err, result) {
-       if (err) {
-           res.statusCode = 404;
-           res.send(err.toString());
-       } else {
-            var instList = pwf.getInstanceList(req.params.w);
-            if (instList instanceof Error) {
-                res.statusCode = 404; // FIXME: 404 or other error code?
-                res.send(err.toString());
-            } else {
-                var ctype = acceptsXml(req);
-                res.header('content-type', ctype);
-                res.render('workflow', {
-                    title: req.params.w,
-                    wfname: req.params.w,
-                    inst: instList 
-                });
-            }
-       }
+    wflib.getWfInfo(req.params.w, function(err, rep) {
+        if (err) {
+            res.statusCode = 404; // FIXME: 404 or other error code?
+            res.send(err.toString());
+        } else {
+            var ctype = acceptsXml(req);
+            res.header('content-type', ctype);
+            res.render('workflow', {
+                title: req.params.w,
+                wfname: req.params.w,
+                inst: rep 
+            });
+        }
     });
 });
 
@@ -179,7 +172,7 @@ app.get('/workflow/:w', function(req, res) {
  * Create a new instance of a workflow
  */
 app.post('/workflow/:w', function(req, res) {
-    pwf.createInstance(req.params.w, baseUrl, function(err, id) {
+    pwf.createInstanceFromFile(req.params.w+'.json', baseUrl, function(err, id) {
         if (err) {
            res.statusCode = 404;
            res.send(err.toString());

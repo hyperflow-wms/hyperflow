@@ -50,6 +50,7 @@ exports.init = function(redisClient) {
 
     // returns list of URIs of instances, ...
     function public_getWfInfo(wfName, cb) {
+	    cb(null, []);
     }
 
     // returns a JSON object with fields uri, status, nTasks, nData
