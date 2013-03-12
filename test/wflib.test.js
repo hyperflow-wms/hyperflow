@@ -1,13 +1,12 @@
 var redis = require('redis'),
     rcl = redis.createClient(),
     wflib = require('../wflib').init(rcl),
-    pwf = require('../wf_factory').init(rcl),
     engine = require('../engine').init();
 
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    pwf.createInstanceFromFile('Montage_10k.json', '', function(err, id) {
+	    wflib.createInstanceFromFile('Montage_10k.json', '', function(err, id) {
 		cb(err, id);
 	    });
 	});

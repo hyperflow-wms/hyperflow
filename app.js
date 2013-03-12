@@ -39,8 +39,6 @@ else {
 	}).database('hyperwf');
 }
 
-//var pwf = require('./pegasusgen_wf_factory').init();
-var pwf = require('./wf_factory').init(rcl);
 var executor = require('./executor_simple').init();
 var deltaWf = require('./deltawf').init();
 var wflib = require('./wflib').init(rcl);
@@ -135,7 +133,7 @@ app.get('/workflow', function(req, res) {
             res.statusCode = 404;
             res.send(err.toString());
        } else {
-           wf_factory.createInstanceFromFile('Montage_143.json', '', function(err, id) {
+           wflib.createInstanceFromFile('Montage_143.json', '', function(err, id) {
                if (err) {
                    res.statusCode = 404;
                    res.send(err.toString());
@@ -172,7 +170,7 @@ app.get('/workflow/:w', function(req, res) {
  * Create a new instance of a workflow
  */
 app.post('/workflow/:w', function(req, res) {
-    pwf.createInstanceFromFile(req.params.w+'.json', baseUrl, function(err, id) {
+    wflib.createInstanceFromFile(req.params.w+'.json', baseUrl, function(err, id) {
         if (err) {
            res.statusCode = 404;
            res.send(err.toString());

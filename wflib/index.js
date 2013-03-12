@@ -1,7 +1,6 @@
 /* Hypermedia workflow. 
  ** API over redis-backed workflow instance
  ** Author: Bartosz Balis (2013)
- ** TODO: add functions to create a new workflow instance (createInstance, addTask, ...)
  */
 var fs = require('fs'),
     redis = require('redis'),
@@ -22,6 +21,38 @@ exports.init = function(redisClient) {
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
+    
+    function public_createInstanceFromFile(filename, baseUrl, cb) {
+        fs.readFile(filename, 'utf8', function(err, data) {
+            if (err) { 
+                throw(err);
+            } else {
+                var wfname = filename.split('.')[0];
+                rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
+                    var start = (new Date()).getTime(), finish;
+                    public_createInstance(JSON.parse(data), baseUrl, function(err, ret) {
+                        finish = (new Date()).getTime();
+                        console.log("createInstance time: "+(finish-start)+"ms");
+                        err ? cb(err): cb(null, ret);
+                    });
+                });
+            }
+        });
+    }
+
+    // creates a new workflow instance from its JSON representation
+    function public_createInstance(wfJson, baseUrl, cb) { 
+        var instanceId;
+	var start, finish; 
+        rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
+            if (err) { throw(err); }
+            instanceId = ret.toString();
+            console.log("instanceId="+instanceId);
+            createWfInstance(wfJson, baseUrl, instanceId, function(err) {
+                cb(null, instanceId);
+            });
+        });
+    }
 
     // TODO: currently workflow template is not stored in redis. Pegasus-specific
     // getTemplate is implemented in Pegasus dax workflow factory.
@@ -31,21 +62,21 @@ exports.init = function(redisClient) {
 
     // returns a list of tasks with ids within [from..to], and their ins and outs
     function public_getWfTasks(wfId, from, to, cb) {
-	rcl.zcard("wf:"+wfId+":data", function(err, ret) {
-		var dataNum = ret;
-		if (to < 0) {
-			rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
-				if (err) {
-					console.log("Error zcard: "+err);
-				}
-				var to1 = ret+to+1;
-				//console.log("From: "+from+", to: "+to1);
-				getTasks1(wfId, from, to1, dataNum, cb);
-			});
-		}  else {
-			getTasks1(wfId, from, to, dataNum, cb);
-		}
-	});
+        rcl.zcard("wf:"+wfId+":data", function(err, ret) {
+            var dataNum = ret;
+            if (to < 0) {
+                rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
+                    if (err) {
+                        console.log("Error zcard: "+err);
+                    }
+                    var to1 = ret+to+1;
+                    //console.log("From: "+from+", to: "+to1);
+                    getTasks1(wfId, from, to1, dataNum, cb);
+                });
+            }  else {
+                getTasks1(wfId, from, to, dataNum, cb);
+            }
+        });
     }
 
     // returns list of URIs of instances, ...
@@ -109,11 +140,7 @@ exports.init = function(redisClient) {
 
 	// Retrieve task info
 	multi.hgetall(taskKey, function(err, reply) {
-	    if (err) {
-		cb(err);
-	    } else {
-		cb(null, reply);
-	    }
+            err ? cb(err): cb(null, reply);
 	});
     }
 
@@ -121,19 +148,11 @@ exports.init = function(redisClient) {
 	var taskKey = "wf:"+wfId+":task:"+taskId;
 	if (withports) {
 	    rcl.zrangebyscore(taskKey+":ins", 0, "+inf", "withscores", function(err, ret) { 
-		if (err) {
-		    cb(err);
-		} else {
-		    cb(null, ret);
-		}
+                err ? cb(err): cb(null, ret);
 	    });
 	} else {
 	    rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
-		if (err) {
-		    cb(err);
-		} else {
-		    cb(null, ret);
-		}
+                err ? cb(err): cb(null, ret);
 	    });
 	}
     }
@@ -142,19 +161,11 @@ exports.init = function(redisClient) {
 	var taskKey = "wf:"+wfId+":task:"+taskId;
 	if (withports) {
 	    rcl.zrangebyscore(taskKey+":outs", 0, "+inf", "withscores", function(err, ret) { 
-		if (err) {
-		    cb(err);
-		} else {
-		    cb(null, ret);
-		}
+                err ? cb(err): cb(null, ret);
 	    });
 	} else {
 	    rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
-		if (err) {
-		    cb(err);
-		} else {
-		    cb(null, ret);
-		}
+                err ? cb(err): cb(null, ret);
 	    });
 	}
     }
@@ -168,29 +179,17 @@ exports.init = function(redisClient) {
 
 	// Retrieve task info
 	multi.hgetall(taskKey, function(err, reply) {
-	    if (err) {
-		task = err;
-	    } else {
-		task = reply;
-	    }
+            task = err ? err: reply;
 	});
 
 	// Retrieve all ids of inputs of the task
 	multi.sort(taskKey+":ins", function(err, reply) {
-	    if (err) {
-		ins = err;
-	    } else {
-		ins = reply;
-	    }
+            ins = err ? err: reply;
 	});
 
 	// Retrieve all ids of outputs of the task
 	multi.sort(taskKey+":outs", function(err, reply) {
-	    if (err) {
-		outs = err;
-	    } else {
-		outs = reply;
-	    }
+            outs = err ? err: reply;
 	});
 
         multi.exec(function(err, replies) {
@@ -256,11 +255,7 @@ exports.init = function(redisClient) {
 
 	// Retrieve data element info
 	multi.hgetall(dataKey, function(err, reply) {
-	    if (err) {
-		data = err;
-	    } else {
-		data = reply;
-	    }
+            data = err ? err: reply;
 	});
 
 	multi.zcard(dataKey+":sources", function(err, ret) {
@@ -292,11 +287,7 @@ exports.init = function(redisClient) {
 
 	// Retrieve data element info
 	multi.hgetall(dataKey, function(err, reply) {
-	    if (err) {
-		data = err;
-	    } else {
-		data = reply;
-	    }
+            data = err ? err: reply;
 	});
 
 	// this is a great feature: sort+get combo (even for hashes)!
@@ -394,7 +385,6 @@ exports.init = function(redisClient) {
 		}
 		multi.exec(function(err, reps) {
 		    if (err) {
-			console.log(err);
 			cb(err);
 		    } else {
 			cb(null, nTasks, nData, ins, outs, sources, sinks);
@@ -457,11 +447,7 @@ exports.init = function(redisClient) {
     function public_getDataSources(wfId, dataId, cb) {
 	var dataKey = "wf:"+wfId+":data:"+dataId;
 	rcl.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
-	    if (err) {
-		cb(err);
-	    } else {
-		cb(null, ret);
-	    }
+            err ? cb(err): cb(null, ret);
 	});
     }
 
@@ -545,6 +531,8 @@ exports.init = function(redisClient) {
 
 
     return {
+        createInstance: public_createInstance,
+        createInstanceFromFile: public_createInstanceFromFile,
 	getWfInfo: public_getWfInfo,
 	getWfInstanceInfo: public_getWfInstanceInfo,
 	setWfInstanceState: public_setWfInstanceState,
@@ -569,6 +557,95 @@ exports.init = function(redisClient) {
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
+
+    function createWfInstance(wfJson, baseUrl, instanceId, cb) {
+        var wfname = wfJson.name;
+        var baseUri = baseUrl + '/workflow/' + wfname + '/instances/' + instanceId;
+        var wfKey = "wf:"+instanceId;
+        rcl.hmset(wfKey, "uri", baseUri, 
+                         "status", "waiting", 
+                         function(err, ret) { });
+
+        // add workflow tasks
+        var taskKey;
+        for (var i=0; i<wfJson.tasks.length; ++i) {
+            var taskId = i+1;
+            taskKey = wfKey+":task:"+taskId;
+            processTask(wfJson.tasks[i], wfname, baseUri, wfKey, taskKey, taskId, function() { });
+        }
+
+        // add workflow data
+        var multi = rcl.multi();
+        var dataKey;
+        for (var i=0; i<wfJson.data.length; ++i) {
+            (function(i) {
+                var dataId = i+1;
+                dataKey = wfKey+":data:"+dataId;
+                multi.hmset(dataKey, 
+                        "uri", baseUri + '/data-' + dataId, 
+                        "name", wfJson.data[i].name, 
+                        "status", "not_ready", 
+                        function(err, ret) { });
+
+                // add this data id to the sorted set of all workflow data
+                // score: 0 (data not ready) or 1 (data ready)
+                multi.zadd(wfKey+":data", 0 /* score */, dataId, function(err, ret) { });
+            })(i);
+        }
+
+        // add workflow inputs and outputs
+        for (var i=0; i<wfJson.ins.length; ++i) {
+            (function(inId, dataId) {
+                multi.zadd(wfKey+":ins", inId, dataId, function(err, rep) { });
+            })(i+1, wfJson.ins[i]+1);
+        }
+        for (var i=0; i<wfJson.outs.length; ++i) {
+            (function(outId, dataId) {
+                multi.zadd(wfKey+":outs", outId, dataId, function(err, rep) { });
+            })(i+1, wfJson.outs[i]+1);
+        }
+        multi.exec(function(err, replies) {
+            console.log('Done processing jobs.'); 
+            cb(err);
+        });
+    }
+
+    function processTask(task, wfname, baseUri, wfKey, taskKey, taskId, cb) {
+        var multi=rcl.multi();
+        multi.hmset(taskKey, 
+                "uri", baseUri+"/task-"+taskId, 
+                "name", task.name, 
+                "status", "waiting", 
+                "execName", task.name, 
+                "execArgs", task.execArgs, 
+                // mapping data for simple ssh-based execution. In the future will probably be
+                // a separate mapping data structure
+                "execSSHAddr", "balis@192.168.252.130", 
+                function(err, ret) { });
+
+        // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
+        // only task Id (not key) is added which allows redis to optimize memory consumption 
+        multi.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
+
+        // add task inputs and outputs + data sources and sinks
+        for (var i=0; i<task.ins.length; ++i) {
+            (function(inId, dataId) {
+                var dataKey = wfKey+":data:"+dataId;
+                multi.zadd(taskKey+":ins", inId, dataId, function(err, rep) { });
+                multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
+            })(i+1, task.ins[i]+1);
+        }
+        for (var i=0; i<task.outs.length; ++i) {
+            (function(outId, dataId) {
+                var dataKey = wfKey+":data:"+dataId;
+                multi.zadd(taskKey+":outs", outId, dataId, function(err, rep) { });
+                multi.zadd(dataKey+":sources", outId /* score: port Id */, taskId, function(err, ret) { });
+            })(i+1, task.outs[i]+1);
+        }
+        multi.exec(function(err, replies) {
+            cb();
+        });
+    }
 
     // TODO: rewrite this to use multi instead of async.parallel ?
     function getTasks1(wfId, from, to, dataNum, cb) {
