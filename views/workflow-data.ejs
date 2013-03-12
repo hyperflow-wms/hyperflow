@@ -11,7 +11,7 @@
 
 <div id="workflow-data">
   <% if (data.status == 'not_ready') { %>
-    <form class="workflow-instance-run" action="<%=data.uri%>" method="post">
+    <form class="workflow-data-submit" action="<%=data.uri%>" method="post">
       <p class="buttons">
         <input class="button" type="submit" value="Submit this data"/>
 	<input class="data-id" type="hidden" value="<%=data_id%>"/>

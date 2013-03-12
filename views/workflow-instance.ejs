@@ -10,12 +10,7 @@
 <!-- specific part !-->
 
 <h2 id="page-title">Workflow <%=wfname%></h2>
-<div class="workflow-instance">
-<% if (stat == 'running') { %>
-  <div id="workflow-tasks" onclick="updateWf('http://<%=host%>/workflow/<%=wfname%>/instances/<%=nr%>/delta-<%=now%>')">
-<% } else { %>
-  <div id="workflow-tasks">
-<% } %>
+<div id="workflow-instance">
     <% if (stat == 'waiting') { %>
       <form class="workflow-instance-run" action="/workflow/<%=wfname%>/instances/<%=nr%>" method="post">
         <p class="buttons">
@@ -23,42 +18,36 @@
         </p>
       </form>
     <% } %>
-    <ul class="all">
-      <% for(i=0,x=wftasks.length;i<x;i++) { %>
-        <li class="task-status-<%=wftasks[i].status%>">
-            <a rel="workflow-task" href="<%=wftasks[i].uri%>">
-               <span class="name">
-                   <%=wftasks[i].name%>
-               </span>
-            </a>
-        </li>
-        <div id="workflow-task-inputs">
-          <ul id="workflow-task-inputs" class="all">
-             <li class="list-name">Inputs</li>
-             <% for(j=0,y=wfins[i].length;j<y;j++) { %>
-                    <li class="data-status-<%=wfins[i][j].status%>">
-                       <a rel="workflow-task-data input" href="<%=wfins[i][j].uri%>/"><%=wfins[i][j].name%></a>
-                    </li>
-             <% } %>
-          </ul>
-       </div>
-        <div id="workflow-task-outputs">
-          <ul id="workflow-task-outputs" class="all">
-             <li class="list-name">Outputs</li>
-             <% for(j=0,y=wfouts[i].length;j<y;j++) { %>
-                    <li class="data-status-<%=wfouts[i][j].status%>">
-                       <a rel="workflow-task-data output" href="<%=wfouts[i][j].uri%>/"><%=wfouts[i][j].name%></a>
-                    </li>
-             <% } %>
-          </ul>
-       </div>
-      <% } %>
-    </ul>   
-  </div>
-  <a rel="delta" href="/workflow/<%=wfname%>/instances/<%=nr%>/delta-<%=now%>">
-  delta
-  </a>
+
+    <div id="workflow-task-inputs">
+        <form name="workflow-inputs" action="<%=submit_inputs_uri%>" method="post">
+            <ul id="workflow-inputs" class="all">
+                <li class="list-name">Inputs</li>
+                <% for(j=0,y=wfins.length;j<y;j++) { %>
+                <div class="input-item">
+                <li class="data-status-<%=wfins[j].status%>">
+                <a rel="workflow-task-data input" href="<%=wfins[j].uri%>/"><%=wfins[j].name%></a>
+                <input class="wfinput" type="text" name="in:<%=j+1%>"/>
+                </li>
+                 </div>
+                <% } %>
+                <input class="button" type="submit" value="Submit workflow inputs"/>
+            </ul>
+        </form>
+    </div>
+
+    <div id="workflow-task-outputs">
+        <ul id="workflow-outputs" class="all">
+            <li class="list-name">Outputs</li>
+            <% for(j=0,y=wfouts.length;j<y;j++) { %>
+            <li class="data-status-<%=wfouts[j].status%>">
+            <a rel="workflow-task-data output" href="<%=wfouts[j].uri%>/"><%=wfouts[j].name%></a>
+            </li>
+            <% } %>
+        </ul>
+    </div>
 </div>
+
 
 <!-- specific part end !-->
 

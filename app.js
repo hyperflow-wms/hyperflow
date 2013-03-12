@@ -40,7 +40,6 @@ else {
 }
 
 var executor = require('./executor_simple').init();
-var deltaWf = require('./deltawf').init();
 var wflib = require('./wflib').init(rcl);
 var engine = require('./engine').init();
 var urlReq = require('./req_url');
@@ -175,7 +174,7 @@ app.post('/workflow/:w', function(req, res) {
            res.statusCode = 404;
            res.send(err.toString());
         } else {
-            deltaWf.create(req.params.w+'-'+id); // delta resource. FIXME! Is it enough for unique id?
+            //deltaWf.create(req.params.w+'-'+id); // delta resource. FIXME! Is it enough for unique id?
             res.redirect(req.url+"instances/"+id, 302); // redirect to the newly created workflow instance
         }
     });
@@ -198,7 +197,9 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
 app.get('/workflow/:w/instances/:i', function(req, res) {
     wflib.getWfInstanceInfo(req.params.i, function(err, reply) {
 	var wfInstanceStatus = reply.status;
-	wflib.getWfTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
+	wflib.getWfInsAndOutsInfoFull(req.params.i, function(err, ins, outs) {
+            console.log(ins);
+            console.log(outs);
 	    if (err) {
 		res.statusCode = 404;
 		res.send(err.toString());
@@ -208,6 +209,41 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
 		var start, end;
 		start = (new Date()).getTime();
 		res.render('workflow-instance', {
+		    title: req.params.w,
+		    nr: req.params.i,
+		    host: req.headers.host,
+		    wfname: req.params.w,
+		    wfins: ins,
+		    wfouts: outs,
+		    stat: wfInstanceStatus, 
+		    now: (new Date()).getTime(),
+                    submit_inputs_uri: '/workflow/'+req.params.w+'/instances/'+req.params.i
+		}, function(err, html) {
+		    if (err) { throw(err); }
+		    end = (new Date()).getTime();
+		    console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
+		    res.statuscode = 200;
+		    res.send(html);
+		});
+	    }
+	});
+    });
+});
+
+
+app.get('/workflow/:w/instances/:i/tasks', function(req, res) {
+    wflib.getWfInstanceInfo(req.params.i, function(err, reply) {
+	var wfInstanceStatus = reply.status;
+	wflib.getWfTasks(req.params.i, 1, -1, function(err, tasks, ins, outs) {
+	    if (err) {
+		res.statusCode = 404;
+		res.send(err.toString());
+	    } else {
+		var ctype = acceptsXml(req);
+		res.header('content-type', ctype);
+		var start, end;
+		start = (new Date()).getTime();
+		res.render('workflow-tasks-all', {
 		    title: req.params.w,
 		    nr: req.params.i,
 		    host: req.headers.host,

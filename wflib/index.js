@@ -30,6 +30,7 @@ exports.init = function(redisClient) {
                 var wfname = filename.split('.')[0];
                 rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
                     var start = (new Date()).getTime(), finish;
+		    console.log(data);
                     public_createInstance(JSON.parse(data), baseUrl, function(err, ret) {
                         finish = (new Date()).getTime();
                         console.log("createInstance time: "+(finish-start)+"ms");
@@ -54,8 +55,7 @@ exports.init = function(redisClient) {
         });
     }
 
-    // TODO: currently workflow template is not stored in redis. Pegasus-specific
-    // getTemplate is implemented in Pegasus dax workflow factory.
+    // TODO: currently workflow template is not stored in redis. 
     function public_getWfTemplate(wfname, cb) {
 
     }
@@ -66,9 +66,7 @@ exports.init = function(redisClient) {
             var dataNum = ret;
             if (to < 0) {
                 rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
-                    if (err) {
-                        console.log("Error zcard: "+err);
-                    }
+                    if (err) { cb(err); return; }
                     var to1 = ret+to+1;
                     //console.log("From: "+from+", to: "+to1);
                     getTasks1(wfId, from, to1, dataNum, cb);
@@ -80,6 +78,7 @@ exports.init = function(redisClient) {
     }
 
     // returns list of URIs of instances, ...
+    // TODO
     function public_getWfInfo(wfName, cb) {
 	    cb(null, []);
     }
@@ -130,6 +129,53 @@ exports.init = function(redisClient) {
 		err ? cb(err): cb(null, ret);
 	    });
 	}
+    }
+
+    function public_getWfInsAndOutsInfoFull(wfId, cb) {
+        var multi = rcl.multi();
+        var ins = [], outs = [];
+
+        multi.zrangebyscore("wf:"+wfId+":ins", 0, "+inf", function(err, ret) { 
+            ins = err ? err: ret;
+        });
+        rcl.zrangebyscore("wf:"+wfId+":outs", 0, "+inf", function(err, ret) { 
+            outs = err ? err: ret;
+        });
+
+        multi.exec(function(err, replies) {
+            if (err) {
+                cb(err) 
+            } else {
+		for (var i=0; i<ins.length; ++i) {
+		    (function(i) {
+			var dataKey = "wf:"+wfId+":data:"+ins[i];
+			multi.hmget(dataKey, "uri", "name", "status", function(err, reply) {
+			    if (err) {
+				ins[i] = err;
+			    } else {
+				ins[i] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+			    }
+			});
+		    })(i);
+		}
+		for (var i=0; i<outs.length; ++i) {
+		    (function(i) {
+			var dataKey = "wf:"+wfId+":data:"+outs[i];
+			multi.hmget(dataKey, "uri", "name", "status", function(err, reply) {
+			    if (err) {
+				outs[i] = err;
+			    } else {
+				outs[i] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+			    }
+			});
+		    })(i);
+		}
+
+		multi.exec(function(err, replies) {
+                    err ? cb(err): cb(null, ins, outs);
+                });
+            }
+        });
     }
 
     function public_getTaskInfo(wfId, taskId, cb) {
@@ -183,13 +229,13 @@ exports.init = function(redisClient) {
 	});
 
 	// Retrieve all ids of inputs of the task
-	multi.sort(taskKey+":ins", function(err, reply) {
-            ins = err ? err: reply;
+	multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+            ins = err ? err: ret;
 	});
 
 	// Retrieve all ids of outputs of the task
-	multi.sort(taskKey+":outs", function(err, reply) {
-            outs = err ? err: reply;
+	multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+            outs = err ? err: ret;
 	});
 
         multi.exec(function(err, replies) {
@@ -199,11 +245,11 @@ exports.init = function(redisClient) {
 		for (var i=0; i<ins.length; ++i) {
 		    (function(i) {
 			var dataKey = "wf:"+wfId+":data:"+ins[i];
-			multi.hmget(dataKey, "uri", "name", "status", function(err, reply) {
+			multi.hgetall(dataKey, function(err, reply) {
 			    if (err) {
 				data[ins[i]] = err;
 			    } else {
-				data[ins[i]] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+				data[ins[i]] = reply;
 			    }
 			});
 		    })(i);
@@ -211,11 +257,11 @@ exports.init = function(redisClient) {
 		for (var i=0; i<outs.length; ++i) {
 		    (function(i) {
 			var dataKey = "wf:"+wfId+":data:"+outs[i];
-			multi.hmget(dataKey, "uri", "name", "status", function(err, reply) {
+			multi.hgetall(dataKey, function(err, reply) {
 			    if (err) {
 				data[outs[i]] = err;
 			    } else {
-				data[outs[i]] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+				data[outs[i]] = reply;
 			    }
 			});
 		    })(i);
@@ -223,7 +269,6 @@ exports.init = function(redisClient) {
 
 		multi.exec(function(err, replies) {
 		    if (err) {
-			console.log(err);
 			cb(err);
 		    } else {
 			// replace ids of data elements with their attributes
@@ -485,9 +530,10 @@ exports.init = function(redisClient) {
     }
 
     // Retrieves a list of remote data sinks (tasks). Such sinks are notified over
-    // HTTP using their full URI. FIXME: workaround for very big lists: 
-    // retrieves a chunk of 1000 elements at a time from redis, because on windows 
-    // (redis 2.4.x) larger replies sometimes don't work (probably a bug...)
+    // HTTP using their full URI. 
+    // FIXME: workaround for very big lists: retrieves a chunk of 1000 elements 
+    // at a time from redis, because on windows (redis 2.4.x) larger replies 
+    // sometimes don't work (probably a bug...)
     function public_getRemoteDataSinks(wfId, dataId, cb) {
 	var replies = [], reply = [];
 	var dataKey = "wf:"+wfId+":data:"+dataId;
@@ -512,7 +558,7 @@ exports.init = function(redisClient) {
 		    for (var i=0; i<replies.length; ++i) {
 			reply = reply.concat(replies[i]);
 		    }
-		    // retrieve URIs and store them instead of 
+		    // retrieve URIs and store them instead of port id
 		    for (var i=0; i<reply.length; i+=2) {
 			(function(i) {
 			    var dataKey = "wf:"+wfId+":data:"+reply[i];
@@ -529,6 +575,29 @@ exports.init = function(redisClient) {
 	});
     }
 
+    function public_invokeTaskFunction(wfId, taskId, cb) {
+        public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, ins, outs) {
+            if (err) {
+                cb(err);
+            } else {
+                if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
+                    cb(null, null);
+                    return;
+                }
+                rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
+                    if (err) {
+                        cb(err);
+                        return;
+                    }
+                    // FIXME: how to know the (relative?) path to the module?
+                    var f = require('../'+fun.module)[taskInfo.fun]; 
+                    f(ins, outs, function(err, outs) {
+                        cb(null, outs);
+                    });
+                });
+            }
+        });
+    }
 
     return {
         createInstance: public_createInstance,
@@ -539,6 +608,7 @@ exports.init = function(redisClient) {
 	getWfTasks: public_getWfTasks,
 	getWfIns: public_getWfIns,
 	getWfOuts: public_getWfOuts,
+        getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
 	getTaskInfo: public_getTaskInfo,
 	getTaskInfoFull: public_getTaskInfoFull,
 	getTaskIns: public_getTaskIns,
@@ -551,7 +621,8 @@ exports.init = function(redisClient) {
         getDataSinks: public_getDataSinks,
 	getRemoteDataSinks: public_getRemoteDataSinks,
 	getWfMap: public_getWfMap,
-	getTaskMap: public_getTaskMap
+	getTaskMap: public_getTaskMap,
+        invokeTaskFunction: public_invokeTaskFunction
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -569,9 +640,14 @@ exports.init = function(redisClient) {
         // add workflow tasks
         var taskKey;
         for (var i=0; i<wfJson.tasks.length; ++i) {
-            var taskId = i+1;
+            var taskId = i+1, uri;
+	    if  (wfJson.tasks[i].host) {
+		    uri = wfJson.tasks[i].host + '/workflow/' + wfname + '/instances/' + instanceId;
+	    } else {
+		    uri = baseUri;
+	    } 
             taskKey = wfKey+":task:"+taskId;
-            processTask(wfJson.tasks[i], wfname, baseUri, wfKey, taskKey, taskId, function() { });
+            processTask(wfJson.tasks[i], wfname, uri, wfKey, taskKey, taskId, function() { });
         }
 
         // add workflow data
@@ -616,15 +692,13 @@ exports.init = function(redisClient) {
                 "uri", baseUri+"/task-"+taskId, 
                 "name", task.name, 
                 "status", "waiting", 
-                "execName", task.name, 
-                "execArgs", task.execArgs, 
-                // mapping data for simple ssh-based execution. In the future will probably be
-                // a separate mapping data structure
-                "execSSHAddr", "balis@192.168.252.130", 
+		"fun", task.function ? task.function: "null",
+                //"execName", task.name, 
+                //"execArgs", task.execArgs, 
+                //"execSSHAddr", "balis@192.168.252.130", 
                 function(err, ret) { });
 
         // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
-        // only task Id (not key) is added which allows redis to optimize memory consumption 
         multi.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
 
         // add task inputs and outputs + data sources and sinks
@@ -647,6 +721,7 @@ exports.init = function(redisClient) {
         });
     }
 
+
     // TODO: rewrite this to use multi instead of async.parallel ?
     function getTasks1(wfId, from, to, dataNum, cb) {
         var tasks = [], ins = [], outs = [], data  = [];
@@ -660,12 +735,17 @@ exports.init = function(redisClient) {
                 var taskKey = "wf:"+wfId+":task:"+i;
                 // Retrieve task info
                 asyncTasks.push(function(callback) {
-                    rcl.hmget(taskKey, "uri", "name", "status", function(err, reply) {
+                    rcl.hmget(taskKey, "uri", "name", "status", "fun", function(err, reply) {
                         if (err) {
                             tasks[i-from] = err;
                             callback(err);
                         } else {
-                            tasks[i-from] = {"uri": reply[0], "name": reply[1], "status": reply[2]};
+                            tasks[i-from] = {
+				    "uri": reply[0], 
+				    "name": reply[1], 
+			            "status": reply[2],
+			            "fun": reply[3]
+			    };
                             callback(null, reply);
                         }
                     });
@@ -727,7 +807,6 @@ exports.init = function(redisClient) {
 
 	async.parallel(asyncTasks, function done(err, result) {
             if (err) {
-                console.log(err);
                 cb(err);
             } else {
 	        finish = (new Date()).getTime();

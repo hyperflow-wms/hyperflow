@@ -1,0 +1,25 @@
+{
+    "name": "Wf_test",
+    "functions": [ {
+        "name": "add"
+    } ],
+    "tasks": [ {
+        "name": "Add",
+        "function": "add",
+        "ins": [ 0, 1, 2, 3 ],
+        "outs": [ 4 ]
+    } ],
+    "data": [ {
+        "name": "arg1"
+    }, {
+        "name": "arg2"
+    }, {
+        "name": "arg3"
+    }, {
+        "name": "arg4"
+    }, {
+        "name": "sum"
+    } ],
+    "ins": [ 0, 1, 2, 3 ],
+    "outs": [ 4 ]
+}

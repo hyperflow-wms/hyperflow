@@ -51,12 +51,14 @@ div#workflow-instances ul li.instance-status-ready a:hover {
 }
 
 div#workflow-tasks ul li.task-status-running a:hover,
-div#workflow-instances ul li.instance-status-running a:hover 
-{background-color:DarkCyan;}
+div#workflow-instances ul li.instance-status-running a:hover {
+	background-color:DarkCyan;
+}
 
 div#workflow-tasks ul li.task-status-finished a:hover,
-div#workflow-instances ul li.instance-status-finished a:hover 
-{background-color:Green;}
+div#workflow-instances ul li.instance-status-finished a:hover {
+	background-color:Green;
+}
 
 div#workflow-tasks ul li {
   display:inline;
@@ -65,6 +67,8 @@ div#workflow-tasks ul li {
 div#workflow-task-inputs ul, 
 div#workflow-task-outputs ul,
 div#workflow-instances ul,
+div#workflow-inputs ul,
+div#workflow-outputs ul,
 div#workflow-data ul {
   float:left;
   width:100%;
@@ -73,8 +77,42 @@ div#workflow-data ul {
   list-style-type:none;
 }
 
+div#workflow-task-inputs ul li input
+{
+  float:left;
+  width:8em;
+  height:1em;
+  text-decoration:none;
+  color:black;
+  background-color:white;
+  padding:0.2em 0.6em;
+  border-right:1px solid Moccasin;
+  border-left:0px solid Moccasin;
+  border-top:1px solid Moccasin;
+  border-bottom:0px solid Moccasin;
+  margin: 0px;
+}
+
+div.input-item
+{
+  float:left;
+  width:9em;
+  height:6em;
+  text-decoration:none;
+  color:Moccasin;
+  background-color:Moccasin;
+  padding:0.2em 0.6em;
+  border-right:1px solid Moccasin;
+  border-left:0px solid Moccasin;
+  border-top:1px solid Moccasin;
+  border-bottom:0px solid Moccasin;
+  margin: 0px;
+}
+
 div#workflow-task-inputs a,
 div#workflow-task-outputs a,
+div#workflow-inputs a,
+div#workflow-outputs a,
 div#parent-workflow-instance a,
 div#workflow-instances a,
 div#workflow-data a,
@@ -120,7 +158,9 @@ div#workflow-task-outputs ul li.data-status-ready a:hover
 {background-color:Green;}
 
 div#workflow-task-inputs ul li.data-status-not_ready a,
-div#workflow-task-outputs ul li.data-status-not_ready a {
+div#workflow-task-outputs ul li.data-status-not_ready a,
+div#workflow-inputs ul li.data-status-not_ready a,
+div#workflow-outputs ul li.data-status-not_ready a {
     background-color: Red;
 }
 

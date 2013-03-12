@@ -22,6 +22,7 @@ var fs = require('fs'),
 
 var tasks = [];
 var trace = "", numTasks = 0;
+var emulate;
 
 function TaskLogic() {
     this.tasks = []; // array of all task FSM "sessions" (so that tasks can send events to other tasks)
@@ -60,9 +61,22 @@ function TaskLogic() {
 		// setTimeout to be replaced with invocation of an executor.
 		//executor.execute(wf.job[id], "balis@192.168.252.130", function(err, res) {
 		//});
-		setTimeout(function() { 
-		    session.dispatch( {msgId: "RuFi"} );
-		}, 100);
+                if (emulate) {
+                    setTimeout(function() { 
+                        session.dispatch( {msgId: "RuFi"} );
+                    }, 100);
+                } else {
+                    wflib.invokeTaskFunction(task.wfId, task.id, function(err, rep) {
+                        if (err) {
+                            throw(err);
+                            // TODO: how does the engine handle error in invocation of task's
+                            // function? E.g. Does it affect the state machine of the task?
+                            // Should there be an error state and transitions from it, e.g. retry? 
+                        } else {
+                            session.dispatch( {msgId: "RuFi"} );
+                        }
+                    });
+                }
 	    });
 	})(this);
     };
@@ -167,7 +181,8 @@ exports.init = function() {
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    function public_runInstance(wfId, emulate, cb) {
+    function public_runInstance(wfId, emul, cb) {
+        emulate = emul;
 	wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
 	    numTasks = nTasks;
 	    for (var i=1; i<=nTasks; ++i) {
