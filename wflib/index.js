@@ -25,12 +25,11 @@ exports.init = function(redisClient) {
     function public_createInstanceFromFile(filename, baseUrl, cb) {
         fs.readFile(filename, 'utf8', function(err, data) {
             if (err) { 
-                throw(err);
+                cb(err);
             } else {
                 var wfname = filename.split('.')[0];
                 rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
                     var start = (new Date()).getTime(), finish;
-		    console.log(data);
                     public_createInstance(JSON.parse(data), baseUrl, function(err, ret) {
                         finish = (new Date()).getTime();
                         console.log("createInstance time: "+(finish-start)+"ms");
@@ -250,6 +249,7 @@ exports.init = function(redisClient) {
 				data[ins[i]] = err;
 			    } else {
 				data[ins[i]] = reply;
+                                data[ins[i]].id = ins[i];
 			    }
 			});
 		    })(i);
@@ -262,6 +262,7 @@ exports.init = function(redisClient) {
 				data[outs[i]] = err;
 			    } else {
 				data[outs[i]] = reply;
+                                data[outs[i]].id = outs[i];
 			    }
 			});
 		    })(i);
@@ -375,9 +376,24 @@ exports.init = function(redisClient) {
 	});
     }
 
-    function public_setDataState(wfId, dataId, obj, cb) {
-	rcl.hmset("wf:"+wfId+":data:"+dataId, obj, function(err, rep) {
-	    cb(err, rep);
+
+    // Change state of one or more data elements
+    // - spec: JSON object in the format: 
+    //   { dataId: { attr: val, attr: val}, dataId: { ... } ... }
+    //   e.g. { "1": { "status": "ready", "value": "33" }
+    function public_setDataState(wfId, spec, cb) {
+        var multi = rcl.multi();
+        for (var i in spec) {
+            //console.log(i, spec[i]);
+            var obj = spec[i];
+            (function(dataId, obj) {
+                //console.log(dataId, obj);
+                multi.hmset("wf:"+wfId+":data:"+dataId, obj, function(err, rep) {
+                });
+            })(i, obj);
+        }
+        multi.exec(function(err, reps) {
+            err ? cb(err): cb(null, reps);
 	});
     }
 
@@ -403,11 +419,11 @@ exports.init = function(redisClient) {
 			taskKey = "wf:"+wfId+":task:"+i;
 			multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
 			    ins[i] = ret;
-			    ins[i].unshift(null); // inputs will be indexed from 1 instead of 0
+			    //ins[i].unshift(null); // inputs will be indexed from 1 instead of 0
 			});
 			multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
 			    outs[i] = ret;
-			    outs[i].unshift(null);
+			    //outs[i].unshift(null);
 			});
 		    })(i);
 		}
@@ -417,7 +433,7 @@ exports.init = function(redisClient) {
 			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
 			    sources[i] = ret;
 			    //console.log(i+";"+ret);
-			    sources[i].unshift(null);
+			    //sources[i].unshift(null);
 			});
 			/*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
 			    if (err) {
@@ -575,8 +591,11 @@ exports.init = function(redisClient) {
 	});
     }
 
-    function public_invokeTaskFunction(wfId, taskId, cb) {
-        public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, ins, outs) {
+    // invokes function assinged to task and passing input and output objects whose
+    // ids are in arrays 'insIds' and 'outsIds'. 
+    function public_invokeTaskFunction(wfId, taskId, insIds, outsIds, cb) {
+        console.log(insIds, outsIds);
+        public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, taskIns, taskOuts) {
             if (err) {
                 cb(err);
             } else {
@@ -591,8 +610,27 @@ exports.init = function(redisClient) {
                     }
                     // FIXME: how to know the (relative?) path to the module?
                     var f = require('../'+fun.module)[taskInfo.fun]; 
+                    var ins = [], outs = [];
+                    for (var i in insIds) {
+                        ins.push(taskIns[i]);
+                    }
+                    for (var i in outsIds) {
+                        outs.push(taskOuts[i]);
+                    }                   
                     f(ins, outs, function(err, outs) {
-                        cb(null, outs);
+                        // write values if any
+                        var spec = {};
+                        outs.forEach(function(out) {
+                            if ("value" in out) {
+                                spec[out.id] = { "value": out.value };
+                            }
+                        });
+                        //console.log(spec);
+                        if (Object.keys(spec).length) { // not empty
+                            public_setDataState(wfId, spec, function(err, reps) {
+                                cb(null, outs);
+                            });
+                        }
                     });
                 });
             }

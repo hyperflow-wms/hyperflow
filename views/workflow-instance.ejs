@@ -40,8 +40,13 @@
         <ul id="workflow-outputs" class="all">
             <li class="list-name">Outputs</li>
             <% for(j=0,y=wfouts.length;j<y;j++) { %>
+	      <% var v=wfouts[j].name;
+	        if ("value" in wfouts[j]) {
+	          v+=",value="+wfouts[j].value;
+	        }
+	      %>
             <li class="data-status-<%=wfouts[j].status%>">
-            <a rel="workflow-task-data output" href="<%=wfouts[j].uri%>/"><%=wfouts[j].name%></a>
+            <a rel="workflow-task-data output" href="<%=wfouts[j].uri%>/"><%=v%></a>
             </li>
             <% } %>
         </ul>

@@ -1,7 +1,7 @@
 var redis = require('redis'),
     rcl = redis.createClient(),
     wflib = require('../wflib').init(rcl),
-    engine = require('../engine').init(),
+    engine = require('../engine'),
     async = require('async');
 
 function init(cb) {
@@ -26,7 +26,14 @@ function init(cb) {
 }*/
 
 init(function(err, id) {
-    engine.runInstance(id, true, function(err) {
+    engine.runInstance(id, false, function(err) {
+	    var dataIds = [1,2,3,4];
+	    var spec = {'1': {'value':'1'},'2': {'value':'2'},'3': {'value':'3'},'4': {'value':'4'}};
+	    wflib.setDataState(id, spec, function(err, rep) {
+                    //console.log(spec);
+                    engine.markDataReady(id, dataIds, function(err) {
+                    });
+                });
     });
     /*wflib.getTaskInfoFull(1, 1, function(err, task, ins, outs) {
 	    console.log(task, ins, outs);

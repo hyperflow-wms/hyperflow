@@ -80,7 +80,7 @@ div#workflow-data ul {
 div#workflow-task-inputs ul li input
 {
   float:left;
-  width:8em;
+  width:9em;
   height:1em;
   text-decoration:none;
   color:black;
@@ -96,15 +96,15 @@ div#workflow-task-inputs ul li input
 div.input-item
 {
   float:left;
-  width:9em;
+  width:10em;
   height:6em;
   text-decoration:none;
   color:Moccasin;
   background-color:Moccasin;
-  padding:0.2em 0.6em;
+  padding:0.0em 0.0em;
   border-right:1px solid Moccasin;
   border-left:0px solid Moccasin;
-  border-top:1px solid Moccasin;
+  border-top:0px solid Moccasin;
   border-bottom:0px solid Moccasin;
   margin: 0px;
 }

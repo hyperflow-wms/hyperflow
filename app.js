@@ -41,7 +41,7 @@ else {
 
 var executor = require('./executor_simple').init();
 var wflib = require('./wflib').init(rcl);
-var engine = require('./engine').init();
+var engine = require('./engine');
 var urlReq = require('./req_url');
 
 var timers = require('timers');
@@ -184,12 +184,34 @@ app.post('/workflow/:w', function(req, res) {
 /* Runs a workflow instance 
  */
 app.post('/workflow/:w/instances/:i', function(req, res) {
-    engine.runInstance(req.params.i, false /* emulate execution */, function(err) {
+    var wfId = req.params.i;
+    engine.runInstance(wfId, false /* emulate execution? */, function(err) {
 	if (err) {
 	    res.statusCode = 404;
-	    res.send(wf.toString());
-	}
-	res.redirect(req.url, 302); 
+	    res.send(err.toString());
+	} else {
+            // if some data values are passed along with the form, set them and the 
+            // status of corresponding data elements to 'ready'
+            var spec = {}, dataIds = [];
+            for (var i in req.body) {
+                if (i.match(/^in:[0-9]+$/)) {
+                    var id = i.split(':')[1];
+                    spec[id] = { "value": req.body[i] }
+                    dataIds.push(id);
+                }
+                //console.log(spec);
+            }
+            if (Object.keys(spec).length) { // not empty
+                wflib.setDataState(wfId, spec, function(err, rep) {
+                    //console.log(spec);
+                    engine.markDataReady(wfId, dataIds, function(err) {
+                        res.redirect(req.url, 302); 
+                    });
+                });
+            } else {
+                res.redirect(req.url, 302); 
+            }
+        }
     });
 });
 
@@ -198,8 +220,6 @@ app.get('/workflow/:w/instances/:i', function(req, res) {
     wflib.getWfInstanceInfo(req.params.i, function(err, reply) {
 	var wfInstanceStatus = reply.status;
 	wflib.getWfInsAndOutsInfoFull(req.params.i, function(err, ins, outs) {
-            console.log(ins);
-            console.log(outs);
 	    if (err) {
 		res.statusCode = 404;
 		res.send(err.toString());
@@ -305,9 +325,6 @@ app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
 	    res.statusCode = 404;
 	    res.send(err.toString());
 	} else {
-	    console.log(wftask);
-	    console.log(taskins);
-	    console.log(taskouts);
 	    var ctype = acceptsXml(req);
 	    res.header('content-type', ctype);
 	    res.render('workflow-task', {
@@ -367,21 +384,38 @@ app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
 
 /*
 ** Representation of the following form can be posted to a data URI in order to
-** notify that this data is ready. 
+** notify that this data is ready. Optionally, value can be passed (used if value
+** is simple, otherwise task's "function" is supposed to retrieve value via its URI.
 ** <form method="post" action="..." class="data-id">
-**   <input type="text" name="data-id" value="" required="true"/>
+**   <input type="text" name="data-id" value="{id}" required="true"/>
+**   <input type="text" name="data-value" value="{value}" required="false"/>
 **   <input type="submit" value="Send" />
 ** </form>
 */
 app.post('/workflow/:w/instances/:i/data-:j', function(req, res) {
-    engine.markDataReady(req.params.i, req.params.j, function(err) {
-	if (err) {
-	    res.statusCode = 404;
-	    res.send(err.toString());
-	} else {
-	    res.redirect(req.url, 302);
-	}
-    });
+    if (req.body['data-value']) {
+        var spec = {};
+        spec[req.params.j] = {"value": req.body['data-value']};
+        wflib.setDataState(req.params.i, spec, function(err, rep) {
+            engine.markDataReady(req.params.i, req.params.j, function(err) {
+                if (err) {
+                    res.statusCode = 404;
+                    res.send(err.toString());
+                } else {
+                    res.redirect(req.url, 302);
+                }
+            });
+        });
+    } else {
+        engine.markDataReady(req.params.i, req.params.j, function(err) {
+            if (err) {
+                res.statusCode = 404;
+                res.send(err.toString());
+            } else {
+                res.redirect(req.url, 302);
+            }
+        });
+    }
 });
 
 

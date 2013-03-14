@@ -13,233 +13,112 @@
  *  - sinks[i][j+1] = port id in this task the data element is mapped to
  */
 
-
-
 var fs = require('fs'),
     xml2js = require('xml2js'),
     fsm = require('automata'),
     wflib = require('../wflib').init();
 
-var tasks = [];
-var trace = "", numTasks = 0;
-var emulate;
+var tasks = [],    // array of task FSMs
+    trace = "",    // trace: list of task ids in the sequence they were finished
+    nTasksLeft = 0,  // how many tasks left (not finished)? 
+                   // FIXME: what if a task can never be finished (e.g. TaskService?)
+    emulate;       // should the execution be emulated?
 
-function TaskLogic() {
-    this.tasks = []; // array of all task FSM "sessions" (so that tasks can send events to other tasks)
-    this.wfId = -1; // workflow instance id
-    this.id = -1; // id of this task
-    this.n = -1;  // number of inputs
-    this.cnt = 0; // number of inputs which are 'ready'
-    this.ins = []; // ids of inputs
-    this.outs = []; // ids of outputs
-    this.sources = []; 
-    this.sinks = [];
+var TaskFSM = require('./taskFSM.js');
 
-    this.init = function(tasks, wfId, taskId, ins, outs, sources, sinks) {
-	this.tasks = tasks;
-	this.wfId = wfId;
-	this.id = taskId;
-	this.ins = ins;
-	this.n = ins.length-1;
-	this.outs = outs;
-	this.sources = sources;
-	this.sinks = sinks;
-    };
 
-    this.ready_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state ready");
-    };
-
-    this.running_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state running: "+this.id);
-	(function(task) {
-	    wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
-		if (err) {
-		    throw err;
-		}
-
-		// setTimeout to be replaced with invocation of an executor.
-		//executor.execute(wf.job[id], "balis@192.168.252.130", function(err, res) {
-		//});
-                if (emulate) {
-                    setTimeout(function() { 
-                        session.dispatch( {msgId: "RuFi"} );
-                    }, 100);
-                } else {
-                    wflib.invokeTaskFunction(task.wfId, task.id, function(err, rep) {
-                        if (err) {
-                            throw(err);
-                            // TODO: how does the engine handle error in invocation of task's
-                            // function? E.g. Does it affect the state machine of the task?
-                            // Should there be an error state and transitions from it, e.g. retry? 
-                        } else {
-                            session.dispatch( {msgId: "RuFi"} );
-                        }
-                    });
-                }
-	    });
-	})(this);
-    };
-
-    this.running_onExit = function(session, state, transition, msg) {
-	trace += this.id+",";
-	//console.log(trace);
-        //console.log("Exit state running");
-    };
-
-    this.finished_onEnter = function(session, state, transition, msg) {
-	(function(task) {
-	    wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
-		if (err) {
-		    throw err;
-		}
-		console.log("Enter state finished: "+task.id);
-		numTasks--;
-		if (!numTasks) {
-		    console.log(trace);
-		}
-	    });
-	})(this);
-    };
-
-    this.trReRe = function(session, state, transition, msg) {
-	this.cnt++;
-	//console.log(this.id+","+this.cnt+","+this.n);
-	if (this.cnt == this.n) {
-	    //console.log("dispatching ReRu");
-	    session.dispatch( {msgId: "ReRu"} );
-	}
-        //console.log("Transition ReRu, task "+this.id);
-    };
-
-    this.trReRu = function(session, state, transition, msg) {
-        //console.log("Transition ReRu, task "+this.id);
-    };
-
-    this.trRuFi = function(session, state, transition, msg) {
-	for (var i=1; i<=this.outs.length-1; ++i) {
-	    markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks, function() { });
-	}
-    };
-
-    return this;
-}
-
-var TaskFSM = {
-    name: "Task",
-    logic: TaskLogic,
-
-    state : [ 
-        {
-	    name: "ready",
-            initial: true
-	},
-    	{ 
-	    name: "running",
-            onEnter: "running_onEnter",
-            onExit: "running_onExit"
-	},
-    	{
-	    name: "finished",
-            onEnter: "finished_onEnter"
-	}
-    ],
-
-    transition : [ 
-        { 
-	    event       : "ReRe",
-	    from        : "ready",
-	    to          : "ready",
-	    onTransition: "trReRe",
-	},
-        { 
-	    event       : "ReRu",
-	    from        : "ready",
-	    to          : "running",
-	    onTransition: "trReRu",
-	},
-        { 
-	    event       : "RuFi",
-	    from        : "running",
-	    to          : "finished",
-	    onTransition: "trRuFi",
-	},
-    ]
-};
-
-fsm.registerFSM(TaskFSM);
+fsm.registerFSM(TaskFSM); // TODO: automatically import and register all task FSMs in 
+                          // the current directory
 
 	
-exports.init = function() {
-
-    //////////////////////////////////////////////////////////////////////////
-    /////////////////////////////// data /////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-
-
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    function public_runInstance(wfId, emul, cb) {
-        emulate = emul;
-	wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
-	    numTasks = nTasks;
-	    for (var i=1; i<=nTasks; ++i) {
-		tasks[i] = fsm.createSession("Task");
-		tasks[i].logic.init(tasks, wfId, i, ins[i], outs[i], sources, sinks);
-	        //task[i].addListener({
-		    // custom event sent to a task FSM
-		    // e.inId - id of input port the event was directed to
-		    // e.value - optional value of the event (event-specific json obj)
-		//});
-	    }
+    // emul: if true, workflow execution will be emulated
+function public_runInstance(wfId, emul, cb) {
+    emulate = emul;
+    wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
+        nTasksLeft = nTasks;
+        for (var i=1; i<=nTasks; ++i) {
+            tasks[i] = fsm.createSession("Task");
+            tasks[i].logic.init(tasks, wfId, i, ins[i], outs[i], sources, sinks, emul);
+            //task[i].addListener({
+            // custom event sent to a task FSM
+            // e.inId - id of input port the event was directed to
+            // e.value - optional value of the event (event-specific json obj)
+            //});
+        }
 
-	    wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
-		cb(err);
-		console.log("Finished");
-	    });
+        wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
+            cb(err);
+            //console.log("Finished");
+        });
 
-	    // Emulate workflow execution: change state of all workflow inputs to "ready" and send
-	    // signal to all sink tasks; pretend task Functions are invoked and results computed.
-	    if (emulate) {
-		wflib.getWfIns(wfId, false, function(err, wfIns) {
-		    for (var i=0; i<wfIns.length; ++i) {
-			markDataReadyAndNotifySinks(wfId, wfIns[i], tasks, function() { });
-		    }
-		});
-	    }
-	});
+        // Emulate workflow execution: change state of all workflow inputs to "ready" and send
+        // signal to all sink tasks; pretend task Functions are invoked and results computed.
+        if (emulate) {
+            wflib.getWfIns(wfId, false, function(err, wfIns) {
+                for (var i=0; i<wfIns.length; ++i) {
+                    markDataReadyAndNotifySinks(wfId, wfIns[i], tasks, function() { });
+                }
+            });
+        }
+    });
+}
+
+// FIXME: check if input is marked more than once (probably in task FSM implementation)
+function public_markTaskInputReady(wfId, taskId, dataId, cb) {
+    cb(new Error("Not implemented"));
+}
+
+// Marks data elements as 'ready' and notify their sinks
+// dataIds - single data Id or an array of dataIds
+// FIXME: check what happens if data is marked more than once
+function public_markDataReady(wfId, dataIds, cb) {
+    function isArray(what) {
+        return Object.prototype.toString.call(what) === '[object Array]';
     }
 
-    // FIXME: check if input is marked more than once (probably in task FSM implementation)
-    function public_markTaskInputReady(wfId, taskId, dataId, cb) {
-	cb(new Error("Not implemented"));
-    }
+    var Ids = [];
+    isArray(dataIds) ? Ids = dataIds: Ids.push(dataIds);
+    //var start = (new Date()).getTime(), finish;
+    Ids.forEach(function(dataId) {
+        markDataReadyAndNotifySinks(wfId, dataId, tasks, function() {
+            //finish = (new Date()).getTime();
+            //console.log("markDataReady exec time: "+(finish-start));
+        });
+    });
+    cb(null);
+}
 
-    // FIXME: check what happens if data is marked more than once
-    function public_markDataReady(wfId, dataId, cb) {
-	var start = (new Date()).getTime(), finish;
-	markDataReadyAndNotifySinks(wfId, dataId, tasks, function() {
-	    finish = (new Date()).getTime();
-	    console.log("markDataReady exec time: "+(finish-start));
-	    cb(null);
-	});
+function taskFinished(wfId, taskId) {
+    trace += taskId;
+    nTasksLeft--;
+    if (!nTasksLeft) {
+        console.log(trace+'.');
+    } else {
+        trace += ',';
     }
+}
 
-    return {
-        runInstance: public_runInstance,
-	markTaskInputReady: public_markTaskInputReady,
-	markDataReady: public_markDataReady
-    };
-};
+exports.runInstance = public_runInstance;
+exports.markTaskInputReady = public_markTaskInputReady;
+exports.markDataReady = public_markDataReady;
+exports.taskFinished = taskFinished;
+exports.nTasksLeft = nTasksLeft;
+exports.trace = trace;
+exports.taskFSMs = tasks;
+exports.emul = function() { return emulate; };
 
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
 function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, cb) {
-    wflib.setDataState(wfId, dataId, { "status": "ready" }, function(err, rep) {
+    var obj = {};
+    obj[dataId] = {"status": "ready" };
+    wflib.setDataState(wfId, obj, function(err, rep) {
 	if (err) { throw(err); }
 	wflib.getDataSinks(wfId, dataId, function(err, sinks) {
 	    if (err) { throw(err); }
