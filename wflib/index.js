@@ -183,7 +183,6 @@ exports.init = function(redisClient) {
 
 	var multi = rcl.multi();
 
-	// Retrieve task info
 	multi.hgetall(taskKey, function(err, reply) {
             err ? cb(err): cb(null, reply);
 	});
@@ -399,8 +398,8 @@ exports.init = function(redisClient) {
 
     // Returns a 'map' of a workflow. Should be passed a callback:
     // function(nTasks, nData, err, ins, outs, sources, sinks), where:
-    // - nTasks        = number of tasks (also length-1 of ins and outs arrays)
-    // - nData         = number of data elements (also length-1 of sources and sinks arrays)
+    // - nTasks        = number of tasks (also length of ins and outs arrays)
+    // - nData         = number of data elements (also length of sources and sinks arrays)
     // - ins[i][j]     = data id mapped to j-th output port of i-th task
     // - outs[i][j]    = data id mapped to j-th input port of i-th task
     // - sources[i][1] = task id which produces data element with id=i (if none, sources[i]=[])
@@ -591,7 +590,7 @@ exports.init = function(redisClient) {
 	});
     }
 
-    // invokes function assinged to task and passing input and output objects whose
+    // invokes function assinged to task passing input and output objects whose
     // ids are in arrays 'insIds' and 'outsIds'. 
     function public_invokeTaskFunction(wfId, taskId, insIds, outsIds, cb) {
         console.log(insIds, outsIds);
@@ -725,11 +724,14 @@ exports.init = function(redisClient) {
     }
 
     function processTask(task, wfname, baseUri, wfKey, taskKey, taskId, cb) {
+        // TODO: here there could be a validation of the task, e.g. Foreach task 
+        // should have the same number of ins and outs, etc.
         var multi=rcl.multi();
         multi.hmset(taskKey, 
                 "uri", baseUri+"/task-"+taskId, 
                 "name", task.name, 
                 "status", "waiting", 
+                "type", task.type ? task.type: "Task",
 		"fun", task.function ? task.function: "null",
                 //"execName", task.name, 
                 //"execArgs", task.execArgs, 

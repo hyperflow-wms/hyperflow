@@ -24,16 +24,20 @@ var tasks = [],    // array of task FSMs
                    // FIXME: what if a task can never be finished (e.g. TaskService?)
     emulate;       // should the execution be emulated?
 
-var TaskFSM = require('./taskFSM.js');
+var TaskFSM        = require('./taskFSM.js');
+var TaskForeachFSM = require('./taskForeachFSM.js');
 
-
-fsm.registerFSM(TaskFSM); // TODO: automatically import and register all task FSMs in 
-                          // the current directory
+// TODO: automatically import and register all task FSMs in the current directory
+fsm.registerFSM(TaskFSM); 
+fsm.registerFSM(TaskForeachFSM);
 
 	
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
+
+var Engine = function(config) {
+};
 
     // emul: if true, workflow execution will be emulated
 function public_runInstance(wfId, emul, cb) {
@@ -42,12 +46,7 @@ function public_runInstance(wfId, emul, cb) {
         nTasksLeft = nTasks;
         for (var i=1; i<=nTasks; ++i) {
             tasks[i] = fsm.createSession("Task");
-            tasks[i].logic.init(tasks, wfId, i, ins[i], outs[i], sources, sinks, emul);
-            //task[i].addListener({
-            // custom event sent to a task FSM
-            // e.inId - id of input port the event was directed to
-            // e.value - optional value of the event (event-specific json obj)
-            //});
+            tasks[i].logic.init(tasks, wfId, i, ins[i], outs[i], sources, sinks, tasks[i]);
         }
 
         wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
@@ -123,8 +122,8 @@ function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, cb) {
 	wflib.getDataSinks(wfId, dataId, function(err, sinks) {
 	    if (err) { throw(err); }
 	    for (var j=0; j<sinks.length; j+=2) {
-		taskFSMs[sinks[j]].dispatch({ 
-		    msgId: "ReRe", 
+                // send event that an input is ready
+                taskFSMs[sinks[j]].fireCustomEvent({
 		    wfId: wfId, 
 		    taskId: sinks[j], 
 		    inId: sinks[j+1] 

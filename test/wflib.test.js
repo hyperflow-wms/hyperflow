@@ -6,7 +6,7 @@ var redis = require('redis'),
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('Montage_10k.json', '', function(err, id) {
+	    wflib.createInstanceFromFile('Montage_143.json', '', function(err, id) {
 		cb(err, id);
 	    });
 	});
