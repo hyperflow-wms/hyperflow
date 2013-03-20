@@ -5,9 +5,6 @@
  ** Author: Bartosz Balis (2013)
  */
 
-var wflib = require('../wflib').init(),
-    engine = module.parent.exports;
-
 var TaskFSM = {
     name: "Task",
     logic: TaskLogic,
@@ -74,15 +71,17 @@ function TaskLogic() {
     this.sources = []; 
     this.sinks = [];
 
-    this.init = function(tasks, wfId, taskId, ins, outs, sources, sinks, session) {
-	this.tasks = tasks;
+    this.init = function(engine, wfId, taskId, session) {
+        this.engine = engine;
+        this.wflib = engine.wflib;
+	this.tasks = engine.tasks;
 	this.wfId = wfId;
 	this.id = taskId;
-	this.ins = ins;
-	this.n = ins.length;
-	this.outs = outs;
-	this.sources = sources;
-	this.sinks = sinks;
+	this.ins = engine.ins[taskId];
+	this.n = engine.ins[taskId].length;
+	this.outs = engine.outs[taskId];
+	this.sources = engine.sources;
+	this.sinks = engine.sinks;
         session.addListener({
             contextCreated      : function( obj ) {    },
             contextDestroyed    : function( obj ) {    },
@@ -99,17 +98,17 @@ function TaskLogic() {
     this.running_onEnter = function(session, state, transition, msg) {
         console.log("Enter state running: "+this.id);
 	(function(task) {
-	    wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
+	    task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
 		if (err) {
 		    throw err;
 		}
 
-                if (engine.emul()) {
+                if (task.engine.emulate) {
                     setTimeout(function() { 
                         session.dispatch( {msgId: "RuFi"} );
-                    }, 1000);
+                    }, 100);
                 } else {
-                    wflib.invokeTaskFunction(task.wfId, task.id, task.ins, task.outs, function(err, rep) {
+                    task.wflib.invokeTaskFunction(task.wfId, task.id, task.ins, task.outs, function(err, rep) {
                         if (err) {
                             throw(err);
                             // TODO: how does the engine handle error in invocation of task's
@@ -130,12 +129,12 @@ function TaskLogic() {
 
     this.finished_onEnter = function(session, state, transition, msg) {
 	(function(task) {
-	    wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
+	    task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
 		if (err) {
 		    throw err;
 		}
 		console.log("Enter state finished: "+task.id);
-		engine.taskFinished(task.wfId, task.id);
+		task.engine.taskFinished(task.id);
 	    });
 	})(this);
     };
@@ -160,7 +159,7 @@ function TaskLogic() {
             dataIds.push(this.outs[i]);
 	    //markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks, function() { });
 	}
-        engine.markDataReady(this.wfId, dataIds, function() {});
+        this.engine.markDataReady(dataIds, function() {});
     };
 
     return this;

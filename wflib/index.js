@@ -377,9 +377,9 @@ exports.init = function(redisClient) {
 
 
     // Change state of one or more data elements
-    // - spec: JSON object in the format: 
+    // - @spec: JSON object in the format: 
     //   { dataId: { attr: val, attr: val}, dataId: { ... } ... }
-    //   e.g. { "1": { "status": "ready", "value": "33" }
+    //   e.g. { "1": { "status": "ready", "value": "33" } ... }
     function public_setDataState(wfId, spec, cb) {
         var multi = rcl.multi();
         for (var i in spec) {
@@ -593,7 +593,6 @@ exports.init = function(redisClient) {
     // invokes function assinged to task passing input and output objects whose
     // ids are in arrays 'insIds' and 'outsIds'. 
     function public_invokeTaskFunction(wfId, taskId, insIds, outsIds, cb) {
-        console.log(insIds, outsIds);
         public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, taskIns, taskOuts) {
             if (err) {
                 cb(err);

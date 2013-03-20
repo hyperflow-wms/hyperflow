@@ -41,7 +41,8 @@ else {
 
 var executor = require('./executor_simple').init();
 var wflib = require('./wflib').init(rcl);
-var engine = require('./engine');
+var Engine = require('./engine');
+var engine = {}; // engine.i contains the engine object for workflow instance 'i'
 var urlReq = require('./req_url');
 
 var timers = require('timers');
@@ -58,6 +59,7 @@ var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get h
 
 // Configuration
 app.configure(function() {
+        //app.use(express.compress());
 	app.engine('ejs', cons.ejs);
 	app.set('views', __dirname + '/views');
 	app.set('view engine', 'ejs');
@@ -175,7 +177,9 @@ app.post('/workflow/:w', function(req, res) {
            res.send(err.toString());
         } else {
             //deltaWf.create(req.params.w+'-'+id); // delta resource. FIXME! Is it enough for unique id?
-            res.redirect(req.url+"instances/"+id, 302); // redirect to the newly created workflow instance
+	    engine[id] = new Engine({"emulate": "true"}, wflib, id, function(err) {
+                res.redirect(req.url+"instances/"+id, 302); // redirect to the newly created wf instance
+            });
         }
     });
 });
@@ -185,7 +189,7 @@ app.post('/workflow/:w', function(req, res) {
  */
 app.post('/workflow/:w/instances/:i', function(req, res) {
     var wfId = req.params.i;
-    engine.runInstance(wfId, false /* emulate execution? */, function(err) {
+    engine[wfId].runInstance(function(err) {
 	if (err) {
 	    res.statusCode = 404;
 	    res.send(err.toString());
@@ -204,7 +208,7 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
             if (Object.keys(spec).length) { // not empty
                 wflib.setDataState(wfId, spec, function(err, rep) {
                     //console.log(spec);
-                    engine.markDataReady(wfId, dataIds, function(err) {
+                    engine[wfId].markDataReady(dataIds, function(err) {
                         res.redirect(req.url, 302); 
                     });
                 });
@@ -349,8 +353,8 @@ app.get('/workflow/:w/instances/:j/task-:i', function(req, res) {
    </form>
    */
 app.post('/workflow/:w/instances/:i/task-:j', function(req, res) {
-    var dataId = req.body['data-id'];
-    engine.markTaskInputReady(req.params.i, req.params.j, dataId, function(err) {
+    var wfId = req.params.i, taskId = req.params.j, dataId = req.body['data-id'];
+    engine[wfId].markTaskInputReady(taskId, dataId, function(err) {
 	if (err) {
 	    res.statusCode = 404;
 	    res.send();
@@ -393,11 +397,12 @@ app.get('/workflow/:w/instances/:i/data-:j', function(req, res) {
 ** </form>
 */
 app.post('/workflow/:w/instances/:i/data-:j', function(req, res) {
+    var wfId = req.params.i, dataId = req.params.j;
     if (req.body['data-value']) {
         var spec = {};
-        spec[req.params.j] = {"value": req.body['data-value']};
-        wflib.setDataState(req.params.i, spec, function(err, rep) {
-            engine.markDataReady(req.params.i, req.params.j, function(err) {
+        spec[dataId] = {"value": req.body['data-value']};
+        wflib.setDataState(wfId, spec, function(err, rep) {
+            engine[wfId].markDataReady(dataId, function(err) {
                 if (err) {
                     res.statusCode = 404;
                     res.send(err.toString());
@@ -407,7 +412,7 @@ app.post('/workflow/:w/instances/:i/data-:j', function(req, res) {
             });
         });
     } else {
-        engine.markDataReady(req.params.i, req.params.j, function(err) {
+        engine[wfId].markDataReady(dataId, function(err) {
             if (err) {
                 res.statusCode = 404;
                 res.send(err.toString());

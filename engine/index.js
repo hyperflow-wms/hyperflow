@@ -15,14 +15,7 @@
 
 var fs = require('fs'),
     xml2js = require('xml2js'),
-    fsm = require('automata'),
-    wflib = require('../wflib').init();
-
-var tasks = [],    // array of task FSMs
-    trace = "",    // trace: list of task ids in the sequence they were finished
-    nTasksLeft = 0,  // how many tasks left (not finished)? 
-                   // FIXME: what if a task can never be finished (e.g. TaskService?)
-    emulate;       // should the execution be emulated?
+    fsm = require('automata');
 
 var TaskFSM        = require('./taskFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
@@ -31,50 +24,72 @@ var TaskForeachFSM = require('./taskForeachFSM.js');
 fsm.registerFSM(TaskFSM); 
 fsm.registerFSM(TaskForeachFSM);
 
+// Engine constructor
+// @config: JSON object which contains Engine configuration:
+// - config.emulate (tru/false) = should engine work in the emulated mode?
+var Engine = function(config, wflib, wfId, cb) {
+    this.wflib = wflib;
+    this.wfId = wfId;
+    this.tasks = [];      // array of task FSMs
+    this.ins = [];
+    this.outs = [];
+    this.sources = [];
+    this.sinks = [];
+    this.trace = "";      // trace: list of task ids in the sequence they were finished
+    this.nTasksLeft = 0;  // how many tasks left (not finished)? 
+                          // FIXME: what if a task can never be finished (e.g. TaskService?)
+                          
+    this.emulate = config.emulate == "true" ? true: false;       
+
+    (function(engine) {
+        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
+            engine.nTasksLeft = nTasks;
+            engine.ins = ins;
+            engine.outs = outs;
+            engine.sources = sources;
+            engine.sinks = sinks;
+            for (var i=1; i<=nTasks; ++i) {
+                // TODO: read taks type from WfMap (getWfMap needs changing)
+                engine.tasks[i] = fsm.createSession("Task");
+                engine.tasks[i].logic.init(engine, wfId, i, engine.tasks[i]);
+            }
+            cb(null);
+        });
+    })(this);
+}
 	
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-var Engine = function(config) {
-};
+Engine.prototype.runInstance = function (cb) {
+    this.wflib.setWfInstanceState( this.wfId, { "status": "running" }, function(err, rep) {
+        cb(err);
+        //console.log("Finished");
+    });
 
-    // emul: if true, workflow execution will be emulated
-function public_runInstance(wfId, emul, cb) {
-    emulate = emul;
-    wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
-        nTasksLeft = nTasks;
-        for (var i=1; i<=nTasks; ++i) {
-            tasks[i] = fsm.createSession("Task");
-            tasks[i].logic.init(tasks, wfId, i, ins[i], outs[i], sources, sinks, tasks[i]);
-        }
-
-        wflib.setWfInstanceState( wfId, { "status": "running" }, function(err, rep) {
-            cb(err);
-            //console.log("Finished");
-        });
-
-        // Emulate workflow execution: change state of all workflow inputs to "ready" and send
-        // signal to all sink tasks; pretend task Functions are invoked and results computed.
-        if (emulate) {
-            wflib.getWfIns(wfId, false, function(err, wfIns) {
+    // Emulate workflow execution: change state of all workflow inputs to "ready" and send
+    // signal to all sink tasks; pretend task Functions are invoked and results computed.
+    if (this.emulate) {
+        (function(engine) {
+            engine.wflib.getWfIns(engine.wfId, false, function(err, wfIns) {
                 for (var i=0; i<wfIns.length; ++i) {
-                    markDataReadyAndNotifySinks(wfId, wfIns[i], tasks, function() { });
+                    markDataReadyAndNotifySinks(engine.wfId, wfIns[i], engine.tasks, engine.wflib, function() { });
                 }
             });
-        }
-    });
+        })(this);
+    }
 }
 
 // FIXME: check if input is marked more than once (probably in task FSM implementation)
-function public_markTaskInputReady(wfId, taskId, dataId, cb) {
+Engine.prototype.markTaskInputReady = function (taskId, dataId, cb) {
     cb(new Error("Not implemented"));
 }
 
 // Marks data elements as 'ready' and notify their sinks
 // dataIds - single data Id or an array of dataIds
 // FIXME: check what happens if data is marked more than once
-function public_markDataReady(wfId, dataIds, cb) {
+Engine.prototype.markDataReady = function(dataIds, cb) {
     function isArray(what) {
         return Object.prototype.toString.call(what) === '[object Array]';
     }
@@ -82,39 +97,34 @@ function public_markDataReady(wfId, dataIds, cb) {
     var Ids = [];
     isArray(dataIds) ? Ids = dataIds: Ids.push(dataIds);
     //var start = (new Date()).getTime(), finish;
-    Ids.forEach(function(dataId) {
-        markDataReadyAndNotifySinks(wfId, dataId, tasks, function() {
-            //finish = (new Date()).getTime();
-            //console.log("markDataReady exec time: "+(finish-start));
+    (function(engine) {
+        Ids.forEach(function(dataId) {
+            markDataReadyAndNotifySinks(engine.wfId, dataId, engine.tasks, engine.wflib, function() {
+                //finish = (new Date()).getTime();
+                //console.log("markDataReady exec time: "+(finish-start));
+            });
         });
-    });
+    })(this);
     cb(null);
 }
 
-function taskFinished(wfId, taskId) {
-    trace += taskId;
-    nTasksLeft--;
-    if (!nTasksLeft) {
-        console.log(trace+'.');
+Engine.prototype.taskFinished = function(taskId) {
+    this.trace += taskId;
+    this.nTasksLeft--;
+    if (!this.nTasksLeft) {
+        console.log(this.trace+'. ['+this.wfId+']');
     } else {
-        trace += ',';
+        this.trace += ',';
     }
 }
 
-exports.runInstance = public_runInstance;
-exports.markTaskInputReady = public_markTaskInputReady;
-exports.markDataReady = public_markDataReady;
-exports.taskFinished = taskFinished;
-exports.nTasksLeft = nTasksLeft;
-exports.trace = trace;
-exports.taskFSMs = tasks;
-exports.emul = function() { return emulate; };
+module.exports = Engine;
 
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, cb) {
+function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
     var obj = {};
     obj[dataId] = {"status": "ready" };
     wflib.setDataState(wfId, obj, function(err, rep) {
