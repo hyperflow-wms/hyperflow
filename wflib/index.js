@@ -217,7 +217,7 @@ exports.init = function(redisClient) {
     // returns full task info
     function public_getTaskInfoFull(wfId, taskId, cb) {
 	var taskKey = "wf:"+wfId+":task:"+taskId;
-	var task, ins, outs, data = {};
+	var task, ins, outs, data_ins = {}, data_outs = {};
 
 	var multi = rcl.multi();
 
@@ -245,10 +245,10 @@ exports.init = function(redisClient) {
 			var dataKey = "wf:"+wfId+":data:"+ins[i];
 			multi.hgetall(dataKey, function(err, reply) {
 			    if (err) {
-				data[ins[i]] = err;
+				data_ins[ins[i]] = err;
 			    } else {
-				data[ins[i]] = reply;
-                                data[ins[i]].id = ins[i];
+				data_ins[ins[i]] = reply;
+                                data_ins[ins[i]].id = ins[i]; // TODO: redundant (key is the id)
 			    }
 			});
 		    })(i);
@@ -258,10 +258,10 @@ exports.init = function(redisClient) {
 			var dataKey = "wf:"+wfId+":data:"+outs[i];
 			multi.hgetall(dataKey, function(err, reply) {
 			    if (err) {
-				data[outs[i]] = err;
+				data_outs[outs[i]] = err;
 			    } else {
-				data[outs[i]] = reply;
-                                data[outs[i]].id = outs[i];
+				data_outs[outs[i]] = reply;
+                                data_outs[outs[i]].id = outs[i]; // TODO: redundant
 			    }
 			});
 		    })(i);
@@ -272,13 +272,13 @@ exports.init = function(redisClient) {
 			cb(err);
 		    } else {
 			// replace ids of data elements with their attributes
-			for (var i=0; i<ins.length; ++i) {
+			/*for (var i=0; i<ins.length; ++i) {
 			    ins[i] = data[ins[i]];
 			}
 			for (var i=0; i<outs.length; ++i) {
 			    outs[i] = data[outs[i]];
-			}
-			cb(null, task, ins, outs);
+			}*/
+			cb(null, task, data_ins, data_outs);
 		    }
 		});
             }
@@ -406,16 +406,19 @@ exports.init = function(redisClient) {
     // - sources[i][2] = port id in this task the data element is mapped to
     // - sinks[i][j]   = task id which consumes data element with id=i (if none, sinks[i]=[])
     // - sinks[i][j+1] = port id in this task the data element is mapped to
+    // - types         = ids of tasks with type other than default "task"; format:
+    //                   { "foreach": [1,2,5], "service": [3,4] }
     function public_getWfMap(wfId, cb) {
-	rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
+        var wfKey = "wf:"+wfId;
+	rcl.zcard(wfKey+":tasks", function(err, ret) {
 	    var nTasks = ret; 
-	    rcl.zcard("wf:"+wfId+":data", function(err, ret) {
+	    rcl.zcard(wfKey+":data", function(err, ret) {
 		var nData = ret;
-		var ins = [], outs = [], sources = [], sinks = [], taskKey;
+		var types = {}, ins = [], outs = [], sources = [], sinks = [], taskKey;
 		var multi = rcl.multi();
 		for (var i=1; i<=nTasks; ++i) {
 		    (function(i) {
-			taskKey = "wf:"+wfId+":task:"+i;
+			taskKey = wfKey+":task:"+i;
 			multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
 			    ins[i] = ret;
 			    //ins[i].unshift(null); // inputs will be indexed from 1 instead of 0
@@ -428,7 +431,7 @@ exports.init = function(redisClient) {
 		}
 		for (i=1; i<=nData; ++i) {
 		    (function(i) {
-			dataKey = "wf:"+wfId+":data:"+i;
+			dataKey = wfKey+":data:"+i;
 			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
 			    sources[i] = ret;
 			    //console.log(i+";"+ret);
@@ -443,11 +446,21 @@ exports.init = function(redisClient) {
 			});*/
 		    })(i);
 		}
+                // Create info about task types (all remaining tasks have the default type "task")
+                // TODO: pull the list of types dynamically from redis
+                ["foreach", "service"].forEach(function(type) {
+                    multi.smembers(wfKey+":tasktype:"+type, function(err, rep) {
+                        if (rep) {
+                            console.log(type, rep); // DEBUG
+                            types[type] = rep;
+                        }
+                    });
+                });
 		multi.exec(function(err, reps) {
 		    if (err) {
 			cb(err);
 		    } else {
-			cb(null, nTasks, nData, ins, outs, sources, sinks);
+			cb(null, nTasks, nData, ins, outs, sources, sinks, types);
 		    }
 		});
 	    });
@@ -592,7 +605,15 @@ exports.init = function(redisClient) {
 
     // invokes function assinged to task passing input and output objects whose
     // ids are in arrays 'insIds' and 'outsIds'. 
-    function public_invokeTaskFunction(wfId, taskId, insIds, outsIds, cb) {
+    function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, cb) {
+        function isArray(what) {
+            return Object.prototype.toString.call(what) === '[object Array]';
+        }
+        var insIds = [], outsIds = [];
+        isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
+        isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
+        console.log("Invoking:", insIds, outsIds); // DEBUG
+
         public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, taskIns, taskOuts) {
             if (err) {
                 cb(err);
@@ -610,10 +631,10 @@ exports.init = function(redisClient) {
                     var f = require('../'+fun.module)[taskInfo.fun]; 
                     var ins = [], outs = [];
                     for (var i in insIds) {
-                        ins.push(taskIns[i]);
+                        ins.push(taskIns[insIds[i]]);
                     }
                     for (var i in outsIds) {
-                        outs.push(taskOuts[i]);
+                        outs.push(taskOuts[outsIds[i]]);
                     }                   
                     f(ins, outs, function(err, outs) {
                         // write values if any
@@ -726,11 +747,13 @@ exports.init = function(redisClient) {
         // TODO: here there could be a validation of the task, e.g. Foreach task 
         // should have the same number of ins and outs, etc.
         var multi=rcl.multi();
+	var taskType = task.type ? task.type.toLowerCase() : "task";
+
         multi.hmset(taskKey, 
                 "uri", baseUri+"/task-"+taskId, 
                 "name", task.name, 
                 "status", "waiting", 
-                "type", task.type ? task.type: "Task",
+                "type", taskType,
 		"fun", task.function ? task.function: "null",
                 //"execName", task.name, 
                 //"execArgs", task.execArgs, 
@@ -739,6 +762,14 @@ exports.init = function(redisClient) {
 
         // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
         multi.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
+
+	// For every task of type other than "task" (e.g. "foreach", "service"), add its 
+        // id to a type set. 
+	// Engine uses this to know which FSM instance to create
+	// TODO: need additional, "global" set with all possible task type names
+        if (taskType != "task") {
+            multi.sadd(wfKey+":tasktype:"+taskType, taskId);
+        }
 
         // add task inputs and outputs + data sources and sinks
         for (var i=0; i<task.ins.length; ++i) {

@@ -6,7 +6,7 @@
  */
 
 var TaskFSM = {
-    name: "Task",
+    name: "task",
     logic: TaskLogic,
 
     state : [ 

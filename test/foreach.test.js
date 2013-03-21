@@ -1,3 +1,4 @@
+
 var redis = require('redis'),
     rcl = redis.createClient(),
     wflib = require('../wflib').init(rcl),
@@ -6,8 +7,10 @@ var redis = require('redis'),
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('Montage_10k.json', '', function(err, id) {
-		cb(err, id);
+            rcl.hset("wf:functions:add", "module", "functions", function(err, rep) {
+                wflib.createInstanceFromFile('Wf_foreach_test.json', '', function(err, id) {
+                    cb(err, id);
+                });
 	    });
 	});
     });
@@ -25,21 +28,16 @@ function init2(cb) {
     });
 }
 
-init2(function(err, wfId1, wfId2) {
-    var engine1 = new Engine({"emulate": "true"}, wflib, wfId1, function(err) {
-        var engine2 = new Engine({"emulate": "true"}, wflib, wfId2, function(err) {
-            engine1.runInstance(function(err) {
-            });
-            engine2.runInstance(function(err) {
-            });
-        });       
-    })
+init(function(err, wfId) {
+    var engine = new Engine({"emulate": "true"}, wflib, wfId, function(err) {
+        engine.runInstance(function(err) {
+        });
+    });       
 
+        /*wflib.getTaskInfoFull(1, 1, function(err, task, ins, outs) {
+          console.log(task, ins, outs);
+          });*/
 });
-
-/*    wflib.getTaskInfoFull(1, 1, function(err, task, ins, outs) {
-	    console.log(task, ins, outs);
-    });*/
 
 //engine.markDataReady(1, 1, function() { });
 //engine.markDataReady(1, [1,2], function() { });

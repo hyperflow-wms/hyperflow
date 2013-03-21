@@ -35,23 +35,35 @@ var Engine = function(config, wflib, wfId, cb) {
     this.outs = [];
     this.sources = [];
     this.sinks = [];
-    this.trace = "";      // trace: list of task ids in the sequence they were finished
-    this.nTasksLeft = 0;  // how many tasks left (not finished)? 
-                          // FIXME: what if a task can never be finished (e.g. TaskService?)
+    this.trace = "";  // trace: list of task ids in the sequence they were finished
+    this.nTasksLeft = 0;  // how many tasks left (not finished)? FIXME: what if a task can 
+                          // never be finished (e.g. TaskService?)
                           
     this.emulate = config.emulate == "true" ? true: false;       
 
     (function(engine) {
-        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks) {
+        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types) {
             engine.nTasksLeft = nTasks;
             engine.ins = ins;
             engine.outs = outs;
             engine.sources = sources;
             engine.sinks = sinks;
+
+            // create tasks of types other than default "task"
+            for (var type in types) {
+                console.log("type: "+type+", "+types[type]);
+                types[type].forEach(function(taskId) {
+                    engine.tasks[taskId] = fsm.createSession(type);
+                    engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
+                });
+            }
+            // create all other tasks (assuming the default type "task")
             for (var i=1; i<=nTasks; ++i) {
                 // TODO: read taks type from WfMap (getWfMap needs changing)
-                engine.tasks[i] = fsm.createSession("Task");
-                engine.tasks[i].logic.init(engine, wfId, i, engine.tasks[i]);
+                if (!engine.tasks[i]) {
+                    engine.tasks[i] = fsm.createSession("task");
+                    engine.tasks[i].logic.init(engine, wfId, i, engine.tasks[i]);
+                }
             }
             cb(null);
         });

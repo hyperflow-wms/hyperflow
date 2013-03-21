@@ -8,16 +8,14 @@
  ** Author: Bartosz Balis (2013)
  */
 
-var wflib = require('../wflib').init(),
-    engine = module.parent.exports;
-
 var TaskForeachFSM = {
-    name: "TaskForeach",
+    name: "foreach",
     logic: TaskLogic,
 
     state : [ 
         {
 	    name: "ready",
+            onEnter: "ready_onEnter",
             initial: true
 	},
     	{ 
@@ -59,89 +57,104 @@ var TaskForeachFSM = {
     ]
 };
 
-// This function is invoked when one of task's inputs becomes ready. What happens next depends 
-// on the particular task type semantics. In this case, the Ready-Ready transition is fired. 
-// 'obj.msg' is a JSON object which should contain:
-// - wfId: workflow instance id
-// - taskId: id of task whose input is fired
-// - inId: port id of the input being fired
-function fireInput(obj) {
-    var msg = obj.message;
-    this.insReady[msg.inId] = true;
-    if (obj.session.getCurrentState().name == "ready") {
-        msg.msgId = "ReRe";
-        obj.session.dispatch(msg);
-    }
-}
-
 
 function TaskLogic() {
     this.tasks = []; // array of all task FSM "sessions" (so that tasks can send events to other tasks)
-    this.wfId = -1;  // workflow instance id
-    this.id = -1;    // id of this task
-    this.n = -1;     // number of inputs
-    this.cnt = 1;    // id of the input the task currently waits for
-    this.ins = [];   // ids of inputs
+    this.wfId = -1; // workflow instance id
+    this.id = -1; // id of this task
+    this.n = -1;  // number of inputs
+    this.cnt = 1; // id of input the task is currently waiting for
+    this.ins = []; // ids of inputs
     this.insReady = []; // insReady[i] == true means that i-th input is ready
-    this.outs = [];  // ids of outputs
+    this.outs = []; // ids of outputs
     this.sources = []; 
     this.sinks = [];
 
-    this.init = function(tasks, wfId, taskId, ins, outs, sources, sinks) {
-	this.tasks = tasks;
+    // This function is invoked when one of task's inputs becomes ready. What happens next depends 
+    // on the particular task type semantics. In this case, the Ready-Ready transition is fired. 
+    // 'obj.msg' is a JSON object which should contain:
+    // - wfId: workflow instance id
+    // - taskId: id of task whose input is fired
+    // - inId: port id of the input being fired
+    this.fireInput = function(obj) {
+        var msg = obj.message;
+        obj.session.logic.insReady[msg.inId] = true;
+        if (obj.session.getCurrentState().name == "ready") {
+            console.log('Firing ReRe from state: '+obj.session.getCurrentState().name, msg);
+            msg.msgId = "ReRe";
+            obj.session.processMessage(msg);
+        }
+    };
+
+
+    this.init = function(engine, wfId, taskId, session) {
+        this.engine = engine;
+        this.wflib = engine.wflib;
+	this.tasks = engine.tasks;
 	this.wfId = wfId;
 	this.id = taskId;
-	this.ins = ins;
-	this.n = ins.length;
-	this.outs = outs;
-	this.sources = sources;
-	this.sinks = sinks;
+	this.ins = engine.ins[taskId];
+	this.n = engine.ins[taskId].length;
+	this.outs = engine.outs[taskId];
+	this.sources = engine.sources;
+	this.sinks = engine.sinks;
         session.addListener({
             contextCreated      : function( obj ) {    },
             contextDestroyed    : function( obj ) {    },
             finalStateReached   : function( obj ) {    },
-            stateChanged        : function( obj ) {    },
-            customEvent: fireInput
+            stateChanged        : function( obj ) { 
+                console.log("state changed: "+obj.session.getCurrentState().name);
+            },
+            customEvent: this.fireInput
         });
     };
 
     this.ready_onEnter = function(session, state, transition, msg) {
-	//console.log(this.id+","+this.cnt+","+this.n);
-	if (insReady[this.cnt]) {
-	    session.dispatch( {msgId: "ReRu"} );
-	}
         console.log("Enter state ready");
+	if (this.insReady[this.cnt]) {
+	    session.processMessage( {msgId: "ReRu"} );
+	}
     };
 
     this.running_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state running: "+this.id);
+        console.log("Enter state running: "+this.id+session.getCurrentState().name);
 	(function(task) {
-	    wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
+	    task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
 		if (err) {
 		    throw err;
 		}
 
-                if (engine.emul()) {
+                if (!task.engine.emulate) {
                     setTimeout(function() { 
-                        session.dispatch( {msgId: "RuFi"} );
+                        task.cnt++;
+                        if (task.cnt <= task.n) {
+                            task.engine.markDataReady(task.outs[task.cnt-2], function() {
+                                session.processMessage( { msgId: "RuRe" } );
+                            });
+                        } else {
+                            session.processMessage( { msgId: "RuFi" } );
+                        }
                     }, 100);
                 } else {
-                    wflib.invokeTaskFunction(task.wfId, task.id, 
-                        task.ins[task.cnt-1], task.outs[task.cnt-1], 
-                    function(err, rep) {
+                    var ins = task.ins[task.cnt-1], outs = task.outs[task.cnt-1]; 
+                    console.log(task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
+                    console.log("ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
+                    task.wflib.invokeTaskFunction(task.wfId, task.id, ins, outs, function(err, rep) {
                         if (err) {
                             throw(err);
                             // TODO: how does the engine handle error in invocation of task's
                             // function? E.g. Does it affect the state machine of the task?
                             // Should there be an error state and transitions from it, e.g. retry? 
                         } else {
+                            console.log("invoke reply="+JSON.stringify(rep)); // DEBUG
+                            task.outs[task.cnt-1] = rep[0];
                             task.cnt++;
                             if (task.cnt <= task.n) {
-                                engine.markDataReady(task.wfId, task.outs[cnt-2], function() {
-                                    session.dispatch( { msgId: "RuRe" } );
+                                task.engine.markDataReady(task.outs[task.cnt-2], function() {
+                                    session.processMessage( { msgId: "RuRe" } );
                                 });
                             } else {
-                                session.dispatch( { msgId: "RuFi" } );
+                                session.processMessage( { msgId: "RuFi" } );
                             }
                         }
                     });
@@ -156,12 +169,12 @@ function TaskLogic() {
 
     this.finished_onEnter = function(session, state, transition, msg) {
 	(function(task) {
-	    wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
+	    task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
 		if (err) {
 		    throw err;
 		}
 		console.log("Enter state finished: "+task.id);
-		engine.taskFinished(task.wfId, task.id);
+		task.engine.taskFinished(task.id);
 	    });
 	})(this);
     };
