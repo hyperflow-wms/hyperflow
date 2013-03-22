@@ -1,0 +1,44 @@
+{
+    "name": "Wf_sqrsum",
+    "functions": [ {
+        "name": "add",
+        "module":"functions"
+    }, {
+        "name": "sqr",
+        "module":"functions"
+    } ],
+    "tasks": [ {
+        "name": "Sqr",
+	"type": "foreach",
+        "function": "sqr",
+        "ins": [ 0, 1, 2, 3 ],
+        "outs": [ 4, 5, 6, 7 ]
+    }, {
+        "name": "Add",
+	"type": "task",
+        "function": "add",
+        "ins": [ 4, 5, 6, 7 ],
+        "outs": [ 8 ]
+    } ],
+    "data": [ {
+        "name": "arg1"
+    }, {
+        "name": "arg2"
+    }, {
+        "name": "arg3"
+    }, {
+        "name": "arg4"
+    }, {
+        "name": "sqr1"
+    }, {
+        "name": "sqr2"
+    }, {
+        "name": "sqr3"
+    }, {
+        "name": "sqr4"
+    }, {
+        "name": "sum"
+    } ],
+    "ins": [ 0, 1, 2, 3 ],
+    "outs": [ 8 ]
+}

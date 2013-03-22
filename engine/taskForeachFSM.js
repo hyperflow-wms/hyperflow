@@ -77,11 +77,11 @@ function TaskLogic() {
     // - taskId: id of task whose input is fired
     // - inId: port id of the input being fired
     this.fireInput = function(obj) {
-        var msg = obj.message;
+        var msg = obj.message, task = obj.session.logic;
         obj.session.logic.insReady[msg.inId] = true;
-        if (obj.session.getCurrentState().name == "ready") {
-            console.log('Firing ReRe from state: '+obj.session.getCurrentState().name, msg);
-            msg.msgId = "ReRe";
+        if (obj.session.getCurrentState().name == "ready" && task.insReady[task.cnt]) {
+            //console.log('Firing ReRu from state: '+obj.session.getCurrentState().name, msg);
+            msg.msgId = "ReRu";
             obj.session.processMessage(msg);
         }
     };
@@ -112,7 +112,7 @@ function TaskLogic() {
     this.ready_onEnter = function(session, state, transition, msg) {
         console.log("Enter state ready");
 	if (this.insReady[this.cnt]) {
-	    session.processMessage( {msgId: "ReRu"} );
+	    session.dispatch( {msgId: "ReRu"} );
 	}
     };
 
@@ -124,21 +124,23 @@ function TaskLogic() {
 		    throw err;
 		}
 
-                if (!task.engine.emulate) {
+                // TODO: can checking of "emulate" be done inside "invokeTaskFunction"?
+                if (task.engine.emulate) {
                     setTimeout(function() { 
                         task.cnt++;
-                        if (task.cnt <= task.n) {
-                            task.engine.markDataReady(task.outs[task.cnt-2], function() {
-                                session.processMessage( { msgId: "RuRe" } );
-                            });
-                        } else {
-                            session.processMessage( { msgId: "RuFi" } );
-                        }
+                        //console.log("cnt="+(task.cnt-1), "n="+task.n);
+                        task.engine.markDataReady(task.outs[task.cnt-2], function() {
+                            if (task.cnt <= task.n) {
+                                session.dispatch( { msgId: "RuRe" } );
+                            } else {
+                                session.dispatch( { msgId: "RuFi" } );
+                            }
+                        });
                     }, 100);
                 } else {
                     var ins = task.ins[task.cnt-1], outs = task.outs[task.cnt-1]; 
-                    console.log(task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
-                    console.log("ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
+                    //console.log(task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
+                    //console.log("ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
                     task.wflib.invokeTaskFunction(task.wfId, task.id, ins, outs, function(err, rep) {
                         if (err) {
                             throw(err);
@@ -146,16 +148,17 @@ function TaskLogic() {
                             // function? E.g. Does it affect the state machine of the task?
                             // Should there be an error state and transitions from it, e.g. retry? 
                         } else {
-                            console.log("invoke reply="+JSON.stringify(rep)); // DEBUG
-                            task.outs[task.cnt-1] = rep[0];
+                            //console.log("invoke reply="+JSON.stringify(rep)); // DEBUG
                             task.cnt++;
-                            if (task.cnt <= task.n) {
-                                task.engine.markDataReady(task.outs[task.cnt-2], function() {
-                                    session.processMessage( { msgId: "RuRe" } );
-                                });
-                            } else {
-                                session.processMessage( { msgId: "RuFi" } );
-                            }
+                            //console.log("cnt="+(task.cnt-1), "n="+task.n);
+                            console.log("Marking ready: "+JSON.stringify(task.outs[task.cnt-2]));
+                            task.engine.markDataReady(task.outs[task.cnt-2], function() {
+                                if (task.cnt <= task.n) {
+                                    session.dispatch( { msgId: "RuRe" } );
+                                } else {
+                                    session.dispatch( { msgId: "RuFi" } );
+                                }
+                            });
                         }
                     });
                 }

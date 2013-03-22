@@ -177,7 +177,7 @@ app.post('/workflow/:w', function(req, res) {
            res.send(err.toString());
         } else {
             //deltaWf.create(req.params.w+'-'+id); // delta resource. FIXME! Is it enough for unique id?
-	    engine[id] = new Engine({"emulate": "true"}, wflib, id, function(err) {
+	    engine[id] = new Engine({"emulate": "false"}, wflib, id, function(err) {
                 res.redirect(req.url+"instances/"+id, 302); // redirect to the newly created wf instance
             });
         }

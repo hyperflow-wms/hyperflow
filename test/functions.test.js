@@ -1,17 +1,28 @@
 var redis = require('redis'),
     rcl = redis.createClient(),
     wflib = require('../wflib').init(rcl),
-    engine = require('../engine'),
+    Engine = require('../engine'),
+    engine,
     async = require('async');
+
+function register_funs(cb) {
+    var multi = rcl.multi();
+    rcl.hset("wf:functions:add", "module", "functions", function(err, rep) { });
+    rcl.hset("wf:functions:sqr", "module", "functions", function(err, rep) { });
+    multi.exec(function(err, reps) {
+        cb(err);
+    });
+}
 
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-            rcl.hset("wf:functions:add", "module", "functions", function(err, rep) {
-                wflib.createInstanceFromFile('Wf_func_test.json', '', function(err, id) {
+            register_funs(function(err) {
+                wflib.createInstanceFromFile('Wf_foreach2.json', '', 
+                function(err, id) {
                     cb(err, id);
                 });
-            })
+            });
 	});
     });
 }
@@ -25,16 +36,22 @@ function init(cb) {
     }
 }*/
 
-init(function(err, id) {
-    engine.runInstance(id, false, function(err) {
-	    var dataIds = [1,2,3,4];
-	    var spec = {'1': {'value':'1'},'2': {'value':'2'},'3': {'value':'3'},'4': {'value':'4'}};
-	    wflib.setDataState(id, spec, function(err, rep) {
-                    //console.log(spec);
-                    engine.markDataReady(id, dataIds, function(err) {
-                    });
+init(function(err, wfId) {
+    engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
+        engine.runInstance(function(err) {
+            var dataIds = [1,2,3,4];
+            var spec = {'1': {'value':'1'},
+                        '2': {'value':'2'}, 
+                        '3': {'value':'3'}, 
+                        '4': {'value':'4'} 
+                        };
+            wflib.setDataState(wfId, spec, function(err, rep) {
+                //console.log(spec);
+                engine.markDataReady(dataIds, function(err) {
                 });
-    });
+            });
+         });
+     });
     /*wflib.getTaskInfoFull(1, 1, function(err, task, ins, outs) {
 	    console.log(task, ins, outs);
     });*/

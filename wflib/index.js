@@ -451,7 +451,7 @@ exports.init = function(redisClient) {
                 ["foreach", "service"].forEach(function(type) {
                     multi.smembers(wfKey+":tasktype:"+type, function(err, rep) {
                         if (rep) {
-                            console.log(type, rep); // DEBUG
+                            //console.log(type, rep); // DEBUG
                             types[type] = rep;
                         }
                     });
@@ -612,7 +612,7 @@ exports.init = function(redisClient) {
         var insIds = [], outsIds = [];
         isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
         isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
-        console.log("Invoking:", insIds, outsIds); // DEBUG
+        //console.log("Invoking:", insIds, outsIds); // DEBUG
 
         public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, taskIns, taskOuts) {
             if (err) {
@@ -646,6 +646,7 @@ exports.init = function(redisClient) {
                         });
                         //console.log(spec);
                         if (Object.keys(spec).length) { // not empty
+                            console.log(spec); // DEBUG
                             public_setDataState(wfId, spec, function(err, reps) {
                                 cb(null, outs);
                             });

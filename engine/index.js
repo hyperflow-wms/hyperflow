@@ -51,7 +51,7 @@ var Engine = function(config, wflib, wfId, cb) {
 
             // create tasks of types other than default "task"
             for (var type in types) {
-                console.log("type: "+type+", "+types[type]);
+                //console.log("type: "+type+", "+types[type]); // DEBUG
                 types[type].forEach(function(taskId) {
                     engine.tasks[taskId] = fsm.createSession(type);
                     engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
@@ -129,6 +129,17 @@ Engine.prototype.taskFinished = function(taskId) {
         this.trace += ',';
     }
 }
+
+/*
+// change API to this instead of "markDataReady" ?
+// this function would set state and value of data elements
+Engine.prototype.outputsReady = function(outs) {
+    var spec = {};
+    for (var i in outs) {
+
+    }
+}
+*/
 
 module.exports = Engine;
 
