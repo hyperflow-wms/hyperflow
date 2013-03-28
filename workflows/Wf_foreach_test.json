@@ -1,0 +1,32 @@
+{
+    "name": "Wf_foreach_test",
+    "functions": [ {
+        "name": "add"
+    } ],
+    "tasks": [ {
+        "name": "Add",
+	"type": "foreach",
+        "function": "add",
+        "ins": [ 0, 1, 2, 3 ],
+        "outs": [ 4, 5, 6, 7 ]
+    } ],
+    "data": [ {
+        "name": "arg1"
+    }, {
+        "name": "arg2"
+    }, {
+        "name": "arg3"
+    }, {
+        "name": "arg4"
+    }, {
+        "name": "sum1"
+    }, {
+        "name": "sum2"
+    }, {
+        "name": "sum3"
+    }, {
+        "name": "sum4"
+    } ],
+    "ins": [ 0, 1, 2, 3 ],
+    "outs": [ 4, 5, 6, 7 ]
+}

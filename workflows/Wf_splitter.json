@@ -1,0 +1,35 @@
+{
+    "name": "Wf_file_splitter",
+    "functions": [ {
+        "name": "splitFile",
+        "module": "functions"
+    }, {
+        "name": "wordCount",
+        "module": "functions"
+    } ],
+    "tasks": [ {
+        "name": "FileSplitter",
+	"type": "splitter",
+        "function": "splitFile",
+        "ins": [ 0, 1 ],
+        "outs": [ 2, 3, 4 ]
+    } ],
+    "signals": [ {
+        "name": "filename"
+    }, {
+        "name": "next"
+        "control": "true"
+    }, {
+        "name": "file line"
+    }, {
+        "name": "next"
+        "control": "true"
+    }, {
+        "name": "done"
+        "control": "true"
+    } ],
+    "ins": [ 0 ],
+    "outs": [ 1, 4 ]
+}
+
+
