@@ -6,7 +6,7 @@ var redis = require('redis'),
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('Montage_10k.json', '', function(err, id) {
+	    wflib.createInstanceFromFile('../workflows/Montage_10k.json', '', function(err, id) {
 		cb(err, id);
 	    });
 	});
@@ -16,8 +16,8 @@ function init(cb) {
 function init2(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('Wf_func_test.json', '', function(err, id1) {
-		    wflib.createInstanceFromFile('Montage_143.json', '', function(err, id2) {
+	    wflib.createInstanceFromFile('../workflows/Montage_10k.json', '', function(err, id1) {
+		    wflib.createInstanceFromFile('../workflows/Montage_143.json', '', function(err, id2) {
 		cb(err, id1, id2);
 		});
 	    });

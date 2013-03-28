@@ -8,7 +8,7 @@ function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
             rcl.hset("wf:functions:add", "module", "functions", function(err, rep) {
-                wflib.createInstanceFromFile('Wf_foreach_test.json', '', function(err, id) {
+                wflib.createInstanceFromFile('../workflows/Wf_foreach_test.json', '', function(err, id) {
                     cb(err, id);
                 });
 	    });
@@ -19,8 +19,8 @@ function init(cb) {
 function init2(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('Wf_func_test.json', '', function(err, id1) {
-		    wflib.createInstanceFromFile('Montage_143.json', '', function(err, id2) {
+	    wflib.createInstanceFromFile('../workflows/Wf_func_test.json', '', function(err, id1) {
+		    wflib.createInstanceFromFile('../workflows/Montage_143.json', '', function(err, id2) {
 		cb(err, id1, id2);
 		});
 	    });

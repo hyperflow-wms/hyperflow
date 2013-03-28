@@ -18,7 +18,7 @@ function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
             register_funs(function(err) {
-                wflib.createInstanceFromFile('Wf_foreach2.json', '', 
+                wflib.createInstanceFromFile('../workflows/Wf_sqrsum.json', '', 
                 function(err, id) {
                     cb(err, id);
                 });
@@ -37,6 +37,7 @@ function init(cb) {
 }*/
 
 init(function(err, wfId) {
+    if (err) { throw err; }
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
         engine.runInstance(function(err) {
             var dataIds = [1,2,3,4];

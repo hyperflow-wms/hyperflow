@@ -99,28 +99,23 @@ function TaskLogic() {
         console.log("Enter state running: "+this.id);
 	(function(task) {
 	    task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
-		if (err) {
-		    throw err;
-		}
-
-                if (task.engine.emulate) {
-                    setTimeout(function() { 
-                        session.dispatch( {msgId: "RuFi"} );
-                    }, 100);
-                } else {
-                    task.wflib.invokeTaskFunction(task.wfId, task.id, task.ins, task.outs, function(err, rep) {
-                        if (err) {
-                            throw(err);
-                            // TODO: how does the engine handle error in invocation of task's
-                            // function? E.g. Does it affect the state machine of the task?
-                            // Should there be an error state and transitions from it, e.g. retry? 
-                        } else {
+                if (err) { throw err; }
+                var emul = task.engine.emulate;
+                task.wflib.invokeTaskFunction(task.wfId, task.id, task.ins, task.outs, emul, function(err, outs) {
+                    if (err) {
+                        throw(err);
+                        // TODO: how does the engine handle error in invocation of task's
+                        // function? E.g. Does it affect the state machine of the task?
+                        // Should there be an error state and transitions from it, e.g. retry? 
+                    } else {
+                        // mark outputs ready and notify sinks
+                        task.engine.fireSignals(outs, function(err) {
                             session.dispatch( {msgId: "RuFi"} );
-                        }
-                    });
-                }
-	    });
-	})(this);
+                        });
+                    }
+                });
+            });
+        })(this);
     };
 
     this.running_onExit = function(session, state, transition, msg) {
@@ -154,12 +149,12 @@ function TaskLogic() {
     };
 
     this.trRuFi = function(session, state, transition, msg) {
-        var dataIds = [];
+        /*var dataIds = [];
 	for (var i=0; i<this.outs.length; ++i) {
             dataIds.push(this.outs[i]);
 	    //markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks, function() { });
 	}
-        this.engine.markDataReady(dataIds, function() {});
+        this.engine.markDataReady(dataIds, function() {});*/
     };
 
     return this;

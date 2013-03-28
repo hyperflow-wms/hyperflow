@@ -50,11 +50,15 @@ function createWorkflow(dax, cb) {
         ++nextTaskId;
         wfOut.tasks.push({ 
             "name": job['@'].name, 
+            "function": job['@'].name, 
             "execName": job['@'].name, 
             "execArgs": job.argument,
             "ins": [],
             "outs": []
         });
+
+        //var 
+        //if (config
 
         var dataId;
         job.uses.forEach(function(job_data) {
@@ -88,6 +92,12 @@ function createWorkflow(dax, cb) {
             wfOut.outs.push(i);
         }
     }
+
+    for (var i=0; i<wfOut.data.length; ++i) {
+        delete wfOut.data[i].sources;
+        delete wfOut.data[i].sinks;
+    }
+
     cb(null, wfOut);
 }
                 

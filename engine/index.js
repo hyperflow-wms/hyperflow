@@ -15,7 +15,8 @@
 
 var fs = require('fs'),
     xml2js = require('xml2js'),
-    fsm = require('automata');
+    fsm = require('automata'),
+    async = require('async');
 
 var TaskFSM        = require('./taskFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
@@ -130,23 +131,75 @@ Engine.prototype.taskFinished = function(taskId) {
     }
 }
 
-/*
-// change API to this instead of "markDataReady" ?
-// this function would set state and value of data elements
-Engine.prototype.outputsReady = function(outs) {
-    var spec = {};
-    for (var i in outs) {
 
+// Fires a set of signals notifying all tasks which are their sinks.
+// For data signals also updates their state (e.g. marks data elements as ready)
+// @sigs (array): ids of signals (data and control ones) to be fired
+//                format: [ { attr: value, 
+//                            ... 
+//                            "id":{sigId}
+//                           },
+//                           { attr: value,
+//                                ...
+//                            "id":{sigId}
+//                           }
+//                        ]
+Engine.prototype.fireSignals = function(sigs, cb) {
+    var spec = {}, ids = [];
+    for (var i in sigs) { 
+        var sigId = sigs[i].id;
+        ids.push(sigId);
+        if (sigs[i].type  == "control") { // this is a control signal
+            spec[sigId] = {}; // TODO: should we also mark this signal as ready?
+        } else { // this is a data signal
+            spec[sigId] = { "status":"ready" } // mark data element as "ready" (produced)
+            if ("value" in sigs[i]) { // save data value if present in the signal info
+                spec[sigId].value = sigs[i].value;
+            }
+        }
     }
+
+    // notify sinks of all fired signals
+    (function(engine) {
+        //console.log(spec);
+        engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
+            async.each(ids, function iterator(sigId, doneIter) {
+                notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
+                    doneIter(null);
+                });
+            }, function doneAll(err) {
+                if (cb) { cb(err); }
+            });
+        });
+    })(this);
 }
-*/
+
 
 module.exports = Engine;
 
     //////////////////////////////////////////////////////////////////////////
     ///////////////////////// private functions //////////////////////////////
     //////////////////////////////////////////////////////////////////////////
+    
+function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
+    wflib.getDataSinks(wfId, sigId, function(err, sinks) {
+        //console.log(sigId, sinks);
+        if (err) { throw(err); }
+        for (var j=0; j<sinks.length; j+=2) {
+            // send event that an input is ready
+            taskFSMs[sinks[j]].fireCustomEvent({
+                wfId: wfId, 
+                taskId: sinks[j], 
+                inId: sinks[j+1] 
+            });
+            console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
+        }
+        cb(null);
+    });
+}
 
+
+// TODO: only used by the engine when emulating the execution to fire wf ins
 function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
     var obj = {};
     obj[dataId] = {"status": "ready" };

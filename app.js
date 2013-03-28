@@ -134,7 +134,7 @@ app.get('/workflow', function(req, res) {
             res.statusCode = 404;
             res.send(err.toString());
        } else {
-           wflib.createInstanceFromFile('Montage_143.json', '', function(err, id) {
+           wflib.createInstanceFromFile('workflows/Montage_143.json', '', function(err, id) {
                if (err) {
                    res.statusCode = 404;
                    res.send(err.toString());
@@ -171,7 +171,7 @@ app.get('/workflow/:w', function(req, res) {
  * Create a new instance of a workflow
  */
 app.post('/workflow/:w', function(req, res) {
-    wflib.createInstanceFromFile(req.params.w+'.json', baseUrl, function(err, id) {
+    wflib.createInstanceFromFile('workflows/'+req.params.w+'.json', baseUrl, function(err, id) {
         if (err) {
            res.statusCode = 404;
            res.send(err.toString());

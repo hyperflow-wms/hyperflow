@@ -249,6 +249,7 @@ exports.init = function(redisClient) {
 			    } else {
 				data_ins[ins[i]] = reply;
                                 data_ins[ins[i]].id = ins[i]; // TODO: redundant (key is the id)
+                                                              // but WARNING: invoke currently may rely on it
 			    }
 			});
 		    })(i);
@@ -381,19 +382,24 @@ exports.init = function(redisClient) {
     //   { dataId: { attr: val, attr: val}, dataId: { ... } ... }
     //   e.g. { "1": { "status": "ready", "value": "33" } ... }
     function public_setDataState(wfId, spec, cb) {
-        var multi = rcl.multi();
+        var multi = rcl.multi(),
+            notEmpty = false;
         for (var i in spec) {
             //console.log(i, spec[i]);
             var obj = spec[i];
-            (function(dataId, obj) {
-                //console.log(dataId, obj);
-                multi.hmset("wf:"+wfId+":data:"+dataId, obj, function(err, rep) {
-                });
-            })(i, obj);
+            if (Object.keys(spec).length) { // spec not empty
+                (function(dataId, obj) {
+                    //console.log(dataId, obj);
+                    multi.hmset("wf:"+wfId+":data:"+dataId, obj, function(err, rep) { });
+                    notEmpty = true;
+                })(i, obj);
+            }
         }
-        multi.exec(function(err, reps) {
-            err ? cb(err): cb(null, reps);
-	});
+        if (notEmpty) {
+            multi.exec(function(err, reps) {
+                err ? cb(err): cb(null, reps);
+            });
+        }
     }
 
     // Returns a 'map' of a workflow. Should be passed a callback:
@@ -439,7 +445,6 @@ exports.init = function(redisClient) {
 			});
 			/*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
 			    if (err) {
-				console.log("aaa   "+err);
 			    }
 			    sinks[i] = ret;
 			    //sinks[i].unshift(null);
@@ -448,7 +453,7 @@ exports.init = function(redisClient) {
 		}
                 // Create info about task types (all remaining tasks have the default type "task")
                 // TODO: pull the list of types dynamically from redis
-                ["foreach", "service"].forEach(function(type) {
+                ["foreach", "service", "splitter"].forEach(function(type) {
                     multi.smembers(wfKey+":tasktype:"+type, function(err, rep) {
                         if (rep) {
                             //console.log(type, rep); // DEBUG
@@ -482,11 +487,9 @@ exports.init = function(redisClient) {
 	var multi = rcl.multi();
 	var taskKey = "wf:"+wfId+":task:"+taskId;
 	multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
-	    //console.log(ret);
 	    ins = ret;
 	});
 	multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
-	    //console.log(ret);
 	    outs = ret;
 	});
 	multi.exec(function(err, reps) {
@@ -495,7 +498,6 @@ exports.init = function(redisClient) {
 	    } else {
 		for (var i in ins) {
 		    (function(i) {
-			//console.log(ins[i]);
 			var dataKey = "wf:"+wfId+":data:"+ins[i];
 			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
 			    sources[ins[i]] = ret;
@@ -539,7 +541,6 @@ exports.init = function(redisClient) {
 			dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "1000", 
 			function(err, ret) { 
 			replies[j] = ret;
-			//console.log(replies[j].length);
 		    });
 		})(i,j);
 	    }
@@ -550,7 +551,6 @@ exports.init = function(redisClient) {
 		    for (var i=0; i<replies.length; ++i) {
 			reply = reply.concat(replies[i]);
 		    }
-		    //console.log(reply);
 		    cb(null, reply);
 		}
 	    });
@@ -575,7 +575,6 @@ exports.init = function(redisClient) {
 			dataKey+":sinks", -1, -1, "withscores", "limit", i, "1000", 
 			function(err, ret) { 
 			    replies[j] = ret;
-			    //console.log(replies[j].length);
 			});
 		})(i,j);
 	    }
@@ -605,18 +604,25 @@ exports.init = function(redisClient) {
 
     // invokes function assinged to task passing input and output objects whose
     // ids are in arrays 'insIds' and 'outsIds'. 
-    function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, cb) {
+    function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, emulate, cb) {
         function isArray(what) {
             return Object.prototype.toString.call(what) === '[object Array]';
         }
         var insIds = [], outsIds = [];
         isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
         isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
-        //console.log("Invoking:", insIds, outsIds); // DEBUG
 
         public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, taskIns, taskOuts) {
             if (err) {
                 cb(err);
+            } else if (emulate) {
+                var outs = [];
+                for (var i in outsIds) {
+                    outs.push(taskOuts[outsIds[i]]);
+                }                   
+                setTimeout(function() {
+                    cb(null, outs);
+                }, 100);
             } else {
                 if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
                     cb(null, null);
@@ -636,9 +642,13 @@ exports.init = function(redisClient) {
                     for (var i in outsIds) {
                         outs.push(taskOuts[outsIds[i]]);
                     }                   
-                    f(ins, outs, function(err, outs) {
+		    var conf     = taskInfo.config ? taskInfo.config: null, 
+			executor = taskInfo.executor ? taskInfo.executor: null;
+
+                    f(ins, outs, executor, conf, function(err, outs) {
+                        cb(null, outs);
                         // write values if any
-                        var spec = {};
+                        /*var spec = {};
                         outs.forEach(function(out) {
                             if ("value" in out) {
                                 spec[out.id] = { "value": out.value };
@@ -650,7 +660,7 @@ exports.init = function(redisClient) {
                             public_setDataState(wfId, spec, function(err, reps) {
                                 cb(null, outs);
                             });
-                        }
+                        }*/
                     });
                 });
             }
@@ -715,11 +725,19 @@ exports.init = function(redisClient) {
             (function(i) {
                 var dataId = i+1;
                 dataKey = wfKey+":data:"+dataId;
-                multi.hmset(dataKey, 
+                if (wfJson.data[i].control) { // this is a control signal
+                    multi.hmset(dataKey, 
+                        "uri", baseUri + '/control-' + dataId, 
+                        "name", wfJson.data[i].name, 
+                        "type", "control", 
+                        function(err, ret) { });
+                } else {                     // this is a data signal
+                    multi.hmset(dataKey, 
                         "uri", baseUri + '/data-' + dataId, 
                         "name", wfJson.data[i].name, 
                         "status", "not_ready", 
                         function(err, ret) { });
+                }
 
                 // add this data id to the sorted set of all workflow data
                 // score: 0 (data not ready) or 1 (data ready)

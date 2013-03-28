@@ -63,7 +63,7 @@ function TaskLogic() {
     this.wfId = -1; // workflow instance id
     this.id = -1; // id of this task
     this.n = -1;  // number of inputs
-    this.cnt = 1; // id of input the task is currently waiting for
+    this.cnt = 1; // number (port id) of input the task is currently waiting for
     this.ins = []; // ids of inputs
     this.insReady = []; // insReady[i] == true means that i-th input is ready
     this.outs = []; // ids of outputs
@@ -120,49 +120,34 @@ function TaskLogic() {
         console.log("Enter state running: "+this.id+session.getCurrentState().name);
 	(function(task) {
 	    task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
-		if (err) {
-		    throw err;
-		}
+		if (err) { throw err; }
 
-                // TODO: can checking of "emulate" be done inside "invokeTaskFunction"?
-                if (task.engine.emulate) {
-                    setTimeout(function() { 
+                var ins = task.ins[task.cnt-1], outs = task.outs[task.cnt-1]; 
+                //console.log(task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
+                //console.log("ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
+                var emul = task.engine.emulate;
+                task.wflib.invokeTaskFunction(task.wfId, task.id, ins, outs, emul, function(err, fOuts) {
+                    if (err) {
+                        throw(err);
+                        // TODO: how does the engine handle error in invocation of task's
+                        // function? E.g. Does it affect the state machine of the task?
+                        // Should there be an error state and transitions from it, e.g. retry? 
+                    } else {
+                        //console.log("invoke reply="+JSON.stringify(rep)); // DEBUG
                         task.cnt++;
-                        //console.log("cnt="+(task.cnt-1), "n="+task.n);
-                        task.engine.markDataReady(task.outs[task.cnt-2], function() {
+                        //console.log("Marking ready: "+JSON.stringify(task.outs[task.cnt-2]));
+                        console.log("Marking ready: "+JSON.stringify(fOuts));
+                        //task.engine.markDataReady(task.outs[task.cnt-2], function() {
+                        task.engine.fireSignals(fOuts, function() {
                             if (task.cnt <= task.n) {
                                 session.dispatch( { msgId: "RuRe" } );
                             } else {
                                 session.dispatch( { msgId: "RuFi" } );
                             }
                         });
-                    }, 100);
-                } else {
-                    var ins = task.ins[task.cnt-1], outs = task.outs[task.cnt-1]; 
-                    //console.log(task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
-                    //console.log("ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
-                    task.wflib.invokeTaskFunction(task.wfId, task.id, ins, outs, function(err, rep) {
-                        if (err) {
-                            throw(err);
-                            // TODO: how does the engine handle error in invocation of task's
-                            // function? E.g. Does it affect the state machine of the task?
-                            // Should there be an error state and transitions from it, e.g. retry? 
-                        } else {
-                            //console.log("invoke reply="+JSON.stringify(rep)); // DEBUG
-                            task.cnt++;
-                            //console.log("cnt="+(task.cnt-1), "n="+task.n);
-                            console.log("Marking ready: "+JSON.stringify(task.outs[task.cnt-2]));
-                            task.engine.markDataReady(task.outs[task.cnt-2], function() {
-                                if (task.cnt <= task.n) {
-                                    session.dispatch( { msgId: "RuRe" } );
-                                } else {
-                                    session.dispatch( { msgId: "RuFi" } );
-                                }
-                            });
-                        }
-                    });
-                }
-	    });
+                    }
+                });
+            });
 	})(this);
     };
 
