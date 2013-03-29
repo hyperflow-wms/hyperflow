@@ -20,14 +20,16 @@ var fs = require('fs'),
 
 var TaskFSM        = require('./taskFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
+var TaskSplitterFSM = require('./taskSplitterFSM.js');
 
 // TODO: automatically import and register all task FSMs in the current directory
 fsm.registerFSM(TaskFSM); 
 fsm.registerFSM(TaskForeachFSM);
+fsm.registerFSM(TaskSplitterFSM);
 
 // Engine constructor
 // @config: JSON object which contains Engine configuration:
-// - config.emulate (tru/false) = should engine work in the emulated mode?
+// - config.emulate (true/false) = should engine work in the emulation mode?
 var Engine = function(config, wflib, wfId, cb) {
     this.wflib = wflib;
     this.wfId = wfId;
@@ -43,14 +45,16 @@ var Engine = function(config, wflib, wfId, cb) {
     this.emulate = config.emulate == "true" ? true: false;       
 
     (function(engine) {
-        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types) {
+        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo) {
+            //console.log("cPortsInfo:"); console.log(cPortsInfo); // DEBUG
             engine.nTasksLeft = nTasks;
             engine.ins = ins;
             engine.outs = outs;
             engine.sources = sources;
             engine.sinks = sinks;
+            engine.cPorts = cPortsInfo;
 
-            // create tasks of types other than default "task"
+            // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
             for (var type in types) {
                 //console.log("type: "+type+", "+types[type]); // DEBUG
                 types[type].forEach(function(taskId) {
@@ -59,11 +63,10 @@ var Engine = function(config, wflib, wfId, cb) {
                 });
             }
             // create all other tasks (assuming the default type "task")
-            for (var i=1; i<=nTasks; ++i) {
-                // TODO: read taks type from WfMap (getWfMap needs changing)
-                if (!engine.tasks[i]) {
-                    engine.tasks[i] = fsm.createSession("task");
-                    engine.tasks[i].logic.init(engine, wfId, i, engine.tasks[i]);
+            for (var taskId=1; taskId<=nTasks; ++taskId) {
+                if (!engine.tasks[taskId]) {
+                    engine.tasks[taskId] = fsm.createSession("task");
+                    engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
                 }
             }
             cb(null);
@@ -102,6 +105,8 @@ Engine.prototype.markTaskInputReady = function (taskId, dataId, cb) {
 // Marks data elements as 'ready' and notify their sinks
 // dataIds - single data Id or an array of dataIds
 // FIXME: check what happens if data is marked more than once
+// quasi-deprecated (should refactor remaining places which still us this old API)
+// now fireSignals should be used
 Engine.prototype.markDataReady = function(dataIds, cb) {
     function isArray(what) {
         return Object.prototype.toString.call(what) === '[object Array]';
@@ -137,13 +142,15 @@ Engine.prototype.taskFinished = function(taskId) {
 // @sigs (array): ids of signals (data and control ones) to be fired
 //                format: [ { attr: value, 
 //                            ... 
-//                            "id":{sigId}
+//                            "id": sigId
 //                           },
 //                           { attr: value,
 //                                ...
-//                            "id":{sigId}
+//                            "id": sigId
 //                           }
 //                        ]
+// FIXME: protect against firing signals more than once (currently some task 
+// implementations will break in such a case). 
 Engine.prototype.fireSignals = function(sigs, cb) {
     var spec = {}, ids = [];
     for (var i in sigs) { 
@@ -163,6 +170,7 @@ Engine.prototype.fireSignals = function(sigs, cb) {
     (function(engine) {
         //console.log(spec);
         engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
+            //console.log("Will notify: "+JSON.stringify(sigs));
             async.each(ids, function iterator(sigId, doneIter) {
                 notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
                     doneIter(null);
@@ -199,7 +207,8 @@ function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
 }
 
 
-// TODO: only used by the engine when emulating the execution to fire wf ins
+// quasi-deprecated (only used by the engine when emulating the execution to fire wf ins)
+// TODO: refactor engine to use fireSignals instead
 function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
     var obj = {};
     obj[dataId] = {"status": "ready" };

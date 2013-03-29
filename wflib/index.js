@@ -403,7 +403,7 @@ exports.init = function(redisClient) {
     }
 
     // Returns a 'map' of a workflow. Should be passed a callback:
-    // function(nTasks, nData, err, ins, outs, sources, sinks), where:
+    // function(nTasks, nData, err, ins, outs, sources, sinks, types, cPortsInfo), where:
     // - nTasks        = number of tasks (also length of ins and outs arrays)
     // - nData         = number of data elements (also length of sources and sinks arrays)
     // - ins[i][j]     = data id mapped to j-th output port of i-th task
@@ -414,40 +414,57 @@ exports.init = function(redisClient) {
     // - sinks[i][j+1] = port id in this task the data element is mapped to
     // - types         = ids of tasks with type other than default "task"; format:
     //                   { "foreach": [1,2,5], "service": [3,4] }
+    // - cPortsInfo    = information about all control ports of all tasks; format:
+    //                   { taskId: { "ins": { portName: dataId } ... }, "outs": { ... } } }
+    //                   e.g.: { '1': { ins: { next: '2' }, outs: { next: '2', done: '4' } } } 
     function public_getWfMap(wfId, cb) {
         var wfKey = "wf:"+wfId;
 	rcl.zcard(wfKey+":tasks", function(err, ret) {
 	    var nTasks = ret; 
 	    rcl.zcard(wfKey+":data", function(err, ret) {
 		var nData = ret;
-		var types = {}, ins = [], outs = [], sources = [], sinks = [], taskKey;
+		var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, taskKey;
 		var multi = rcl.multi();
 		for (var i=1; i<=nTasks; ++i) {
-		    (function(i) {
-			taskKey = wfKey+":task:"+i;
+		    (function(taskId) {
+			taskKey = wfKey+":task:"+taskId;
 			multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
-			    ins[i] = ret;
-			    //ins[i].unshift(null); // inputs will be indexed from 1 instead of 0
+			    ins[taskId] = ret;
+			    //ins[taskId].unshift(null); // inputs will be indexed from 1 instead of 0
 			});
 			multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
-			    outs[i] = ret;
-			    //outs[i].unshift(null);
+			    outs[taskId] = ret;
+			    //outs[taskId].unshift(null);
 			});
+                        multi.hgetall(taskKey+":cins", function(err, ret) {
+                            if (ret != null) {
+                                cPortsInfo[taskId] = {};
+                                cPortsInfo[taskId].ins = ret;
+                            }
+                        });
+                        multi.hgetall(taskKey+":couts", function(err, ret) {
+                            if (ret != null) {
+                                if (!(taskId in cPortsInfo)) {
+                                    cPortsInfo[taskId] = {};
+                                }
+                                cPortsInfo[taskId].outs = ret;
+                            }
+                        });
 		    })(i);
 		}
 		for (i=1; i<=nData; ++i) {
-		    (function(i) {
-			dataKey = wfKey+":data:"+i;
+		    (function(dataId) {
+			dataKey = wfKey+":data:"+dataId;
 			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
-			    sources[i] = ret;
-			    //console.log(i+";"+ret);
-			    //sources[i].unshift(null);
+			    sources[dataId] = ret;
+			    //console.log(dataId+";"+ret);
+			    //sources[dataId].unshift(null);
 			});
 			/*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
 			    if (err) {
 			    }
-			    sinks[i] = ret;
-			    //sinks[i].unshift(null);
+			    sinks[dataId] = ret;
+			    //sinks[dataId].unshift(null);
 			});*/
 		    })(i);
 		}
@@ -465,7 +482,7 @@ exports.init = function(redisClient) {
 		    if (err) {
 			cb(err);
 		    } else {
-			cb(null, nTasks, nData, ins, outs, sources, sinks, types);
+			cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo);
 		    }
 		});
 	    });
@@ -646,6 +663,7 @@ exports.init = function(redisClient) {
 			executor = taskInfo.executor ? taskInfo.executor: null;
 
                     f(ins, outs, executor, conf, function(err, outs) {
+                        if (outs) { console.log(outs[0].value); } // DEBUG 
                         cb(null, outs);
                         // write values if any
                         /*var spec = {};
@@ -709,21 +727,21 @@ exports.init = function(redisClient) {
         var taskKey;
         for (var i=0; i<wfJson.tasks.length; ++i) {
             var taskId = i+1, uri;
-	    if  (wfJson.tasks[i].host) {
+	    if  (wfJson.tasks[i].host) { // TODO: preparation to handle remote sinks
 		    uri = wfJson.tasks[i].host + '/workflow/' + wfname + '/instances/' + instanceId;
 	    } else {
 		    uri = baseUri;
 	    } 
             taskKey = wfKey+":task:"+taskId;
-            processTask(wfJson.tasks[i], wfname, uri, wfKey, taskKey, taskId, function() { });
+            processTask(wfJson.tasks[i], wfname, uri, wfKey, taskKey, taskId, wfJson, function() { });
         }
 
-        // add workflow data
+        // add workflow data and control "signals"
         var multi = rcl.multi();
         var dataKey;
         for (var i=0; i<wfJson.data.length; ++i) {
             (function(i) {
-                var dataId = i+1;
+                var dataId = i+1, score = -1;
                 dataKey = wfKey+":data:"+dataId;
                 if (wfJson.data[i].control) { // this is a control signal
                     multi.hmset(dataKey, 
@@ -731,17 +749,20 @@ exports.init = function(redisClient) {
                         "name", wfJson.data[i].name, 
                         "type", "control", 
                         function(err, ret) { });
+                    score = 2;
                 } else {                     // this is a data signal
                     multi.hmset(dataKey, 
                         "uri", baseUri + '/data-' + dataId, 
                         "name", wfJson.data[i].name, 
                         "status", "not_ready", 
                         function(err, ret) { });
+                    score = 0;
                 }
 
-                // add this data id to the sorted set of all workflow data
-                // score: 0 (data not ready) or 1 (data ready)
-                multi.zadd(wfKey+":data", 0 /* score */, dataId, function(err, ret) { });
+                // add this data id to the sorted set of all workflow signals
+                // score determines the type/status of the signal:
+                // 0: data signal/not ready, 1: data signal/ready, 2: control signal
+                multi.zadd(wfKey+":data", score, dataId, function(err, ret) { });
             })(i);
         }
 
@@ -762,7 +783,7 @@ exports.init = function(redisClient) {
         });
     }
 
-    function processTask(task, wfname, baseUri, wfKey, taskKey, taskId, cb) {
+    function processTask(task, wfname, baseUri, wfKey, taskKey, taskId, wfJson, cb) {
         // TODO: here there could be a validation of the task, e.g. Foreach task 
         // should have the same number of ins and outs, etc.
         var multi=rcl.multi();
@@ -796,6 +817,11 @@ exports.init = function(redisClient) {
                 var dataKey = wfKey+":data:"+dataId;
                 multi.zadd(taskKey+":ins", inId, dataId, function(err, rep) { });
                 multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
+                if (wfJson.data[dataId-1].control) { // add all control inputs to a separate hash
+                    // FIXME: this way of storing implies that input control port names must be unique
+                    // (but it's arguably a good thing that will not have to be changed in the future)
+                    multi.hmset(taskKey+":cins", wfJson.data[dataId-1].name, dataId);
+                }
             })(i+1, task.ins[i]+1);
         }
         for (var i=0; i<task.outs.length; ++i) {
@@ -803,6 +829,11 @@ exports.init = function(redisClient) {
                 var dataKey = wfKey+":data:"+dataId;
                 multi.zadd(taskKey+":outs", outId, dataId, function(err, rep) { });
                 multi.zadd(dataKey+":sources", outId /* score: port Id */, taskId, function(err, ret) { });
+                if (wfJson.data[dataId-1].control) { // add all control outputs to a separate hash
+                    // FIXME: this way of storing implies that output control port names must be unique
+                    // (but it's arguably a good thing that will not have to be changed in the future)
+                    multi.hmset(taskKey+":couts", wfJson.data[dataId-1].name, dataId);
+                }
             })(i+1, task.outs[i]+1);
         }
         multi.exec(function(err, replies) {

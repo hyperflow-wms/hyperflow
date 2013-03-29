@@ -1,3 +1,5 @@
+var fsp = require('./fileSplitter.js');
+
 function add(ins, outs, executor, config, cb) {
     var sum=0.0;
     for (var i=0; i<ins.length; ++i) {
@@ -28,3 +30,4 @@ function montage_mProjectPP(ins, outs, executor, config, cb) {
 
 exports.add = add;
 exports.sqr = sqr;
+exports.fileSplitter = fsp.fileSplitter;

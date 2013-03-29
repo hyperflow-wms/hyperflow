@@ -10,26 +10,23 @@
     "tasks": [ {
         "name": "FileSplitter",
 	"type": "splitter",
-        "function": "splitFile",
+        "function": "fileSplitter",
         "ins": [ 0, 1 ],
-        "outs": [ 2, 3, 4 ]
+        "outs": [ 2, 1, 3 ]
     } ],
-    "signals": [ {
+    "data": [ {
         "name": "filename"
     }, {
-        "name": "next"
+        "name": "next",
         "control": "true"
     }, {
         "name": "file line"
     }, {
-        "name": "next"
-        "control": "true"
-    }, {
-        "name": "done"
+        "name": "done",
         "control": "true"
     } ],
     "ins": [ 0 ],
-    "outs": [ 1, 4 ]
+    "outs": [ 3 ]
 }
 
 
