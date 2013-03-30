@@ -9,6 +9,7 @@ var redis = require('redis'),
 function register_funs(cb) {
     var multi = rcl.multi();
     rcl.hset("wf:functions:fileSplitter", "module", "functions", function(err, rep) { });
+    rcl.hset("wf:functions:length", "module", "functions", function(err, rep) { });
     multi.exec(function(err, reps) {
         cb(err);
     });
@@ -41,7 +42,7 @@ init(function(err, wfId) {
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
         engine.runInstance(function(err) {
             var dataIds = [1];
-            var spec = {'1': {'value':'test.txt'},
+            var spec = {'1': {'value':'przepisy.txt'},
                        };
             wflib.setDataState(wfId, spec, function(err, rep) {
                 //console.log(spec);

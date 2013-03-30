@@ -21,11 +21,13 @@ var fs = require('fs'),
 var TaskFSM        = require('./taskFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
 var TaskSplitterFSM = require('./taskSplitterFSM.js');
+var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
 
 // TODO: automatically import and register all task FSMs in the current directory
 fsm.registerFSM(TaskFSM); 
 fsm.registerFSM(TaskForeachFSM);
 fsm.registerFSM(TaskSplitterFSM);
+fsm.registerFSM(TaskStickyServiceFSM);
 
 // Engine constructor
 // @config: JSON object which contains Engine configuration:

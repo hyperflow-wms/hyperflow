@@ -81,29 +81,31 @@ var TaskSplitterFSM = {
 // - taskId: id of task whose input is fired
 // - inId: port id of the input being fired
 function fireInput(obj) {
-    var msg = obj.message;
-    if (msg.inId == obj.session.logic.ins[0]) {
-        if (obj.session.logic.dataIn) {
+    var msg = obj.message, 
+        task = obj.session.logic,
+        state = obj.session.getCurrentState().name,
+        sigId = task.ins[msg.inId-1];
+
+    if (sigId == task.ins[0]) {
+        if (task.dataIn) {
             // duplicate signal on data input port? TODO: log warning
             //throw (new Error("Duplicate data on input port"));
             // do nothing, we should already be in the waiting or running state
         } else {
-            obj.session.logic.dataIn = true;
+            task.dataIn = true;
             msg.msgId = "ReRu";
             obj.session.dispatch(msg);
         }
-    } else if (msg.inId == obj.session.logic.nextInId) {
-        obj.session.logic.next = true;
-        if (obj.session.getCurrentState().name == "waiting") {
+    } else if (sigId == task.nextInId) {
+        task.next = true;
+        if (state == "waiting") {
             msg.msgId = "WaRu";
-            obj.session.logic.next = false;
+            task.next = false;
             obj.session.dispatch(msg);
         }
     } else {
         throw (new Error("Wrong input port id"));
     }
-
-
 }
 
 
@@ -156,7 +158,7 @@ function TaskLogic() {
     };
 
     this.ready_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state ready");
+        console.log("Enter state ready: "+this.id);
     };
 
     this.running_onEnter = function(session, state, transition, msg) {
@@ -186,12 +188,12 @@ function TaskLogic() {
     };
 
     this.waiting_onEnter = function(session, state, transition, msg) {
+        console.log("Enter state waiting: "+this.id);
         if (session.logic.next) {
             //msg.msgId = "WaRu";
             session.logic.next = false;
             session.dispatch({msgId: "WaRu"});
         }
-        //console.log("Exit state waiting");
     };
 
     this.waiting_onExit = function(session, state, transition, msg) {

@@ -406,8 +406,8 @@ exports.init = function(redisClient) {
     // function(nTasks, nData, err, ins, outs, sources, sinks, types, cPortsInfo), where:
     // - nTasks        = number of tasks (also length of ins and outs arrays)
     // - nData         = number of data elements (also length of sources and sinks arrays)
-    // - ins[i][j]     = data id mapped to j-th output port of i-th task
-    // - outs[i][j]    = data id mapped to j-th input port of i-th task
+    // - ins[i][j]     = data id mapped to j-th input port of i-th task
+    // - outs[i][j]    = data id mapped to j-th output port of i-th task
     // - sources[i][1] = task id which produces data element with id=i (if none, sources[i]=[])
     // - sources[i][2] = port id in this task the data element is mapped to
     // - sinks[i][j]   = task id which consumes data element with id=i (if none, sinks[i]=[])
@@ -470,7 +470,7 @@ exports.init = function(redisClient) {
 		}
                 // Create info about task types (all remaining tasks have the default type "task")
                 // TODO: pull the list of types dynamically from redis
-                ["foreach", "service", "splitter"].forEach(function(type) {
+                ["foreach", "service", "splitter", "stickyservice"].forEach(function(type) {
                     multi.smembers(wfKey+":tasktype:"+type, function(err, rep) {
                         if (rep) {
                             //console.log(type, rep); // DEBUG
@@ -663,7 +663,7 @@ exports.init = function(redisClient) {
 			executor = taskInfo.executor ? taskInfo.executor: null;
 
                     f(ins, outs, executor, conf, function(err, outs) {
-                        if (outs) { console.log(outs[0].value); } // DEBUG 
+                        if (outs) { console.log("VALUE="+outs[0].value); } // DEBUG 
                         cb(null, outs);
                         // write values if any
                         /*var spec = {};
