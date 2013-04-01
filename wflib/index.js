@@ -659,7 +659,8 @@ exports.init = function(redisClient) {
                     for (var i in outsIds) {
                         outs.push(taskOuts[outsIds[i]]);
                     }                   
-		    var conf     = taskInfo.config ? taskInfo.config: null, 
+		    //console.log(JSON.stringify(taskInfo.config));  //DEBUG
+		    var conf     = taskInfo.config ? JSON.parse(taskInfo.config): null, 
 			executor = taskInfo.executor ? taskInfo.executor: null;
 
                     f(ins, outs, executor, conf, function(err, outs) {
@@ -795,6 +796,7 @@ exports.init = function(redisClient) {
                 "status", "waiting", 
                 "type", taskType,
 		"fun", task.function ? task.function: "null",
+		"config", task.config ? JSON.stringify(task.config): "null",
                 //"execName", task.name, 
                 //"execArgs", task.execArgs, 
                 //"execSSHAddr", "balis@192.168.252.130", 

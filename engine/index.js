@@ -1,5 +1,6 @@
 /* Hypermedia workflow. 
- ** Hypermedia workflow execution engine based on Actor-FSM execution model
+ ** Hypermedia workflow execution engine based on a DEDS/FSM (Discrete-Event Dynamic System / Finite State Machine)
+ ** execution model.
  ** Author: Bartosz Balis (2013)
  */
 
@@ -99,10 +100,6 @@ Engine.prototype.runInstance = function (cb) {
     }
 }
 
-// FIXME: check if input is marked more than once (probably in task FSM implementation)
-Engine.prototype.markTaskInputReady = function (taskId, dataId, cb) {
-    cb(new Error("Not implemented"));
-}
 
 // Marks data elements as 'ready' and notify their sinks
 // dataIds - single data Id or an array of dataIds

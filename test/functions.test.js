@@ -7,8 +7,8 @@ var redis = require('redis'),
 
 function register_funs(cb) {
     var multi = rcl.multi();
-    rcl.hset("wf:functions:add", "module", "functions", function(err, rep) { });
-    rcl.hset("wf:functions:sqr", "module", "functions", function(err, rep) { });
+    multi.hset("wf:functions:add", "module", "functions", function(err, rep) { });
+    multi.hset("wf:functions:sqr", "module", "functions", function(err, rep) { });
     multi.exec(function(err, reps) {
         cb(err);
     });

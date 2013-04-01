@@ -1,4 +1,5 @@
-var fsp = require('./fileSplitter.js');
+var fsp = require('./fileSplitter.js'), 
+    cmd = require('./command.js');
 
 function add(ins, outs, executor, config, cb) {
     var sum=0.0;
@@ -30,14 +31,17 @@ function length(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
+/*
 function montage_mProjectPP(ins, outs, executor, config, cb) {
     var execName = "mProjectPP";
     var execArgs = "-X -x "+config.f.scale+" "+ins[0].name+" "+outs[0].name+" "+ins[1].name;
     // invoke executor(execName, exsecArgs)
 }
+*/
 
 
 exports.add = add;
 exports.sqr = sqr;
 exports.length = length;
 exports.fileSplitter = fsp.fileSplitter;
+exports.command = cmd.command;

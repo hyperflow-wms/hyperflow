@@ -50,12 +50,20 @@ function createWorkflow(dax, cb) {
         ++nextTaskId;
         wfOut.tasks.push({ 
             "name": job['@'].name, 
-            "function": job['@'].name, 
-            "execName": job['@'].name, 
-            "execArgs": job.argument,
+            "function": "command", 
+            "executor": "syscommand",
+            "config": {
+                "executor": {
+                    "executable": job['@'].name, 
+                    "args": job.argument
+                }
+            },
             "ins": [],
             "outs": []
         });
+
+        //var 
+        //if (config
 
         var dataId;
         job.uses.forEach(function(job_data) {

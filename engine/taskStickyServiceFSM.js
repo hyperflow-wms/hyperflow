@@ -101,12 +101,12 @@ function TaskLogic() {
     this.nDataIns = -1; // how many data inputs are there?
     this.next = false; // has the signal arrived to the control "next" port?
     this.done = false; // has the signal arrived to the control "done" port?
-    this.nextInId  = undefined; // id of 'next' control input port (-1 = there is none)
-    this.nextOutId = undefined; // id of 'next' control output port (-1 = there is none)
-    this.doneInId  = undefined; // id of 'done' control input port (-1 = there is none)
-    this.doneOutId = undefined; // id of 'done' control output port (there should be one)
-    this.ins = []; // ids of data inputs 
-    this.outs = []; // ids of data outputs 
+    this.nextInId  = undefined; // id of 'next' control input port 
+    this.nextOutId = undefined; // id of 'next' control output port 
+    this.doneInId  = undefined; // id of 'done' control input port 
+    this.doneOutId = undefined; // id of 'done' control output port 
+    this.ins = []; // ids of inputs (data and control signals)
+    this.outs = []; // ids of outputs (data and control signals)
     this.sources = []; 
     this.sinks = [];
 

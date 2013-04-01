@@ -13,8 +13,7 @@
         "function": "fileSplitter",
         "ins": [ 0,1 ],
         "outs": [ 2,3,4 ]
-    },
-    {
+    }, {
         "name": "Length",
 	"type": "stickyservice",
         "function": "length",
@@ -43,5 +42,3 @@
     "ins": [ 0 ],
     "outs": [ 5,6 ]
 }
-
-
