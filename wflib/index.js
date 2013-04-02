@@ -418,6 +418,7 @@ exports.init = function(redisClient) {
     //                   { taskId: { "ins": { portName: dataId } ... }, "outs": { ... } } }
     //                   e.g.: { '1': { ins: { next: '2' }, outs: { next: '2', done: '4' } } } 
     function public_getWfMap(wfId, cb) {
+        var asyncTasks = [];
         var wfKey = "wf:"+wfId;
 	rcl.zcard(wfKey+":tasks", function(err, ret) {
             if (err || ret == -1) { throw(new Error("Redis error")); }
@@ -426,76 +427,100 @@ exports.init = function(redisClient) {
                 if (err || ret == -1) { throw(new Error("Redis error")); }
 		var nData = ret;
 		var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, taskKey;
-		var multi = rcl.multi();
+		//var multi = rcl.multi();
 		for (var i=1; i<=nTasks; ++i) {
 		    (function(taskId) {
-			taskKey = wfKey+":task:"+taskId;
-			multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-			    ins[taskId] = ret;
-			    //ins[taskId].unshift(null); // inputs will be indexed from 1 instead of 0
-			});
-			multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-			    outs[taskId] = ret;
-			    //outs[taskId].unshift(null);
-			});
-                        multi.hgetall(taskKey+":cins", function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            if (ret != null) {
-                                cPortsInfo[taskId] = {};
-                                cPortsInfo[taskId].ins = ret;
-                            }
+                        asyncTasks.push(function(callback) {
+                            taskKey = wfKey+":task:"+taskId;
+                            rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+                                if (err || ret == -1) { throw(new Error("Redis error")); }
+                                ins[taskId] = ret;
+                                callback(null, ret);
+                                //ins[taskId].unshift(null); // inputs will be indexed from 1 instead of 0
+                            });
                         });
-                        multi.hgetall(taskKey+":couts", function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            if (ret != null) {
-                                if (!(taskId in cPortsInfo)) {
+                        asyncTasks.push(function(callback) {
+                            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+                                if (err || ret == -1) { throw(new Error("Redis error")); }
+                                outs[taskId] = ret;
+                                //outs[taskId].unshift(null);
+                                callback(null, ret);
+                            });
+                        });
+                        asyncTasks.push(function(callback) {
+                            rcl.hgetall(taskKey+":cins", function(err, ret) {
+                                if (err || ret == -1) { throw(new Error("Redis error")); }
+                                if (ret != null) {
                                     cPortsInfo[taskId] = {};
+                                    cPortsInfo[taskId].ins = ret;
                                 }
-                                cPortsInfo[taskId].outs = ret;
-                            }
+                                callback(null, ret);
+                            });
+                        });
+                        asyncTasks.push(function(callback) {
+                            rcl.hgetall(taskKey+":couts", function(err, ret) {
+                                if (err || ret == -1) { throw(new Error("Redis error")); }
+                                if (ret != null) {
+                                    if (!(taskId in cPortsInfo)) {
+                                        cPortsInfo[taskId] = {};
+                                    }
+                                    cPortsInfo[taskId].outs = ret;
+                                }
+                                callback(null, ret);
+                            });
                         });
 		    })(i);
 		}
 		for (i=1; i<=nData; ++i) {
 		    (function(dataId) {
 			dataKey = wfKey+":data:"+dataId;
-			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-			    sources[dataId] = ret;
-			    //console.log(dataId+";"+ret);
-			    //sources[dataId].unshift(null);
-			});
-			/*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
-			    if (err) {
-			    }
-			    sinks[dataId] = ret;
-			    //sinks[dataId].unshift(null);
-			});*/
+                        asyncTasks.push(function(callback) {
+                            rcl.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
+                                if (err || ret == -1) { throw(new Error("Redis error")); }
+                                sources[dataId] = ret;
+                                //console.log(dataId+";"+ret);
+                                //sources[dataId].unshift(null);
+                                callback(null, ret);
+                            });
+                            /*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
+                              if (err) {
+                              }
+                              sinks[dataId] = ret;
+                            //sinks[dataId].unshift(null);
+                            });*/
+                        });
 		    })(i);
 		}
                 // Create info about task types (all remaining tasks have the default type "task")
                 // TODO: pull the list of types dynamically from redis
-                ["foreach", "service", "splitter", "stickyservice"].forEach(function(type) {
-                    multi.smembers(wfKey+":tasktype:"+type, function(err, rep) {
-                        if (err || rep == -1) { throw(new Error("Redis error")); }
-                        if (rep) {
-                            //console.log(type, rep); // DEBUG
-                            types[type] = rep;
+                asyncTasks.push(function(callback) {
+                    async.each(["foreach", "service", "splitter", "stickyservice"],
+                        function iterator(type, next) {
+                            rcl.smembers(wfKey+":tasktype:"+type, function(err, rep) {
+                                if (err || rep == -1) { throw(new Error("Redis error")); }
+                                if (rep) {
+                                    //console.log(type, rep); // DEBUG
+                                    types[type] = rep;
+                                }
+                                next();
+                            });
+                        },
+                        function done(err) {
+                            callback(null, types);
                         }
-                    });
+                    );
                 });
-		multi.exec(function(err, reps) {
-		    if (err) {
-			cb(err);
-		    } else {
-			cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo);
-		    }
-		});
+
+                console.log("async tasks: "+asyncTasks.length);
+                async.parallel(asyncTasks, function done(err, result) {
+                    cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo);
+                });
+
+
 	    });
 	});
     }
+
 
     /*
      * returns task map, e.g.:
@@ -551,81 +576,34 @@ exports.init = function(redisClient) {
 	});
     }
 
-    // Retrieves a list of data sinks (tasks). FIXME: workaround for very big lists:
-    // retrieves a chunk of 1000 elements at a time from redis, because on windows 
-    // (redis 2.4.x) larger replies sometimes don't work (probably a bug...)
+    // Retrieves a list of data sinks (tasks). 
     function public_getDataSinks(wfId, dataId, cb) {
-	var replies = [], reply = [];
+	var replies = [], reply = [], asyncTasks = [];
 	var dataKey = "wf:"+wfId+":data:"+dataId;
-	var multi = rcl.multi();
+	//var multi = rcl.multi();
 
 	rcl.zcard(dataKey+":sinks", function(err, rep) {
-	    for (var i=0,j=1; i<=rep; i+=200,j++) {
-		(function(i,j) {
-		    multi.zrangebyscore(
-			dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "200", 
-			function(err, ret) { 
-			replies[j] = ret;
-		    });
-		})(i,j);
-	    }
-	    multi.exec(function(err, replies) {
-		if (err) {
-		    cb(err);
-		} else {
-		    for (var i=0; i<replies.length; ++i) {
-			reply = reply.concat(replies[i]);
-		    }
-		    cb(null, reply);
-		}
-	    });
-	});
+            rcl.zrangebyscore( dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
+                err ? cb(err): cb(null, ret);
+            });
+        });
     }
+
 
     // Retrieves a list of remote data sinks (tasks). Such sinks are notified over
     // HTTP using their full URI. 
-    // FIXME: workaround for very big lists: retrieves a chunk of 1000 elements 
-    // at a time from redis, because on windows (redis 2.4.x) larger replies 
-    // sometimes don't work (probably a bug...)
     function public_getRemoteDataSinks(wfId, dataId, cb) {
 	var replies = [], reply = [];
 	var dataKey = "wf:"+wfId+":data:"+dataId;
 	var multi = rcl.multi();
 
 	rcl.zcard(dataKey+":sinks", function(err, rep) {
-	    for (var i=0,j=1; i<=rep; i+=1000,j++) {
-		(function(i,j) {
-		    // if score (port id) = -1, the sink is remote
-		    multi.zrangebyscore(
-			dataKey+":sinks", -1, -1, "withscores", "limit", i, "1000", 
-			function(err, ret) { 
-			    replies[j] = ret;
-			});
-		})(i,j);
-	    }
-	    multi.exec(function(err, replies) {
-		if (err) {
-		    cb(err);
-		} else {
-		    for (var i=0; i<replies.length; ++i) {
-			reply = reply.concat(replies[i]);
-		    }
-		    // retrieve URIs and store them instead of port id
-		    for (var i=0; i<reply.length; i+=2) {
-			(function(i) {
-			    var dataKey = "wf:"+wfId+":data:"+reply[i];
-			    multi.hmget(dataKey, "uri", function(err, rep) {
-				reply[i+1] = rep;
-			    });
-			})(i);
-		    }
-		    multi.exec(function(err, reps) {
-			cb(null, reply);
-		    });
-		}
-	    });
-	});
+            multi.zrangebyscore(dataKey+":sinks", -1, -1, "withscores", function(err, ret) { 
+                err ? cb(err): cb(null, ret);
+            });
+        });
     }
+	
 
     // invokes function assinged to task passing input and output objects whose
     // ids are in arrays 'insIds' and 'outsIds'. 
