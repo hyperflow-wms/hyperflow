@@ -44,6 +44,7 @@ var Engine = function(config, wflib, wfId, cb) {
     this.trace = "";  // trace: list of task ids in the sequence they were finished
     this.nTasksLeft = 0;  // how many tasks left (not finished)? FIXME: what if a task can 
                           // never be finished (e.g. TaskService?)
+    this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
                           
     this.emulate = config.emulate == "true" ? true: false;       
 
@@ -100,6 +101,16 @@ Engine.prototype.runInstance = function (cb) {
     }
 }
 
+// callback of this function is invoked only when the workflow instance running in this
+// engine has finished execution.
+Engine.prototype.runInstanceSync = function(callback) {
+    (function(engine) {
+        engine.runInstance(function(err) {
+            engine.syncCb = callback;
+        });
+    })(this);
+}
+
 
 // Marks data elements as 'ready' and notify their sinks
 // dataIds - single data Id or an array of dataIds
@@ -130,6 +141,10 @@ Engine.prototype.taskFinished = function(taskId) {
     this.nTasksLeft--;
     if (!this.nTasksLeft) {
         console.log(this.trace+'. ['+this.wfId+']');
+        console.log(this.syncCb);
+        if (this.syncCb) {
+            this.syncCb();
+        }
     } else {
         this.trace += ',';
     }
