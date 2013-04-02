@@ -181,9 +181,7 @@ exports.init = function(redisClient) {
 	var taskKey = "wf:"+wfId+":task:"+taskId;
 	var task, ins, outs, data = {};
 
-	var multi = rcl.multi();
-
-	multi.hgetall(taskKey, function(err, reply) {
+	rcl.hgetall(taskKey, function(err, reply) {
             err ? cb(err): cb(null, reply);
 	});
     }
@@ -214,77 +212,86 @@ exports.init = function(redisClient) {
 	}
     }
 
-    // returns full task info
+    // Returns full task info. Format:
+    // TODO ......
     function public_getTaskInfoFull(wfId, taskId, cb) {
 	var taskKey = "wf:"+wfId+":task:"+taskId;
-	var task, ins, outs, data_ins = {}, data_outs = {};
-
-	var multi = rcl.multi();
+	var task, ins, outs, data_ins = {}, data_outs = {}, asyncTasks = [];
 
 	// Retrieve task info
-	multi.hgetall(taskKey, function(err, reply) {
-            task = err ? err: reply;
-	});
+        asyncTasks.push(function(callback) {
+            rcl.hgetall(taskKey, function(err, reply) {
+                task = err ? err: reply;
+                callback(null, task);
+            });
+        });
 
 	// Retrieve all ids of inputs of the task
-	multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
-            ins = err ? err: ret;
-	});
+        asyncTasks.push(function(callback) {
+            rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+                ins = err ? err: ret;
+                callback(null, ins);
+            });
+        });
 
 	// Retrieve all ids of outputs of the task
-	multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
-            outs = err ? err: ret;
-	});
+        asyncTasks.push(function(callback) {
+            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+                outs = err ? err: ret;
+                callback(null, outs);
+            });
+        });
 
-        multi.exec(function(err, replies) {
+        async.parallel(asyncTasks, function done(err, result) {
             if (err) {
                 cb(err);
             } else {
+                asyncTasks = [];
 		for (var i=0; i<ins.length; ++i) {
 		    (function(i) {
 			var dataKey = "wf:"+wfId+":data:"+ins[i];
-			multi.hgetall(dataKey, function(err, reply) {
-			    if (err) {
-				data_ins[ins[i]] = err;
-			    } else {
-				data_ins[ins[i]] = reply;
-                                data_ins[ins[i]].id = ins[i]; // TODO: redundant (key is the id)
-                                                              // but WARNING: invoke currently may rely on it
-			    }
-			});
+                        asyncTasks.push(function(callback) {
+                            rcl.hgetall(dataKey, function(err, reply) {
+                                if (err) {
+                                    data_ins[ins[i]] = err;
+                                } else {
+                                    data_ins[ins[i]] = reply;
+                                    data_ins[ins[i]].id = ins[i]; // TODO: redundant (key is the id)
+                                    // but WARNING: invoke currently may rely on it
+                                }
+                                callback(null, reply);
+                            });
+                        });
 		    })(i);
 		}
 		for (var i=0; i<outs.length; ++i) {
 		    (function(i) {
 			var dataKey = "wf:"+wfId+":data:"+outs[i];
-			multi.hgetall(dataKey, function(err, reply) {
-			    if (err) {
-				data_outs[outs[i]] = err;
-			    } else {
-				data_outs[outs[i]] = reply;
-                                data_outs[outs[i]].id = outs[i]; // TODO: redundant
-			    }
-			});
+                        asyncTasks.push(function(callback) {
+                            rcl.hgetall(dataKey, function(err, reply) {
+                                if (err) {
+                                    data_outs[outs[i]] = err;
+                                } else {
+                                    data_outs[outs[i]] = reply;
+                                    data_outs[outs[i]].id = outs[i]; // TODO: redundant
+                                }
+                                callback(null, reply);
+                            });
+                        });
 		    })(i);
 		}
 
-		multi.exec(function(err, replies) {
-		    if (err) {
-			cb(err);
-		    } else {
-			// replace ids of data elements with their attributes
-			/*for (var i=0; i<ins.length; ++i) {
-			    ins[i] = data[ins[i]];
-			}
-			for (var i=0; i<outs.length; ++i) {
-			    outs[i] = data[outs[i]];
-			}*/
+                async.parallel(asyncTasks, function done(err, result) {
+                    if (err) {
+                        cb(err);
+                    } else {
 			cb(null, task, data_ins, data_outs);
 		    }
 		});
             }
         });
     }
+
 
     function public_setTaskState(wfId, taskId, obj, cb) {
 	rcl.hmset("wf:"+wfId+":task:"+taskId, obj, function(err, rep) {
