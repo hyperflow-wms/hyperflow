@@ -420,8 +420,10 @@ exports.init = function(redisClient) {
     function public_getWfMap(wfId, cb) {
         var wfKey = "wf:"+wfId;
 	rcl.zcard(wfKey+":tasks", function(err, ret) {
+            if (err || ret == -1) { throw(new Error("Redis error")); }
 	    var nTasks = ret; 
 	    rcl.zcard(wfKey+":data", function(err, ret) {
+                if (err || ret == -1) { throw(new Error("Redis error")); }
 		var nData = ret;
 		var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, taskKey;
 		var multi = rcl.multi();
@@ -429,20 +431,24 @@ exports.init = function(redisClient) {
 		    (function(taskId) {
 			taskKey = wfKey+":task:"+taskId;
 			multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+                            if (err || ret == -1) { throw(new Error("Redis error")); }
 			    ins[taskId] = ret;
 			    //ins[taskId].unshift(null); // inputs will be indexed from 1 instead of 0
 			});
 			multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+                            if (err || ret == -1) { throw(new Error("Redis error")); }
 			    outs[taskId] = ret;
 			    //outs[taskId].unshift(null);
 			});
                         multi.hgetall(taskKey+":cins", function(err, ret) {
+                            if (err || ret == -1) { throw(new Error("Redis error")); }
                             if (ret != null) {
                                 cPortsInfo[taskId] = {};
                                 cPortsInfo[taskId].ins = ret;
                             }
                         });
                         multi.hgetall(taskKey+":couts", function(err, ret) {
+                            if (err || ret == -1) { throw(new Error("Redis error")); }
                             if (ret != null) {
                                 if (!(taskId in cPortsInfo)) {
                                     cPortsInfo[taskId] = {};
@@ -456,6 +462,7 @@ exports.init = function(redisClient) {
 		    (function(dataId) {
 			dataKey = wfKey+":data:"+dataId;
 			multi.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
+                            if (err || ret == -1) { throw(new Error("Redis error")); }
 			    sources[dataId] = ret;
 			    //console.log(dataId+";"+ret);
 			    //sources[dataId].unshift(null);
@@ -472,6 +479,7 @@ exports.init = function(redisClient) {
                 // TODO: pull the list of types dynamically from redis
                 ["foreach", "service", "splitter", "stickyservice"].forEach(function(type) {
                     multi.smembers(wfKey+":tasktype:"+type, function(err, rep) {
+                        if (err || rep == -1) { throw(new Error("Redis error")); }
                         if (rep) {
                             //console.log(type, rep); // DEBUG
                             types[type] = rep;
@@ -552,10 +560,10 @@ exports.init = function(redisClient) {
 	var multi = rcl.multi();
 
 	rcl.zcard(dataKey+":sinks", function(err, rep) {
-	    for (var i=0,j=1; i<=rep; i+=1000,j++) {
+	    for (var i=0,j=1; i<=rep; i+=200,j++) {
 		(function(i,j) {
 		    multi.zrangebyscore(
-			dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "1000", 
+			dataKey+":sinks", 0, "+inf", "withscores", "limit", i, "200", 
 			function(err, ret) { 
 			replies[j] = ret;
 		    });
