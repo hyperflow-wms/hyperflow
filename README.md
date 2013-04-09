@@ -8,8 +8,15 @@ HyperFlow allows one to execute workflows defined as a collection of tasks conne
 
 Currently the recommended way to try HyperFlow is as follows:
 * Clone the hyperflow repository
-* Install dependencies (in `hyperflow' directory): npm install -d
+* Install dependencies (in `hyperflow` directory): npm install -d
 * Get the latest node.js (http://nodejs.org)
 * Get the latest Redis server (http://redis.io)
+* Start the redis server
+* Run example workflows in the `test` directory, e.g. node splitter.test.js
+* Look at sample workflows in the `workflows` directory
+
+
+##Workflow model
+
 
  
