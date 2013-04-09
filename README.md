@@ -14,6 +14,7 @@ Currently the recommended way to try HyperFlow is as follows:
 * Start the redis server
 * Run example workflows in the `test` directory, e.g. node splitter.test.js
 * Look at sample workflows in the `workflows` directory
+* Look at example functions invoked from workflow tasks in the `functions` directory
 
 
 ##Workflow model
