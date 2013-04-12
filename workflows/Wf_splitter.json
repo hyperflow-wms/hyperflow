@@ -1,7 +1,7 @@
 {
     "name": "Wf_file_splitter",
     "functions": [ {
-        "name": "splitFile",
+        "name": "fileSplitter",
         "module": "functions"
     }, {
         "name": "length",

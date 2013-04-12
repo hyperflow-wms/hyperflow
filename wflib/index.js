@@ -717,6 +717,7 @@ exports.init = function(redisClient) {
                          "status", "waiting", 
                          function(err, ret) { });
 
+
         // add workflow tasks
         var taskKey;
         for (var i=0; i<wfJson.tasks.length; ++i) {
@@ -771,6 +772,11 @@ exports.init = function(redisClient) {
                 multi.zadd(wfKey+":outs", outId, dataId, function(err, rep) { });
             })(i+1, wfJson.outs[i]+1);
         }
+	// register workflow functions
+	for (var i in wfJson.functions) {
+            multi.hset("wf:functions:"+wfJson.functions[i].name, "module", wfJson.functions[i].module, function(err, rep) { });
+	}
+	
         multi.exec(function(err, replies) {
             console.log('Done processing jobs.'); 
             cb(err);
