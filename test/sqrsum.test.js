@@ -3,33 +3,29 @@ var redis = require('redis'),
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine'),
     async = require('async'),
-    argv = require('optimist').argv,
     engine;
 
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-            wflib.createInstanceFromFile(argv._[0], '', 
+	    wflib.createInstanceFromFile('../workflows/Wf_sqrsum.json', '', 
                 function(err, id) {
-                    cb(err, id); 
-		}
+                    cb(err, id);
+                }
 	    );
 	});
     });
 }
 
-
-if (!argv._[0]) {
-    console.log("Usage: node montage.test.js <path/to/workflow/file.json>");
-    process.exit();
-}
-
 init(function(err, wfId) {
+    if (err) { throw err; }
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
         engine.runInstance(function(err) {
-            wflib.getWfIns(wfId, false, function(err, wfIns) {
-                engine.markDataReady(wfIns, function(err) { });
-            });
-         });
-     });
+            var spec = [{'id': '1', 'value': '1'}, 
+	                {'id': '2', 'value': '2'},
+	                {'id': '3', 'value': '3'},
+	                {'id': '4', 'value': '4'}];
+	    engine.fireSignals(spec);
+        });
+    });
 });

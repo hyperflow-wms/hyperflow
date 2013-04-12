@@ -842,8 +842,6 @@ exports.init = function(redisClient) {
         });
     }
 
-
-    // TODO: rewrite this to use multi instead of async.parallel ?
     function getTasks1(wfId, from, to, dataNum, cb) {
         var tasks = [], ins = [], outs = [], data  = [];
         var asyncTasks = [];

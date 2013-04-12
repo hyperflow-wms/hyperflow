@@ -11,7 +11,8 @@ function init(cb) {
 	    wflib.createInstanceFromFile('../workflows/Wf_splitter.json', '', 
                 function(err, id) {
                     cb(err, id);
-            });
+                }
+	    );
 	});
     });
 }
@@ -22,6 +23,6 @@ init(function(err, wfId) {
         engine.runInstance(function(err) {
             var spec = [{'id': '1', 'value': 'test.txt'}];
 	    engine.fireSignals(spec);
-         });
-     });
+        });
+    });
 });
