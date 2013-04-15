@@ -17,7 +17,7 @@ Currently the recommended way to try HyperFlow is as follows:
 * Look at example functions invoked from workflow tasks in the `functions` directory
 
 ##Workflow model
-HyperFlow provides simple yet expressive abstractions for constructing a workflow. Basically there is only one abstraction in HyperFlow: a workflow **Task**. A task has: 
+HyperFlow provides simple yet expressive abstraction for constructing a workflow. Basically this abstraction contains only one construct: a workflow **Task**. A task has: 
 * **Input ports** which consume signals, 
 * **Output ports** which emit signal,
 * a **Function** is invoked from the task which transform data inputs into data outputs. 
