@@ -21,7 +21,7 @@ HyperFlow provides simple yet expressive abstractions for constructing a workflo
 
 This simple abstraction provides a workflow model sufficient to express many data and control flow patterns (including loops) thanks to one additional element: a **task Type**. The task type determines how exactly the inputs are processed, when and how many times the function is invoked etc. 
 
-Study this [simple example](https://github.com/balis/hyperflow/wiki) for a quick introduction to workflow types and workflow format.
+Study this [simple example](https://github.com/balis/hyperflow/wiki/First-workflow) for a quick introduction to workflow types and workflow format.
 
-Read more about task types on the [wiki pages](https://github.com/balis/hyperflow/wiki) and study [example workflows](https://github.com/balis/hyperflow/workflows) to learn more. 
+Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more. 
 
