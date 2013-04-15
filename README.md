@@ -20,11 +20,13 @@ Currently the recommended way to try HyperFlow is as follows:
 HyperFlow provides simple yet expressive abstraction for constructing a workflow. Basically this abstraction contains only one construct: a workflow **Task**. A task has: 
 * **Input ports** which consume signals, 
 * **Output ports** which emit signal,
-* a **Function** is invoked from the task which transform data inputs into data outputs. 
+* a **Function** which is invoked from the task in order to transform data inputs into data outputs. 
 
 Imprtantly, two types of signals are distinguished: 
-* **data signals** which denote a data flow between tasks and carry additional information about data elements (such as name, type, path to a file, an URI, or simply a value); 
-* **control signals** which only are present or not, and are associated with no additional information except for a name and id. 
+* **Data signals** which denote a data flow between tasks and carry additional information about data elements (such as name, type, path to a file, an URI, or simply a value); 
+* **Control signals** which only are present or not, and are associated with no additional information except for a name and id. 
+
+Consequently, ports associated with a data or control signal are called, respectively, **data ports** or **control ports**.
 
 A workflow is simply **a set of tasks connected through ports**. 
 
