@@ -17,9 +17,18 @@ Currently the recommended way to try HyperFlow is as follows:
 * Look at example functions invoked from workflow tasks in the `functions` directory
 
 ##Workflow model
-HyperFlow provides simple yet expressive abstractions for constructing a workflow. Basically there is only one abstraction: a **Task**. A task has **Input ports**, **Output ports**, and a **Function** which is invoked from the task and is supposed to transform inputs into outputs. The input ports consume signals, while the output ports emit them. Two types of signals are distinguished: **data signals** which denote a data flow and carry additional information about data elements (such as name, type, path to a file, an URI, or simply a value), and **control signals** which only are present or not, and are associated with no additional information except for a name. A workflow is simply a set of tasks connected through ports. 
+HyperFlow provides simple yet expressive abstractions for constructing a workflow. Basically there is only one abstraction in HyperFlow: a workflow **Task**. A task has: 
+* **Input ports** which consume signals, 
+* **Output ports** which emit signal,
+* a **Function** is invoked from the task which transform data inputs into data outputs. 
 
-This simple abstraction provides a workflow model sufficient to express many data and control flow patterns (including loops) thanks to one additional element: a **task Type**. The task type determines how exactly the inputs are processed, when and how many times the function is invoked etc. 
+Imprtantly, two types of signals are distinguished: 
+* **data signals** which denote a data flow between tasks and carry additional information about data elements (such as name, type, path to a file, an URI, or simply a value); 
+* **control signals** which only are present or not, and are associated with no additional information except for a name and id. 
+
+A workflow is simply **a set of tasks connected through ports**. 
+
+This simple abstraction provides a workflow model sufficient to express many data and control flow patterns (including loops) thanks to one additional element: a **task Type**. The task type determines task inner "dynamics", i.e. the way how exactly the inputs are processed, when and how many times the function is invoked etc. 
 
 Study this [simple example](https://github.com/balis/hyperflow/wiki/First-workflow) for a quick introduction to workflow types and workflow format.
 
