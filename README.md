@@ -18,6 +18,4 @@ Currently the recommended way to try HyperFlow is as follows:
 
 
 ##Workflow model
-
-
- 
+[Read more on the wiki pages](https://github.com/balis/hyperflow/wiki)
