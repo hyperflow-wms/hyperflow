@@ -22,7 +22,7 @@ HyperFlow provides simple yet expressive abstraction for constructing a workflow
 * **Output ports** which emit signal,
 * a **Function** which is invoked from the task in order to transform data inputs into data outputs. 
 
-Imprtantly, two types of signals are distinguished: 
+Importantly, two types of signals are distinguished: 
 * **Data signals** which denote a data flow between tasks and carry additional information about data elements (such as name, type, path to a file, an URI, or simply a value); 
 * **Control signals** which only are present or not, and are associated with no additional information except for a name and id. 
 
