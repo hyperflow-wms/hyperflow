@@ -4,6 +4,9 @@ var readers = {};
 
 function fileSplitter(ins, outs, executor, config, cb) {
     var fname = ins[0].value;
+    if (ins[0].path) {
+        fname = ins[0].path;
+    }
     if (!(fname in readers)) {
         readers[fname] = new flr.FileLineReader(fname);
     }
