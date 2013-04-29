@@ -8,7 +8,7 @@ var redis = require('redis'),
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('../workflows/Wf_extended.json', '', 
+	    wflib.createInstanceFromFile('../workflows/Wf_grepfiles.json', '', 
                 function(err, id) {
                     cb(err, id);
                 }
