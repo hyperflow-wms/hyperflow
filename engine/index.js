@@ -173,10 +173,9 @@ Engine.prototype.fireSignals = function(sigs, cb) {
         if (sigs[i].type  == "control") { // this is a control signal
             spec[sigId] = {}; // TODO: should we also mark this signal as ready?
         } else { // this is a data signal
-            spec[sigId] = { "status":"ready" } // mark data element as "ready" (produced)
-            if ("value" in sigs[i]) { // save data value if present in the signal info
-                spec[sigId].value = sigs[i].value;
-            }
+	    spec[sigId] = sigs[i]; // copy all attributes...
+	    delete spec[sigId].id; // ... except 'id'
+	    spec[sigId].status = "ready"; // mark data element as "ready" (produced)
         }
     }
 
