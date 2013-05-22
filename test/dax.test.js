@@ -1,6 +1,13 @@
 var argv = require('optimist').argv,
-           daxf = require('../pegasus_dax_converter');
+           PegasusConverter = require('../converters/pegasus_dax.js');
 
-daxf.createWorkflowFromFile(argv._[0], function(err, rep) {
-	console.log(JSON.stringify(rep));
+var daxf = new PegasusConverter();
+
+if (!argv._[0]) {
+	console.log("Usage: node dax.test.js <path/to/dax/file.xml>");
+	process.exit();
+}
+
+daxf.convertFromFile(argv._[0], function(err, rep) {
+	console.log(JSON.stringify(rep, null, 2));
 });
