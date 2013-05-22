@@ -1,6 +1,6 @@
 function command(ins, outs, executor, config, cb) {
     if (0/*executor*/) {
-        executor(ins, outs, config, function(err, outs) {
+        executor.execute(ins, outs, config, function(err, outs) {
             err ? cb(err): cb(null, outs);
         });
     } else {
