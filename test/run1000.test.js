@@ -7,7 +7,7 @@ var redis = require('redis'),
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('../workflows/Montage_143.json', '', function(err, id) {
+	    wflib.createInstanceFromFile('../workflows/Montage_10k.json', '', function(err, id) {
 		cb(err, id);
 	    });
 	});
@@ -28,7 +28,7 @@ function init2(cb) {
 
 async.timesSeries(1000, function(i, next) {
     init(function(err, wfId) {
-        console.log("TEST RUN: "+i+1);
+        console.log("TEST RUN: "+(i+1));
         var engine = new Engine({"emulate": "true"}, wflib, wfId, function(err) {
             engine.runInstanceSync(function() { next(); });
         });
