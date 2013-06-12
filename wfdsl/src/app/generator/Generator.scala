@@ -5,6 +5,7 @@ import scala.collection.mutable.LinkedHashMap
 import app.element.Sequence
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.MutableList
+import app.Config.FunctionGenerationStrategy._
 
 class Generator(val wf: Workflow) {
   private val out = new StringBuilder()
@@ -95,24 +96,24 @@ class Generator(val wf: Workflow) {
    * evaluates variables declared in vars section of code
    */
   private def addVars() = {
-  	for ((name, value) <- wf.vars) {
-  	  if (vars.contains(name)) {
-  	    throw new Exception("Variable " + name + " specified twice")
-  	  }
-  	  if (name == "i") {
-  	    throw new Exception("'i' is a reserved variable name and cannot be declared")
-  	  }
-  	  try {
-  	  	vars += name -> evalVar(value)
-  	  } catch {
-  	    case e: Throwable => throw new Exception(e.getMessage() + " in the definition of " + name)
-  	  }
-  	}
-//  	println(vars)
-//  	println(vars map Function.tupled((k, v) => v match {
-//  	  case t: Tuple2[Any, Any] => t._2.getClass
-//  	  case other => other
-//  	}))
+    for ((name, value) <- wf.vars) {
+      if (vars.contains(name)) {
+        throw new Exception("Variable " + name + " specified twice")
+      }
+      if (name == "i") {
+        throw new Exception("'i' is a reserved variable name and cannot be declared")
+      }
+      try {
+        vars += name -> evalVar(value)
+      } catch {
+        case e: Throwable => throw new Exception(e.getMessage() + " in the definition of " + name)
+      }
+    }
+//      println(vars)
+//      println(vars map Function.tupled((k, v) => v match {
+//        case t: Tuple2[Any, Any] => t._2.getClass
+//        case other => other
+//      }))
   }
   
   /*
@@ -194,12 +195,12 @@ class Generator(val wf: Workflow) {
         indent += 1
         val resolvedArgs = signal.getResolvedArgs()
           resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some((n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
+            case Some((n, v)) => append("\"name\": \"" + v + "\",")
+              case _ => append("\"name\": \"" + defName + "\",")
+            }
           for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
+              append("\"" + k + "\": \"" + v + "\",")
+            }
           removeLastComma()
         indent -= 1
         append("},")
@@ -211,16 +212,16 @@ class Generator(val wf: Workflow) {
           indent += 1
           val resolvedArgs = signal.getResolvedArgs(idx)
           resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
+            case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
+              case _ => append("\"name\": \"" + defName + "\",")
+            }
           for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
+              append("\"" + k + "\": \"" + v + "\",")
+            }
           removeLastComma()
           idx += 1
-	        indent -= 1
-	        append("},")
+            indent -= 1
+            append("},")
         }
       }
     }
@@ -295,14 +296,14 @@ class Generator(val wf: Workflow) {
         indent += 1
         val resolvedArgs = task.getResolvedArgs()
           resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some((n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
-        	append("\"type\": \"" + task.taskType + "\",")
+            case Some((n, v)) => append("\"name\": \"" + v + "\",")
+              case _ => append("\"name\": \"" + defName + "\",")
+            }
+            append("\"type\": \"" + task.taskType + "\",")
           for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
-        	val insIndexes = task.getSignalsSpec("ins") map (simpleSignal => simpleSignal.globalIndex)
+              append("\"" + k + "\": \"" + v + "\",")
+            }
+            val insIndexes = task.getSignalsSpec("ins") map (simpleSignal => simpleSignal.globalIndex)
           append("\"ins\": [" + insIndexes.mkString(", ") + "],")
           val outsIndexes = task.getSignalsSpec("outs") map (simpleSignal => simpleSignal.globalIndex)
           append("\"outs\": [" + outsIndexes.mkString(", ") + "],")
@@ -317,20 +318,20 @@ class Generator(val wf: Workflow) {
           indent += 1
           val resolvedArgs = task.getResolvedArgs(idx)
           resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
+            case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
+              case _ => append("\"name\": \"" + defName + "\",")
+            }
           for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
+              append("\"" + k + "\": \"" + v + "\",")
+            }
           val insIndexes = task.getSignalsSpec("ins", idx) map (simpleSignal => simpleSignal.globalIndex)
           append("\"ins\": [" + insIndexes.mkString(", ") + "],")
           val outsIndexes = task.getSignalsSpec("outs", idx) map (simpleSignal => simpleSignal.globalIndex)
           append("\"outs\": [" + outsIndexes.mkString(", ") + "],")
           removeLastComma()
           idx += 1
-	        indent -= 1
-	        append("},")
+            indent -= 1
+            append("},")
         }
       }
     }
@@ -378,8 +379,8 @@ class Generator(val wf: Workflow) {
           case Signal(_, seq, _, globalIndex, _) => {
             evalVar(unresolvedIndex) match {
               case index: Int => {
-              	if (seq.size <= index) throw new Exception("The index " + unresolvedIndex + " is equal to " + index + " and is out of bounds of the base-sequence of signal " + name + " of size " + seq.size)
-              	List(SimpleSignal(globalIndex + index, s))
+                if (seq.size <= index) throw new Exception("The index " + unresolvedIndex + " is equal to " + index + " and is out of bounds of the base-sequence of signal " + name + " of size " + seq.size)
+                List(SimpleSignal(globalIndex + index, s))
               }
               case _ => throw new Exception("The index " + unresolvedIndex + " is not a variable of Int type in signal " + name)
             }

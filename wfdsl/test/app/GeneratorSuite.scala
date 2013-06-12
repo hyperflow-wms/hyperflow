@@ -4,6 +4,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 import app.generator.Generator
+import app.Config.FunctionGenerationStrategy._
 
 @RunWith(classOf[JUnitRunner])
 class GeneratorSuite extends FunSuite {
@@ -61,13 +62,25 @@ class GeneratorSuite extends FunSuite {
       			"tasks": [ {
       				"name": "Sqr",
       				"type": "foreach",
-      				"function": "functions.sqr",
+      """ + {
+	      Config.functionGenerationStrategy match {
+	    	  case NAME_ONLY => """"function": "sqr","""
+	    	  case MODULE_AND_NAME => """"function": "functions.sqr","""
+	    	  case ARRAY => """"function": [1],"""
+	    	}
+    	} + """
 							"ins": [ 0, 1, 2 ],
 							"outs": [ 3, 4, 5 ]
       			}, {
 							"name": "Add",
 							"type": "task",
-							"function": "functions.add",
+    	""" + {
+	      Config.functionGenerationStrategy match {
+	    	  case NAME_ONLY => """"function": "add","""
+	    	  case MODULE_AND_NAME => """"function": "functions.add","""
+	    	  case ARRAY => """"function": [0],"""
+	    	}
+    	} + """
 							"ins": [ 3, 4, 5 ],
 							"outs": [ 6 ]
       			} ],
