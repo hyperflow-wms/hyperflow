@@ -8,6 +8,6 @@ object Config {
   }
   import FunctionGenerationStrategy._
   
-  val functionGenerationStrategy = MODULE_AND_NAME
+  val functionGenerationStrategy = NAME_ONLY
 
 }

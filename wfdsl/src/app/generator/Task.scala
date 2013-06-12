@@ -51,23 +51,26 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
   /* 
    * Resolves the args for a non-sequence based task
    */
-  def getResolvedArgs(): List[(String, String)] = {
-    var res = List[(String, String)]()
+  def getResolvedArgs(): List[(String, Any)] = {
+    var res = List[(String, Any)]()
     if (genSeq != null) {
       throw new Exception("task " + taskName + ": the task is sequence-generated and " + 
           "therefore you should invoke getResolvedArgs(index)")
     }
-    args map Function.tupled((name, value) => (name, value.mkString))
     for ((name, value) <- args) {
+      var isFunction = false
       val tmp = value map (x => x match {
         case (module, function) => {
           val fullFunctionName = generator.evalVar(module) + "." + generator.evalVar(function)
-          if (!generator.functions.contains(fullFunctionName)) throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
-          fullFunctionName
+          generator.functions.get(fullFunctionName) match {
+        	  case Some(f: Fun) => res = res :+ (name, f)
+        	  case None => throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
+        	}
+          isFunction = true
         }
         case other => generator.evalVar(other)
       })
-      res = res :+ (name, tmp.mkString)
+      if (!isFunction) res = res :+ (name, tmp.mkString)
     }
     res
   }
@@ -76,8 +79,8 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
    * Resolves all args for a sequence based task. Thanks to the innerIndex
    * it is possible to resolve the "i" variable
    */
-  def getResolvedArgs(innerIndex: Int): List[(String, String)] = {
-    var res = List[(String, String)]()
+  def getResolvedArgs(innerIndex: Int): List[(String, Any)] = {
+    var res = List[(String, Any)]()
     if (genSeq == null) {
       throw new Exception("task " + taskName + ": the task is not sequence-generated and " + 
           "therefore you should invoke getResolvedArgs()")
@@ -87,15 +90,19 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
           " of the sequence, because the sequence only has size " + genSeq.size)
     }
     for ((name, value) <- args) {
+      var isFunction = false
       val tmp = value map (x => x match {
         case (module, function) => {
           val fullFunctionName = generator.evalVar(module, innerIndex) + "." + generator.evalVar(function, innerIndex)
-          if (!generator.functions.contains(fullFunctionName)) throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
-          fullFunctionName
+          generator.functions.get(fullFunctionName) match {
+        	  case Some(f: Fun) => res = res :+ (name, f)
+        	  case None => throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
+        	}
+          isFunction = true
         }
         case other => generator.evalVar(other, innerIndex)
       })
-      res = res :+ (name, tmp.mkString)
+      if (!isFunction) res = res :+ (name, tmp.mkString)
     }
     res
   }
