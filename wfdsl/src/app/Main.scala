@@ -7,36 +7,53 @@ import app.element.Workflow
 object Main extends Grammar {
   def main(args: Array[String]) {
     val arg = """
-	    		workflow WF_sqrsum(size) {
-	    			vars:
-	    				gen = {1 to size}
-    				config:
-	    			signals:
-	    				arg[gen] {
-	    					name = "arg${gen[i]}"
-	    				}
-	    				sqr[gen] {
-	    					name = "sqr${gen[i]}"
-	    				}
-	    				sum
-	    			functions:
-	    				functions.add
-	    				functions.sqr
-	    			tasks:
-	    				foreach Sqr {
-	    					function = functions.sqr
-	    					ins = *arg 
-	    					outs = *sqr
-	    				}
-	    				task Add {
-	    					function = functions.add
-	    					ins = *sqr
-	    					outs = sum
-	    				}
-    				ins: *arg
-    				outs: sum
-	    		}
-	    		"""
+    	workflow grepFiles(size) {
+    		vars:
+    			a = 1
+    			n = {1 to size}
+    			m = {'a' to 'f' step a}
+    			p = {0 to size}
+    			seq1 = {"ala", "ola", "ela"}   
+    			seq2 = {1, -1, 0}
+    			seq3 = {'a', 'm', 'c'}
+    			tmp = seq3[n[a]]
+    		config:
+    		signals:
+    			aSignal
+    			bSignal {
+    				}
+      
+    			next[n] {
+    				one = "one ${tmp} three"
+      		}
+    			back[m] {
+    				name = "customName"
+    				numbers = "six ${seq3[n[a]]} three"
+    				test = "${m[i]}"
+    				test2 = "${i}"
+      		}
+    		functions:
+    			functions.scanDirForJs
+    			functions.fileSplitter
+    			functions.grepFile
+    		tasks:
+    			foreach DirScanner {
+    				function = functions.scanDirForJs
+    				ins = back[p[a]], *next
+    				outs = next[0]
+    				__comment = "komentarz"
+    			}
+    			splitter LineEmitter[n] {
+            function = functions.fileSplitter
+    				ins = back[n[i]], aSignal, *next
+    				outs = next[i], bSignal
+    				test = "${m[n[i]]}"
+    			}
+
+    		ins: *back
+    		outs: next[1]
+      }
+    """
 
     val parseRes = parseAll(workflow, arg)
     println(parseRes)
