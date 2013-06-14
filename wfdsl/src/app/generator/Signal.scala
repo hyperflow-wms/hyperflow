@@ -22,12 +22,9 @@ case class Signal(val signalName: String, val genSeq: List[Any],
           "therefore you should invoke getResolvedArgs(index)")
     }
     for ((name, value) <- args) {
-      val tmp = value map (x => x match {
-        case s: String => s
-        case other => portIds.get(0) match {
-          case Some(portId) => generator.evalVar(other, Map("portId"->portId))
-          case None => generator.evalVar(other)
-        }
+      val tmp = value map (v => portIds.get(0) match {
+          case Some(portId) => generator.evalVar(v, Map("portId"->portId))
+          case None => generator.evalVar(v)
       })
       res = res :+ (name, tmp.mkString)
     }
@@ -49,12 +46,9 @@ case class Signal(val signalName: String, val genSeq: List[Any],
           " of the sequence, because the sequence only has size " + genSeq.size)
     }
     for ((name, value) <- args) {
-      val tmp = value map (x => x match {
-        case s: String => s
-        case other => portIds.get(innerIndex) match {
-          case Some(portId) => generator.evalVar(other, Map("i"->innerIndex, "portId"->portId))
-          case None => generator.evalVar(other, Map("i"->innerIndex))
-        }
+      val tmp = value map (v => portIds.get(innerIndex) match {
+          case Some(portId) => generator.evalVar(v, Map("i"->innerIndex, "portId"->portId))
+          case None => generator.evalVar(v, Map("i"->innerIndex))
       })
       res = res :+ (name, tmp.mkString)
     }

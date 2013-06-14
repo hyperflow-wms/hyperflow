@@ -42,7 +42,7 @@ class Generator(val wf: Workflow) {
     append("{")
     indent += 1
     printName()
-//    printConfig()
+    printConfig()
     printFunctions()
     printTasks()
     printSignals()
@@ -422,6 +422,18 @@ class Generator(val wf: Workflow) {
     }
     val indexes = io map (simpleSignal => simpleSignal.globalIndex)
     append("\"" + ioName + "\": [" + indexes.mkString(", ") + "],")
+  }
+  
+  def printConfig() = {
+    append("\"config\": {")
+    indent += 1
+    for ((name, value) <- wf.config) {
+      val tmp = (value map (x => evalVar(x))).mkString
+      append("\"" + name + "\": \"" + tmp + "\",")
+    }
+    if (wf.config.size > 0) removeLastComma()
+    indent -= 1
+    append("},")
   }
 
   private def append(s: String) = {

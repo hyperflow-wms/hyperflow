@@ -53,6 +53,8 @@ class GeneratorSuite extends FunSuite {
       val handmadeInput = """
         	{
       			"name": "Wf_sqrsum",
+        		"config": {
+      			},
       			"functions": [ {
       				"name": "add",
       				"module":"functions"

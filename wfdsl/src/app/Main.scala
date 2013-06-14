@@ -19,6 +19,8 @@ object Main extends Grammar {
     			seq3 = {'a', 'm', 'c'}
     			tmp = seq3[n[a]]
     		config:
+    			workdir = "hej"
+    			test = "${seq3[n[a]]}"
     		signals:
     			aSignal
     			bSignal {
