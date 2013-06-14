@@ -2,7 +2,8 @@ package app
 
 import scala.util.parsing.combinator._
 import app.generator.Generator
-import app.element.Workflow
+import app.grammar.Workflow
+import app.grammar.Grammar
 
 object Main extends Grammar {
   def main(args: Array[String]) {

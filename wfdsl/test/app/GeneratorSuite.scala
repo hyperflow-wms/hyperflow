@@ -5,6 +5,7 @@ import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 import app.generator.Generator
 import app.Config.FunctionGenerationStrategy._
+import app.grammar.Grammar
 
 @RunWith(classOf[JUnitRunner])
 class GeneratorSuite extends FunSuite {

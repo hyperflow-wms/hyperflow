@@ -1,8 +1,8 @@
 package app.generator
 
-import app.element.Workflow
+import app.grammar.Workflow
 import scala.collection.mutable.LinkedHashMap
-import app.element.Sequence
+import app.grammar.Sequence
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.MutableList
 import app.Config.FunctionGenerationStrategy._
@@ -42,6 +42,7 @@ class Generator(val wf: Workflow) {
     append("{")
     indent += 1
     printName()
+//    printConfig()
     printFunctions()
     printTasks()
     printSignals()
@@ -124,7 +125,6 @@ class Generator(val wf: Workflow) {
    * const - primitive | explicit sequence e.g. {"a", "c", "f"}
    */
   def evalVar(value: Any): Any = {
-    println(value)
     value match {
       case Sequence(from, to, step) => evalSeq(evalVar(from), evalVar(to), evalVar(step))
       case Tuple1(a: String) => vars.get(a) match {
