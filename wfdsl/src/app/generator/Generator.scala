@@ -102,8 +102,8 @@ class Generator(val wf: Workflow) {
       if (vars.contains(name)) {
         throw new Exception("Variable " + name + " specified twice")
       }
-      if (name == "i") {
-        throw new Exception("'i' is a reserved variable name and cannot be declared")
+      if (Config.reservedVarsNames contains name) {
+        throw new Exception("\"" + name + "\" is a reserved variable name and cannot be declared")
       }
       try {
         vars += name -> evalVar(value)
@@ -145,7 +145,7 @@ class Generator(val wf: Workflow) {
   }
   
   /*
-   * Evaluate a variable that uses the special variable "i"
+   * Evaluate a variable that uses the identityVar
    */
   def evalVar(value: Any, extra: Map[String, Any]): Any = {
     vars ++= extra
@@ -363,9 +363,9 @@ class Generator(val wf: Workflow) {
   }
   
   def evalSignal(value: Any, i: Int): List[SimpleSignal] = {
-    vars += "i" -> i
+    vars += Config.identityVar -> i
     val res = evalSignal(value)
-    vars -= "i"
+    vars -= Config.identityVar
     res
   }
   

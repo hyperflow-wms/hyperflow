@@ -9,5 +9,9 @@ object Config {
   import FunctionGenerationStrategy._
   
   val functionGenerationStrategy = NAME_ONLY
+  
+  val identityVar = "i"
+  val portIdVar = "portId"
+  val reservedVarsNames = Set(identityVar, portIdVar)
 
 }

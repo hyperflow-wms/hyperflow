@@ -1,5 +1,7 @@
 package app.generator
 
+import app.Config
+
 class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
     private var args: List[(String, List[Any])],
     val globalIndex: Int, private val generator: Generator){
@@ -97,7 +99,7 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
   
   /*
    * Resolves all args for a sequence based task. Thanks to the innerIndex
-   * it is possible to resolve the "i" variable
+   * it is possible to resolve the identity variable
    */
   def getResolvedArgs(innerIndex: Int): List[(String, Any)] = {
     var res = List[(String, Any)]()
@@ -113,14 +115,14 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
       var isFunction = false
       val tmp = value map (x => x match {
         case (module, function) => {
-          val fullFunctionName = generator.evalVar(module, Map("i"->innerIndex)) + "." + generator.evalVar(function, Map("i"->innerIndex))
+          val fullFunctionName = generator.evalVar(module, Map(Config.identityVar->innerIndex)) + "." + generator.evalVar(function, Map(Config.identityVar->innerIndex))
           generator.functions.get(fullFunctionName) match {
         	  case Some(f: Fun) => res = res :+ (name, f)
         	  case None => throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
         	}
           isFunction = true
         }
-        case other => generator.evalVar(other, Map("i"->innerIndex))
+        case other => generator.evalVar(other, Map(Config.identityVar->innerIndex))
       })
       if (!isFunction) res = res :+ (name, tmp.mkString)
     }

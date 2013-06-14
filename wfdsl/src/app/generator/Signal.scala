@@ -1,5 +1,7 @@
 package app.generator
 
+import app.Config
+
 case class Signal(val signalName: String, val genSeq: List[Any], 
     private val args: List[(String, List[Any])], 
     val globalIndex: Int, private val generator: Generator) {
@@ -23,7 +25,7 @@ case class Signal(val signalName: String, val genSeq: List[Any],
     }
     for ((name, value) <- args) {
       val tmp = value map (v => portIds.get(0) match {
-          case Some(portId) => generator.evalVar(v, Map("portId"->portId))
+          case Some(portId) => generator.evalVar(v, Map(Config.portIdVar->portId))
           case None => generator.evalVar(v)
       })
       res = res :+ (name, tmp.mkString)
@@ -33,7 +35,7 @@ case class Signal(val signalName: String, val genSeq: List[Any],
   
   /*
    * Resolves all args for a sequence based signal. Thanks to the innerIndex
-   * it is possible to resolve the "i" variable
+   * it is possible to resolve the identity variable
    */
   def getResolvedArgs(innerIndex: Int): List[(String, String)] = {
     var res = List[(String, String)]()
@@ -47,8 +49,8 @@ case class Signal(val signalName: String, val genSeq: List[Any],
     }
     for ((name, value) <- args) {
       val tmp = value map (v => portIds.get(innerIndex) match {
-          case Some(portId) => generator.evalVar(v, Map("i"->innerIndex, "portId"->portId))
-          case None => generator.evalVar(v, Map("i"->innerIndex))
+          case Some(portId) => generator.evalVar(v, Map(Config.identityVar->innerIndex, Config.portIdVar->portId))
+          case None => generator.evalVar(v, Map(Config.identityVar->innerIndex))
       })
       res = res :+ (name, tmp.mkString)
     }
