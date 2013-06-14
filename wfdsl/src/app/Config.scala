@@ -1,5 +1,8 @@
 package app
 
+import app.generator.SimpleSignal
+import app.generator.Task
+
 object Config {
 
   object FunctionGenerationStrategy extends Enumeration {
@@ -14,4 +17,11 @@ object Config {
   val portIdVar = "portId"
   val reservedVarsNames = Set(identityVar, portIdVar)
 
+  /*
+   * Fill in this method, it'll validate every newly created Task
+   */
+  def validatePorts(task: Task, ins: List[SimpleSignal], outs: List[SimpleSignal]) = {
+//    if (ins.size == 0) throw new Exception("There are no ins ports in task " + task.taskName)
+//    if (outs.size == 0) throw new Exception("There are no outs ports in task " + task.taskName)
+  }
 }

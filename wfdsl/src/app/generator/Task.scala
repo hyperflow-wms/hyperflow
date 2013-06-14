@@ -11,6 +11,15 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
   val ins: List[Any] = extractSignalsSpec("ins")
   val outs: List[Any] = extractSignalsSpec("outs")
   
+  genSeq match {
+    case null => Config.validatePorts(this, getSignalsSpec("ins"), getSignalsSpec("outs"))
+    case _ => {
+      for (index <- 0 until genSeq.size) {
+      	Config.validatePorts(this, getSignalsSpec("ins", index), getSignalsSpec("outs", index))
+      }    
+    }
+  }
+  
   private def extractSignalsSpec(portName: String): List[Any] = {
     args.find(Function.tupled((argName, argVal) => argName == portName)) match {
       case Some((_, list)) => {

@@ -18,10 +18,12 @@ object Main extends Grammar {
     			seq2 = {1, -1, 0}
     			seq3 = {'a', 'm', 'c'}
     			tmp = seq3[n[a]]
+    			tmp2 = {}
     		config:
     			workdir = "hej"
     			test = "${seq3[n[a]]}"
     		signals:
+    			tmpSig[tmp2]
     			aSignal
     			bSignal {
     				one = "one ${tmp} three"
@@ -43,7 +45,7 @@ object Main extends Grammar {
     		tasks:
     			foreach DirScanner {
     				function = functions.scanDirForJs
-    				ins = back[p[a]], *next
+    				ins = *tmpSig
     				outs = next[0]
     				__comment = "komentarz"
     			}
