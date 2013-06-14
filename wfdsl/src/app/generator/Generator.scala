@@ -124,6 +124,7 @@ class Generator(val wf: Workflow) {
    * const - primitive | explicit sequence e.g. {"a", "c", "f"}
    */
   def evalVar(value: Any): Any = {
+    println(value)
     value match {
       case Sequence(from, to, step) => evalSeq(evalVar(from), evalVar(to), evalVar(step))
       case Tuple1(a: String) => vars.get(a) match {
@@ -138,6 +139,7 @@ class Generator(val wf: Workflow) {
         case (seq: List[Any], _) => throw new Exception(a + " cannot take " + b + " as an index")
         case _ => throw new Exception(a + " is not a sequence and cannot be accessed with [] operator")
       }
+      case None => throw new Exception("Could not evaluate variable " + value)
       case const => const
     }
   }
@@ -145,10 +147,10 @@ class Generator(val wf: Workflow) {
   /*
    * Evaluate a variable that uses the special variable "i"
    */
-  def evalVar(value: Any, i: Int): Any = {
-    vars += "i" -> i
+  def evalVar(value: Any, extra: Map[String, Any]): Any = {
+    vars ++= extra
     val res = evalVar(value)
-    vars -= "i"
+    vars --= extra.keys
     res
   }
   

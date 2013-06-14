@@ -28,7 +28,9 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
       case "ins" => ins
       case "outs" => outs
     }
-    port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec))
+    val simpleSignals = port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec))
+    addPortIdsToSignals(port, simpleSignals)
+    simpleSignals
   }
   
   def getSignalsSpec(portName: String, innerIndex: Int): List[SimpleSignal] = {
@@ -45,7 +47,25 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
       case "ins" => ins
       case "outs" => outs
     }
-    port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec, innerIndex))
+    val simpleSignals = port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec, innerIndex))
+    addPortIdsToSignals(port, simpleSignals)
+    simpleSignals
+  }
+  
+  def addPortIdsToSignals(port: List[Any], simpleSignals: List[SimpleSignal]) {
+    if (port == outs) {
+      var counter = 0
+      for (simpleSignal <- simpleSignals) {
+        val portId = counter
+        val localIndex = simpleSignal.globalIndex - simpleSignal.parent.globalIndex
+        simpleSignal.parent.portIds.get(localIndex) match {
+          case Some(`portId`) => {}
+          case Some(i: Int) => throw new Exception("[task " + taskName + "][signal " + simpleSignal.parent.signalName + "(" + localIndex + ")]Signal used in an out port although it was assigned to an out port previously somewhere else")
+          case None => simpleSignal.parent.portIds += localIndex -> portId
+        }
+        counter += 1
+      }
+    }
   }
   
   /* 
@@ -93,14 +113,14 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
       var isFunction = false
       val tmp = value map (x => x match {
         case (module, function) => {
-          val fullFunctionName = generator.evalVar(module, innerIndex) + "." + generator.evalVar(function, innerIndex)
+          val fullFunctionName = generator.evalVar(module, Map("i"->innerIndex)) + "." + generator.evalVar(function, Map("i"->innerIndex))
           generator.functions.get(fullFunctionName) match {
         	  case Some(f: Fun) => res = res :+ (name, f)
         	  case None => throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
         	}
           isFunction = true
         }
-        case other => generator.evalVar(other, innerIndex)
+        case other => generator.evalVar(other, Map("i"->innerIndex))
       })
       if (!isFunction) res = res :+ (name, tmp.mkString)
     }

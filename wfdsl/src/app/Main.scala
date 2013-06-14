@@ -21,8 +21,9 @@ object Main extends Grammar {
     		signals:
     			aSignal
     			bSignal {
-    				}
-      
+    				one = "one ${tmp} three"
+    				portId = "${portId}"
+    			}
     			next[n] {
     				one = "one ${tmp} three"
       		}
@@ -46,7 +47,7 @@ object Main extends Grammar {
     			splitter LineEmitter[n] {
             function = functions.fileSplitter
     				ins = back[n[i]], aSignal, *next
-    				outs = next[i], bSignal
+    				outs = *next, bSignal
     				test = "${m[n[i]]}"
     			}
 
