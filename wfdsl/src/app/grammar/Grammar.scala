@@ -1,8 +1,6 @@
-package app
+package app.grammar
 
 import scala.util.parsing.combinator.JavaTokenParsers
-import app.element.Workflow
-import app.element.Sequence
 
 class Grammar extends JavaTokenParsers {
 

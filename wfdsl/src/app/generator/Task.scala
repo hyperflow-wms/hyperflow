@@ -1,5 +1,7 @@
 package app.generator
 
+import app.Config
+
 class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
     private var args: List[(String, List[Any])],
     val globalIndex: Int, private val generator: Generator){
@@ -8,6 +10,15 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
   
   val ins: List[Any] = extractSignalsSpec("ins")
   val outs: List[Any] = extractSignalsSpec("outs")
+  
+  genSeq match {
+    case null => Config.validatePorts(this, getSignalsSpec("ins"), getSignalsSpec("outs"))
+    case _ => {
+      for (index <- 0 until genSeq.size) {
+      	Config.validatePorts(this, getSignalsSpec("ins", index), getSignalsSpec("outs", index))
+      }    
+    }
+  }
   
   private def extractSignalsSpec(portName: String): List[Any] = {
     args.find(Function.tupled((argName, argVal) => argName == portName)) match {
@@ -28,7 +39,9 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
       case "ins" => ins
       case "outs" => outs
     }
-    port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec))
+    val simpleSignals = port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec))
+    addPortIdsToSignals(port, simpleSignals)
+    simpleSignals
   }
   
   def getSignalsSpec(portName: String, innerIndex: Int): List[SimpleSignal] = {
@@ -45,39 +58,60 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
       case "ins" => ins
       case "outs" => outs
     }
-    port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec, innerIndex))
+    val simpleSignals = port.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ generator.evalSignal(signalSpec, innerIndex))
+    addPortIdsToSignals(port, simpleSignals)
+    simpleSignals
+  }
+  
+  def addPortIdsToSignals(port: List[Any], simpleSignals: List[SimpleSignal]) {
+    if (port == outs) {
+      var counter = 0
+      for (simpleSignal <- simpleSignals) {
+        val portId = counter
+        val localIndex = simpleSignal.globalIndex - simpleSignal.parent.globalIndex
+        simpleSignal.parent.portIds.get(localIndex) match {
+          case Some(`portId`) => {}
+          case Some(i: Int) => throw new Exception("[task " + taskName + "][signal " + simpleSignal.parent.signalName + "(" + localIndex + ")]Signal used in an out port although it was assigned to an out port previously somewhere else")
+          case None => simpleSignal.parent.portIds += localIndex -> portId
+        }
+        counter += 1
+      }
+    }
   }
   
   /* 
    * Resolves the args for a non-sequence based task
    */
-  def getResolvedArgs(): List[(String, String)] = {
-    var res = List[(String, String)]()
+  def getResolvedArgs(): List[(String, Any)] = {
+    var res = List[(String, Any)]()
     if (genSeq != null) {
       throw new Exception("task " + taskName + ": the task is sequence-generated and " + 
           "therefore you should invoke getResolvedArgs(index)")
     }
-    args map Function.tupled((name, value) => (name, value.mkString))
     for ((name, value) <- args) {
+      var isFunction = false
       val tmp = value map (x => x match {
         case (module, function) => {
           val fullFunctionName = generator.evalVar(module) + "." + generator.evalVar(function)
-          if (!generator.functions.contains(fullFunctionName)) throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
-          fullFunctionName
+          generator.functions.get(fullFunctionName) match {
+        	  case Some(f: Fun) => res = res :+ (name, f)
+        	  case None => throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
+        	}
+          isFunction = true
         }
         case other => generator.evalVar(other)
       })
-      res = res :+ (name, tmp.mkString)
+      if (!isFunction) res = res :+ (name, tmp.mkString)
     }
     res
   }
   
   /*
    * Resolves all args for a sequence based task. Thanks to the innerIndex
-   * it is possible to resolve the "i" variable
+   * it is possible to resolve the identity variable
    */
-  def getResolvedArgs(innerIndex: Int): List[(String, String)] = {
-    var res = List[(String, String)]()
+  def getResolvedArgs(innerIndex: Int): List[(String, Any)] = {
+    var res = List[(String, Any)]()
     if (genSeq == null) {
       throw new Exception("task " + taskName + ": the task is not sequence-generated and " + 
           "therefore you should invoke getResolvedArgs()")
@@ -87,15 +121,19 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
           " of the sequence, because the sequence only has size " + genSeq.size)
     }
     for ((name, value) <- args) {
+      var isFunction = false
       val tmp = value map (x => x match {
         case (module, function) => {
-          val fullFunctionName = generator.evalVar(module, innerIndex) + "." + generator.evalVar(function, innerIndex)
-          if (!generator.functions.contains(fullFunctionName)) throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
-          fullFunctionName
+          val fullFunctionName = generator.evalVar(module, Map(Config.identityVar->innerIndex)) + "." + generator.evalVar(function, Map(Config.identityVar->innerIndex))
+          generator.functions.get(fullFunctionName) match {
+        	  case Some(f: Fun) => res = res :+ (name, f)
+        	  case None => throw new Exception("Reference to undeclared function " + fullFunctionName + " in task " + taskName)
+        	}
+          isFunction = true
         }
-        case other => generator.evalVar(other, innerIndex)
+        case other => generator.evalVar(other, Map(Config.identityVar->innerIndex))
       })
-      res = res :+ (name, tmp.mkString)
+      if (!isFunction) res = res :+ (name, tmp.mkString)
     }
     res
   }
