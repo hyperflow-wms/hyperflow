@@ -9,13 +9,13 @@ import app.grammar.Grammar
 
 @RunWith(classOf[JUnitRunner])
 class GeneratorSuite extends FunSuite {
-  
-  trait Tester extends Grammar {    
+
+  trait Tester extends Grammar {
   }
-  
+
   test("Wf_sqrsum") {
-    new Tester { 
-    	val generatorInput = """
+    new Tester {
+      val generatorInput = """
 	    		workflow Wf_sqrsum(size) {
 	    			vars:
 	    				gen = {1 to size}
@@ -49,7 +49,7 @@ class GeneratorSuite extends FunSuite {
       val parseRes = parseAll(workflow, generatorInput)
       val wf = parseRes.get
       val generatorOutput = new Generator(wf).generate(List("3"))
-      
+
       val handmadeInput = """
         	{
       			"name": "Wf_sqrsum",
@@ -66,24 +66,24 @@ class GeneratorSuite extends FunSuite {
       				"name": "Sqr",
       				"type": "foreach",
       """ + {
-	      Config.functionGenerationStrategy match {
-	    	  case NAME_ONLY => """"function": "sqr","""
-	    	  case MODULE_AND_NAME => """"function": "functions.sqr","""
-	    	  case ARRAY => """"function": [1],"""
-	    	}
-    	} + """
+        Config.functionGenerationStrategy match {
+          case NAME_ONLY => """"function": "sqr","""
+          case MODULE_AND_NAME => """"function": "functions.sqr","""
+          case ARRAY => """"function": [1],"""
+        }
+      } + """
 							"ins": [ 0, 1, 2 ],
 							"outs": [ 3, 4, 5 ]
       			}, {
 							"name": "Add",
 							"type": "task",
     	""" + {
-	      Config.functionGenerationStrategy match {
-	    	  case NAME_ONLY => """"function": "add","""
-	    	  case MODULE_AND_NAME => """"function": "functions.add","""
-	    	  case ARRAY => """"function": [0],"""
-	    	}
-    	} + """
+        Config.functionGenerationStrategy match {
+          case NAME_ONLY => """"function": "add","""
+          case MODULE_AND_NAME => """"function": "functions.add","""
+          case ARRAY => """"function": [0],"""
+        }
+      } + """
 							"ins": [ 3, 4, 5 ],
 							"outs": [ 6 ]
       			} ],
@@ -108,11 +108,122 @@ class GeneratorSuite extends FunSuite {
         	"""
       val strippedGeneratorOutput = generatorOutput.replaceAll("\\s", "")
       val strippedHandmadeInput = handmadeInput.replaceAll("\\s", "")
-//      println(strippedGeneratorOutput)
-//      println(strippedHandmadeInput)
+      //      println(strippedGeneratorOutput)
+      //      println(strippedHandmadeInput)
       assert(strippedGeneratorOutput === strippedHandmadeInput)
     }
-    
+
+  }
+
+  test("Wf_seq_index_out_of_bounds") {
+    new Tester {
+      val size = "5"
+      val generatorInput = """
+	    		workflow Wf_sqrsum(size) {
+	    			vars:
+	    				gen = {1 to size}
+    				config:
+	    			signals:
+	    				arg[gen] {
+	    					name = "arg${gen[""" + size + """]}"
+	    				}
+	    				sum
+	    			functions:
+	    			tasks:
+    				ins:
+    				outs:
+	    		}
+	    		"""
+      val parseRes = parseAll(workflow, generatorInput)
+      val wf = parseRes.get
+      // Exception could be more specific (e.g. SeqIndexOutOfBound):
+      intercept[Exception] {
+        val generatorOutput = new Generator(wf).generate(List(size))
+      }
+    }
+  }
+
+  test("Wf_illegal_portId_variable") {
+    new Tester {
+      val size = "5"
+      val generatorInput = """
+	    		workflow Wf_sqrsum(size) {
+	    			vars:
+	    				gen = {1 to size}
+        				portId = {1 to 4}
+    				config:
+	    			signals:
+	    				arg[gen] {
+	    					name = "arg${gen[i]}"
+	    				}
+	    				sum
+	    			functions:
+	    			tasks:
+    				ins:
+    				outs:
+	    		}
+	    		"""
+      val parseRes = parseAll(workflow, generatorInput)
+      val wf = parseRes.get
+      intercept[Exception] {
+        val generatorOutput = new Generator(wf).generate(List(size))
+      }
+    }
+  }
+
+  test("Wf_illegal_i_variable") {
+    new Tester {
+      val size = "5"
+      val generatorInput = """
+	    		workflow Wf_sqrsum(size) {
+	    			vars:
+	    				gen = {1 to size}
+        				i = {"one", "two", "three"}
+    				config:
+	    			signals:
+	    				arg[gen] {
+	    					name = "arg${gen[i]}"
+	    				}
+	    				sum
+	    			functions:
+	    			tasks:
+    				ins:
+    				outs:
+	    		}
+	    		"""
+      val parseRes = parseAll(workflow, generatorInput)
+      val wf = parseRes.get
+      intercept[Exception] {
+        val generatorOutput = new Generator(wf).generate(List(size))
+      }
+    }
+  }
+
+  test("Wf_seq_without_asterisk") {
+    new Tester {
+      val size = "5"
+      val generatorInput = """
+	    		workflow Wf_sqrsum(size) {
+	    			vars:
+	    				gen = {1 to size}
+    				config:
+	    			signals:
+	    				arg[gen] {
+	    					name = "arg${gen[i]}"
+	    				}
+	    				sum
+	    			functions:
+	    			tasks:
+    				ins: arg
+    				outs:
+	    		}
+	    		"""
+      val parseRes = parseAll(workflow, generatorInput)
+      val wf = parseRes.get
+      intercept[Exception] {
+        val generatorOutput = new Generator(wf).generate(List(size))
+      }
+    }
   }
 
 }
