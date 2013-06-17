@@ -1,10 +1,12 @@
 package app.generator
 
-import app.element.Workflow
+import app.grammar.Workflow
 import scala.collection.mutable.LinkedHashMap
-import app.element.Sequence
+import app.grammar.Sequence
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.MutableList
+import app.Config.FunctionGenerationStrategy._
+import app.Config
 
 class Generator(val wf: Workflow) {
   private val out = new StringBuilder()
@@ -40,6 +42,7 @@ class Generator(val wf: Workflow) {
     append("{")
     indent += 1
     printName()
+    printConfig()
     printFunctions()
     printTasks()
     printSignals()
@@ -95,24 +98,24 @@ class Generator(val wf: Workflow) {
    * evaluates variables declared in vars section of code
    */
   private def addVars() = {
-  	for ((name, value) <- wf.vars) {
-  	  if (vars.contains(name)) {
-  	    throw new Exception("Variable " + name + " specified twice")
-  	  }
-  	  if (name == "i") {
-  	    throw new Exception("'i' is a reserved variable name and cannot be declared")
-  	  }
-  	  try {
-  	  	vars += name -> evalVar(value)
-  	  } catch {
-  	    case e: Throwable => throw new Exception(e.getMessage() + " in the definition of " + name)
-  	  }
-  	}
-//  	println(vars)
-//  	println(vars map Function.tupled((k, v) => v match {
-//  	  case t: Tuple2[Any, Any] => t._2.getClass
-//  	  case other => other
-//  	}))
+    for ((name, value) <- wf.vars) {
+      if (vars.contains(name)) {
+        throw new Exception("Variable " + name + " specified twice")
+      }
+      if (Config.reservedVarsNames contains name) {
+        throw new Exception("\"" + name + "\" is a reserved variable name and cannot be declared")
+      }
+      try {
+        vars += name -> evalVar(value)
+      } catch {
+        case e: Throwable => throw new Exception(e.getMessage() + " in the definition of " + name)
+      }
+    }
+//      println(vars)
+//      println(vars map Function.tupled((k, v) => v match {
+//        case t: Tuple2[Any, Any] => t._2.getClass
+//        case other => other
+//      }))
   }
   
   /*
@@ -136,17 +139,18 @@ class Generator(val wf: Workflow) {
         case (seq: List[Any], _) => throw new Exception(a + " cannot take " + b + " as an index")
         case _ => throw new Exception(a + " is not a sequence and cannot be accessed with [] operator")
       }
+      case None => throw new Exception("Could not evaluate variable " + value)
       case const => const
     }
   }
   
   /*
-   * Evaluate a variable that uses the special variable "i"
+   * Evaluate a variable that uses the identityVar
    */
-  def evalVar(value: Any, i: Int): Any = {
-    vars += "i" -> i
+  def evalVar(value: Any, extra: Map[String, Any]): Any = {
+    vars ++= extra
     val res = evalVar(value)
-    vars -= "i"
+    vars --= extra.keys
     res
   }
   
@@ -193,14 +197,14 @@ class Generator(val wf: Workflow) {
         append("{")
         indent += 1
         val resolvedArgs = signal.getResolvedArgs()
-          resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some((n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
-          for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
-          removeLastComma()
+        resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
+          case Some((n, v)) => append("\"name\": \"" + v + "\",")
+          case _ => append("\"name\": \"" + defName + "\",")
+        }
+        for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
+          append("\"" + k + "\": \"" + v + "\",")
+        }
+        removeLastComma()
         indent -= 1
         append("},")
       }
@@ -211,16 +215,16 @@ class Generator(val wf: Workflow) {
           indent += 1
           val resolvedArgs = signal.getResolvedArgs(idx)
           resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
+            case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
+            case _ => append("\"name\": \"" + defName + "\",")
+          }
           for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
+            append("\"" + k + "\": \"" + v + "\",")
+          }
           removeLastComma()
           idx += 1
-	        indent -= 1
-	        append("},")
+          indent -= 1
+          append("},")
         }
       }
     }
@@ -289,24 +293,28 @@ class Generator(val wf: Workflow) {
   private def printTasks() = {
     append("\"tasks\": [")
     indent += 1
-    for ((defName, task) <- tasks) {
+    for ((taskName, task) <- tasks) {
       if (task.genSeq == null) {
         append("{")
         indent += 1
         val resolvedArgs = task.getResolvedArgs()
-          resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some((n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
-	        }
-        	append("\"type\": \"" + task.taskType + "\",")
-          for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
-	        }
-        	val insIndexes = task.getSignalsSpec("ins") map (simpleSignal => simpleSignal.globalIndex)
-          append("\"ins\": [" + insIndexes.mkString(", ") + "],")
-          val outsIndexes = task.getSignalsSpec("outs") map (simpleSignal => simpleSignal.globalIndex)
-          append("\"outs\": [" + outsIndexes.mkString(", ") + "],")
-          removeLastComma()
+        resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
+          case Some((_, v: String)) => append("\"name\": \"" + v + "\",")
+          case Some(_) => throw new Exception("Value of argument 'name' in task " + taskName + " has to evaluate to String")
+          case None => append("\"name\": \"" + taskName + "\",")
+        }
+        append("\"type\": \"" + task.taskType + "\",")
+        for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
+          v match {
+            case f: Fun => append(getFunctionStringForm(k, f))
+            case _: String => append("\"" + k + "\": \"" + v + "\",")
+          }
+        }
+        val insIndexes = task.getSignalsSpec("ins") map (simpleSignal => simpleSignal.globalIndex)
+        append("\"ins\": [" + insIndexes.mkString(", ") + "],")
+        val outsIndexes = task.getSignalsSpec("outs") map (simpleSignal => simpleSignal.globalIndex)
+        append("\"outs\": [" + outsIndexes.mkString(", ") + "],")
+        removeLastComma()
         indent -= 1
         append("},")
       }
@@ -317,11 +325,16 @@ class Generator(val wf: Workflow) {
           indent += 1
           val resolvedArgs = task.getResolvedArgs(idx)
           resolvedArgs.find(Function.tupled((n, v) => n == "name")) match {
-          	case Some(Tuple2(n, v)) => append("\"name\": \"" + v + "\",")
-	          case _ => append("\"name\": \"" + defName + "\",")
+	          case Some((_, v: String)) => append("\"name\": \"" + v + "\",")
+	          case Some(_) => throw new Exception("Value of argument 'name' in task " + taskName + " has to evaluate to String")
+	          case None => append("\"name\": \"" + taskName + "\",")
 	        }
+          append("\"type\": \"" + task.taskType + "\",")
           for ((k, v) <- resolvedArgs.filterNot(Function.tupled((n,v) => n == "name"))) {
-	          append("\"" + k + "\": \"" + v + "\",")
+	          v match {
+	            case f: Fun => append(getFunctionStringForm(k, f))
+	            case _: String => append("\"" + k + "\": \"" + v + "\",")
+	          }
 	        }
           val insIndexes = task.getSignalsSpec("ins", idx) map (simpleSignal => simpleSignal.globalIndex)
           append("\"ins\": [" + insIndexes.mkString(", ") + "],")
@@ -329,8 +342,8 @@ class Generator(val wf: Workflow) {
           append("\"outs\": [" + outsIndexes.mkString(", ") + "],")
           removeLastComma()
           idx += 1
-	        indent -= 1
-	        append("},")
+          indent -= 1
+          append("},")
         }
       }
     }
@@ -341,10 +354,18 @@ class Generator(val wf: Workflow) {
     append("],")
   }
   
+  def getFunctionStringForm(varName: String, fun: Fun): String = {
+    Config.functionGenerationStrategy match {
+      case NAME_ONLY => "\"" + varName + "\": \"" + fun.name + "\","
+  	  case MODULE_AND_NAME => "\"" + varName + "\": \"" + fun.module + "." + fun.name + "\","
+  	  case ARRAY => "\"" + varName + "\": [" + fun.globalIndex + "],"
+    }
+  }
+  
   def evalSignal(value: Any, i: Int): List[SimpleSignal] = {
-    vars += "i" -> i
+    vars += Config.identityVar -> i
     val res = evalSignal(value)
-    vars -= "i"
+    vars -= Config.identityVar
     res
   }
   
@@ -378,8 +399,8 @@ class Generator(val wf: Workflow) {
           case Signal(_, seq, _, globalIndex, _) => {
             evalVar(unresolvedIndex) match {
               case index: Int => {
-              	if (seq.size <= index) throw new Exception("The index " + unresolvedIndex + " is equal to " + index + " and is out of bounds of the base-sequence of signal " + name + " of size " + seq.size)
-              	List(SimpleSignal(globalIndex + index, s))
+                if (seq.size <= index) throw new Exception("The index " + unresolvedIndex + " is equal to " + index + " and is out of bounds of the base-sequence of signal " + name + " of size " + seq.size)
+                List(SimpleSignal(globalIndex + index, s))
               }
               case _ => throw new Exception("The index " + unresolvedIndex + " is not a variable of Int type in signal " + name)
             }
@@ -401,6 +422,18 @@ class Generator(val wf: Workflow) {
     }
     val indexes = io map (simpleSignal => simpleSignal.globalIndex)
     append("\"" + ioName + "\": [" + indexes.mkString(", ") + "],")
+  }
+  
+  def printConfig() = {
+    append("\"config\": {")
+    indent += 1
+    for ((name, value) <- wf.config) {
+      val tmp = (value map (x => evalVar(x))).mkString
+      append("\"" + name + "\": \"" + tmp + "\",")
+    }
+    if (wf.config.size > 0) removeLastComma()
+    indent -= 1
+    append("},")
   }
 
   private def append(s: String) = {

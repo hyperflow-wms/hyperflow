@@ -1,4 +1,4 @@
-package app.element
+package app.grammar
 
 import scala.collection.immutable.List
 import scala.collection.mutable.ListBuffer

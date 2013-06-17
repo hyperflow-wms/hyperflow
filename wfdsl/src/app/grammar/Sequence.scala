@@ -1,4 +1,4 @@
-package app.element
+package app.grammar
 
 object Sequence {
   def apply(from: Any, to: Any) = new Sequence(from, to, 1)
