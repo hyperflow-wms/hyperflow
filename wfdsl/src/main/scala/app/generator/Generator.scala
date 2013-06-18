@@ -98,24 +98,19 @@ class Generator(val wf: Workflow) {
    * evaluates variables declared in vars section of code
    */
   private def addVars() = {
-    for ((name, value) <- wf.vars) {
-      if (vars.contains(name)) {
-        throw new Exception("Variable " + name + " specified twice")
-      }
-      if (Config.reservedVarsNames contains name) {
-        throw new Exception("\"" + name + "\" is a reserved variable name and cannot be declared")
-      }
+    for ((name, value) <- wf.vars) {      
       try {
+	      if (vars.contains(name)) {
+	        throw new Exception("Specified twice")
+	      }
+	      if (Config.reservedVarsNames contains name) {
+	        throw new Exception("Is a reserved variable name and cannot be declared")
+	      }
         vars += name -> evalVar(value)
       } catch {
-        case e: Throwable => throw new Exception(e.getMessage() + " in the definition of " + name)
+        case e: Throwable => throw new Exception("[var " + name + "]" +e.getMessage())
       }
     }
-//      println(vars)
-//      println(vars map Function.tupled((k, v) => v match {
-//        case t: Tuple2[Any, Any] => t._2.getClass
-//        case other => other
-//      }))
   }
   
   /*
@@ -134,7 +129,7 @@ class Generator(val wf: Workflow) {
       case Tuple1(a) => evalVar(a)
       case (a, b) => (evalVar(a), evalVar(b)) match {
         case (seq: List[Any], index: Int) => 
-          if (seq.size > index) seq(index) 
+          if (seq.size > index && index >= 0) seq(index) 
           else throw new Exception("Index " + index + " is out of bounds of sequence " + a + " of size " + seq.size)
         case (seq: List[Any], _) => throw new Exception(a + " cannot take " + b + " as an index")
         case _ => throw new Exception(a + " is not a sequence and cannot be accessed with [] operator")
@@ -172,18 +167,22 @@ class Generator(val wf: Workflow) {
       throw new Exception("Signal names have to be unique")
     }
     for(signal <- wf.signals) {
-      signal match {
-        case (name, null, args) => {
-          signals += name -> new Signal(name, null, args, index, this)
-          index += 1
-        }
-        case (name, seq, args) => vars.get(seq) match {
-          case Some(l: List[Any]) => {
-            signals += name -> new Signal(name, l, args, index, this)
-            index += l.size
-          }
-          case _ => throw new Exception("The generating sequence in signal " + name + " is incorrect")
-        }
+      try {
+	      signal match {
+	        case (name, null, args) => {
+	          signals += name -> new Signal(name, null, args, index, this)
+	          index += 1
+	        }
+	        case (name, seq, args) => vars.get(seq) match {
+	          case Some(l: List[Any]) => {
+	            signals += name -> new Signal(name, l, args, index, this)
+	            index += l.size
+	          }
+	          case _ => throw new Exception("Generating sequence is incorrect")
+	        }
+	      }
+      } catch {
+        case e: Throwable => throw new Exception("[signal " + signal._1 + "]" + e.getMessage())
       }
     }
     totalSignalsNum = index
@@ -245,7 +244,6 @@ class Generator(val wf: Workflow) {
       index += 1
     }
     totalFunctionsNum = index
-//    println(functions)
   }
   
   private def printFunctions() = {
@@ -273,18 +271,22 @@ class Generator(val wf: Workflow) {
       throw new Exception("Task names have to be unique")
     }
     for(task <- wf.tasks) {
-      task match {
-        case (taskType, name, null, args) => {
-          tasks += name -> new Task(taskType, name, null, args, index, this)
-          index += 1
-        }
-        case (taskType, name, seq, args) => vars.get(seq) match {
-          case Some(l: List[Any]) => {
-            tasks += name -> new Task(taskType, name, l, args, index, this)
-            index += l.size
-          }
-          case _ => throw new Exception("The generating sequence in task " + name + " is incorrect")
-        }
+      try {
+	      task match {
+	        case (taskType, name, null, args) => {
+	          tasks += name -> new Task(taskType, name, null, args, index, this)
+	          index += 1
+	        }
+	        case (taskType, name, seq, args) => vars.get(seq) match {
+	          case Some(l: List[Any]) => {
+	            tasks += name -> new Task(taskType, name, l, args, index, this)
+	            index += l.size
+	          }
+	          case _ => throw new Exception("The generating sequence is incorrect")
+	        }
+	      }
+	    } catch {
+        case e: Throwable => throw new Exception("[task " + task._1 + "]" + e.getMessage())
       }
     }
     totalTasksNum = index
@@ -412,7 +414,11 @@ class Generator(val wf: Workflow) {
   }
   
   def resolveInsOuts(io: List[Any]): List[SimpleSignal] = {
-    io.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ evalSignal(signalSpec))
+    try {
+    	io.foldLeft(List[SimpleSignal]())((l, signalSpec) => l ++ evalSignal(signalSpec))
+    } catch {
+      case e: Throwable => throw new Exception("[ins/outs]" + e.getMessage())
+    }
   }
   
   def printInsOuts(ioName: String) = {
@@ -428,8 +434,12 @@ class Generator(val wf: Workflow) {
     append("\"config\": {")
     indent += 1
     for ((name, value) <- wf.config) {
-      val tmp = (value map (x => evalVar(x))).mkString
-      append("\"" + name + "\": \"" + tmp + "\",")
+      try {
+      	val tmp = (value map (x => evalVar(x))).mkString
+      	append("\"" + name + "\": \"" + tmp + "\",")
+      } catch {
+        case e: Throwable => throw new Exception("[config " + name + "]" + e.getMessage())
+      }
     }
     if (wf.config.size > 0) removeLastComma()
     indent -= 1
