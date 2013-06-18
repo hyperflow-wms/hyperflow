@@ -23,11 +23,11 @@ object Main extends Grammar {
     			workdir = "hej"
     			test = "${seq3[n[a]]}"
     		signals:
-    			tmpSig[tmp2]
+    			tmpSig[seq3]
     			aSignal
     			bSignal {
     				one = "one ${tmp} three"
-    				portId = "${portId}"
+    				portId = "${seq3[10]}"
     			}
     			next[n] {
     				one = "one ${tmp} three"
@@ -36,7 +36,7 @@ object Main extends Grammar {
     				name = "customName"
     				numbers = "six ${seq3[n[a]]} three"
     				test = "${m[i]}"
-    				test2 = "${i}"
+    				test2 = "${seq3[1]}"
       		}
     		functions:
     			functions.scanDirForJs
