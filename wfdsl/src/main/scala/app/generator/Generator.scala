@@ -63,7 +63,7 @@ class Generator(val wf: Workflow) {
    */
   private def addArgs(args: List[String]) = {
     if (args.size != wf.args.size) {
-      throw new Exception("Incorrect number of workflow arguments")
+      throw new Exception("Incorrect number of workflow arguments, expected " + wf.args.size + ", received " + args.size)
     }
     if (wf.args.distinct.size != wf.args.size) {
       throw new Exception("Workflow arguments have to be uniquely named")
