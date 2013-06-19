@@ -16,3 +16,8 @@ bin/
 .project
 .settings/
 .cache
+
+# SBT
+target/
+.history
+
