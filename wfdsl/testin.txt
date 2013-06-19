@@ -1,0 +1,50 @@
+workflow grepFiles(size) {
+	vars:
+		a = 1
+		n = {1 to size}
+		m = {'a' to 'g' step a}
+		p = {0 to size}
+		seq1 = {"ala", "ola", "ela"}   
+		seq2 = {1, -1, 0}
+		seq3 = {'a', 'm', 'c'}
+		tmp = seq3[n[a]]
+		tmp2 = {}
+	config:
+		workdir = "hej"
+		test = "${seq3[n[a]]}"
+	signals:
+		tmpSig[seq3]
+		aSignal
+		bSignal {
+			one = "one ${tmp} three"
+			portId = "${seq3[a]}"
+		}
+		next[n] {
+			one = "one ${tmp} three"
+		}
+		back[m] {
+			name = "customName"
+			numbers = "six ${seq3[n[a]]} three"
+			test = "${m[i]}"
+			test2 = "${seq3[1]}"
+		}
+	functions:
+		functions.scanDirForJs
+		functions.fileSplitter
+		functions.grepFile
+	tasks:
+		foreach DirScanner {
+			function = functions.scanDirForJs
+			ins = *tmpSig
+			outs = next[0]
+			__comment = "komentarz"
+		}
+		splitter LineEmitter[n] {
+    			function = functions.fileSplitter
+			ins = back[n[i]], aSignal, *next
+			outs = *next, bSignal
+			test = "${m[n[i]]}"
+		}
+	ins: *back
+	outs: next[1]
+}
