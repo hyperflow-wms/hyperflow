@@ -1,0 +1,60 @@
+workflow grepFiles(size) {
+	vars:
+		nDirs = {1 to size}
+	config:
+		workdir = "hej"
+	signals:
+		dir[nDirs] {
+			name = "dir${i}"
+		}
+		fileList[nDirs] {
+			name = "filelist${i}"
+                }
+		filePath[nDirs] {
+			name = "filepath${i}"
+                }
+		nextWMLE[nDirs] {
+                        name = "next"
+                        control = "true"
+		}
+		doneWMOut[nDirs] {
+                        name = "done"
+                        control = "true"
+		}
+		nextLEWM[nDirs] {
+                        name = "next"
+                        control = "true"
+		}
+		doneLEWM[nDirs] {
+                        name = "done"
+                        control = "true"
+		}
+                regex {
+			name = "regex"
+                }
+		matches[nDirs] {
+			name = "matches${i}"
+                }
+	functions:
+		functions.scanDirForJs
+		functions.fileSplitter
+		functions.grepFile
+	tasks:
+		foreach DirScanner {
+			function = functions.scanDirForJs
+			ins = *dir
+			outs = *fileList
+		}
+		splitter LineEmitter[nDirs] {
+    			function = functions.fileSplitter
+			ins = fileList[i], nextWMLE[i]
+			outs = filePath[i], nextLEWM[i], doneLEWM[i]
+		}
+                stickyservice WordMatch[nDirs] {
+			function = functions.grepFile
+                        ins = regex, filePath[i], nextLEWM[i], doneLEWM[i]
+ 			outs = matches[i], nextWMLE[i], doneWMOut[i]
+                }
+	ins: *dir, regex
+	outs: *matches, *doneWMOut
+}
