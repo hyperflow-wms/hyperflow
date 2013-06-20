@@ -26,7 +26,7 @@ object Main extends Grammar {
       val output = new Generator(wf).generate(args.drop(2).toList)
       printToFile(new File(args(1)), output)      
     } catch {
-      case e: Exception => println("\nEXCEPTION!!!\n" + e.getMessage() + "\n")
+      case e: Exception => e.printStackTrace()//println("\nEXCEPTION!!!\n" + e.getMessage() + "\n")
     }
   }
   

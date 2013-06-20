@@ -286,7 +286,7 @@ class Generator(val wf: Workflow) {
 	        }
 	      }
 	    } catch {
-        case e: Throwable => throw new Exception("[task " + task._1 + "]" + e.getMessage())
+        case e: Throwable => throw new Exception("[task " + task._2 + "]" + e.getMessage())
       }
     }
     totalTasksNum = index
