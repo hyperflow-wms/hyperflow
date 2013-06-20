@@ -26,10 +26,13 @@ object Main extends Grammar {
       val output = new Generator(wf).generate(args.drop(2).toList)
       printToFile(new File(args(1)), output)      
     } catch {
-      case e: Exception => e.printStackTrace()//println("\nEXCEPTION!!!\n" + e.getMessage() + "\n")
+      case e: Exception => println("\nEXCEPTION!!!\n" + e.getMessage() + "\n")
     }
   }
   
+  /*
+   * Utility method to facilitate writing to a file
+   */
   private def printToFile(f: java.io.File, out: String) {
 	  val p = new java.io.PrintWriter(f)
 	  try { 
