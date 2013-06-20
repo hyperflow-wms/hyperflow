@@ -226,4 +226,54 @@ class GeneratorSuite extends FunSuite {
     }
   }
 
+  test("Wf_portId_test") {
+    new Tester {
+      val size = "4"
+      val generatorInput = """
+	    		workflow Wf_sqrsum(size) {
+	    			vars:
+	    				gen = {1 to size}
+    				config:
+	    			signals:
+	    				arg[gen] {
+	    					name = "arg${gen[i]}"
+	    				}
+	    				sqr[gen] {
+	    					name = "name_test${portId}"
+	    				}
+	    				sum
+	    			functions:
+	    				functions.add
+	    				functions.sqr
+	    			tasks:
+	    				foreach Sqr {
+	    					function = functions.sqr
+	    					ins = *arg 
+	    					outs = *sqr
+	    				}
+    				ins: *arg
+    				outs: sum
+	    		}
+	    		"""
+
+      val substrPrefix = """
+          {
+			"name": "name_test"""
+
+      val substrSuffix = """"
+          },
+          """
+
+      val substrToMatch = (0 until size.toInt).foldRight("")(substrPrefix + _ + substrSuffix + _)
+
+      val parseRes = parseAll(workflow, generatorInput)
+      val wf = parseRes.get
+      val generatorOutput = new Generator(wf).generate(List(size))
+
+      val strippedGeneratorOutput = generatorOutput.replaceAll("\\s", "")
+      val strippedSubstrToMatch = substrToMatch.replaceAll("\\s", "")
+      assert((strippedGeneratorOutput contains strippedSubstrToMatch) === true)
+    }
+  }
+
 }
