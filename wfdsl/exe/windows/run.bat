@@ -1,0 +1,1 @@
+java -jar .\..\..\target\scala-2.10\wfdsl_2.10-1.0.0-one-jar.jar %1 %2 %3
