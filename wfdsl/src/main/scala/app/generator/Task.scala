@@ -2,6 +2,15 @@ package app.generator
 
 import app.Config
 
+/*
+ * Represents a Task, considered at the level of DSL.
+ * All properties should be quite self-explanatory.
+ * genSeq - generating sequence of this Task or null if it's a primitive Task
+ * globalIndex - the "starting" index of this Task when converted to JSON.
+ *   "Starting" means, that each primitive Task generated from this Task
+ *   will be indexed as globalIndex + genSeq_index
+ * generator - a reference to Generator providing access to some of its methods
+ */
 class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
     private var args: List[(String, List[Any])],
     val globalIndex: Int, private val generator: Generator){
@@ -13,6 +22,10 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
   
   validatePorts()
   
+  /*
+   * Looks for arguments named "ins" and "outs" in args list, assigns them
+   * to appropriate values and removes them from args
+   */
   private def extractSignalsSpec(portName: String): List[Any] = {
     try {
 	    args.find(Function.tupled((argName, argVal) => argName == portName)) match {
@@ -27,6 +40,12 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
 	  }
   }
   
+	/* 
+   * A method called on primitive Tasks only!
+   * Gets the port name ("ins" or "outs") as an argument and returns
+   * a list of SimpleSignals associated with this port. Resolves
+   * all extant variables describing the Signals
+   */
   def getSignalsSpec(portName: String): List[SimpleSignal] = {
     try {
 	    if (genSeq != null) {
@@ -45,6 +64,13 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
 	  }
   }
   
+  /* 
+   * A method called on sequence-based Tasks only!
+   * Gets the port name ("ins" or "outs") as an argument 
+   * and an innerIndex to access the specific primitive Task and returns
+   * a list of SimpleSignals associated with this port. Resolves
+   * all extant variables describing the Signals
+   */
   def getSignalsSpec(portName: String, innerIndex: Int): List[SimpleSignal] = {
     try {
 	    var res = List[SimpleSignal]()
@@ -68,6 +94,10 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
 	  }
   }
   
+  /*
+   * For each Signal in this Task's "outs" port, sets its portId
+   * taking into account the natural order of declared port's Signals
+   */
   def addPortIdsToSignals(port: List[Any], simpleSignals: List[SimpleSignal]) {
     try {
 	    if (port == outs) {
@@ -89,7 +119,10 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
   }
   
   /* 
-   * Resolves the args for a non-sequence based task
+   * A method called on primitive Tasks only!
+   * For each Task argument converts its list of Strings and Tuples
+   * to a single String by replacing variables with their values
+   * Returns a list of arguments in format of (name, value)
    */
   def getResolvedArgs(): List[(String, Any)] = {
     try {
@@ -119,9 +152,12 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
 	  }
   }
   
-  /*
-   * Resolves all args for a sequence based task. Thanks to the innerIndex
-   * it is possible to resolve the identity variable
+  /* 
+   * A method called on sequence-based Tasks only!
+   * Accesses the specific primitive Task using innerIndex variable.
+   * For each Task argument converts its list of Strings and Tuples
+   * to a single String by replacing variables with their values
+   * Returns a list of arguments in format of (name, value)
    */
   def getResolvedArgs(innerIndex: Int): List[(String, Any)] = {
     try {
@@ -155,6 +191,9 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
 	  }
   }
   
+  /*
+   * Checks, whether the arguments of the Task are uniquely named.
+   */
   private def checkArgsUniqueness() {
     try {
 	    val argsNames = args map Function.tupled((name, _) => name)
@@ -166,6 +205,10 @@ class Task(val taskType: String, val taskName: String, val genSeq: List[Any],
 	  }
   }
   
+  /*
+   * Called after extracting ins/outs ports of the Task. Calls the user-defined
+   * method Config.validatePorts
+   */
   private def validatePorts() {
 	  genSeq match {
 	    case null => Config.validatePorts(this, getSignalsSpec("ins"), getSignalsSpec("outs"))

@@ -30,6 +30,9 @@ object Main extends Grammar {
     }
   }
   
+  /*
+   * Utility method to facilitate writing to a file
+   */
   private def printToFile(f: java.io.File, out: String) {
 	  val p = new java.io.PrintWriter(f)
 	  try { 

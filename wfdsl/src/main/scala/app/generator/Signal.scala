@@ -2,6 +2,15 @@ package app.generator
 
 import app.Config
 
+/*
+ * Represents a Signal, considered at the level of DSL.
+ * All properties should be quite self-explanatory.
+ * genSeq - generating sequence of this Signal or null if it's a primitive Signal
+ * globalIndex - the "starting" index of this Signal when converted to JSON.
+ *   "Starting" means, that each SimpleSignal generated from this Signal
+ *   will be indexed as globalIndex + genSeq_index
+ * generator - a reference to Generator providing access to some of its methods
+ */
 case class Signal(val signalName: String, val genSeq: List[Any], 
     private val args: List[(String, List[Any])], 
     val globalIndex: Int, private val generator: Generator) {
@@ -10,12 +19,15 @@ case class Signal(val signalName: String, val genSeq: List[Any],
   
   /*
    * maps Signal(index) to its portId; if the Signal is not
-   * sequence based then it's portId is under index 0
+   * sequence based then its portId is under index 0
    */
   val portIds = scala.collection.mutable.Map[Int, Int]()
 
   /* 
-   * Resolves the args for a non-sequence based signal
+   * A method called on primitive Signals only!
+   * For each Signal argument converts its list of Strings and Tuples
+   * to a single String by replacing variables with their values
+   * Returns a list of arguments in format of (name, value)
    */
   def getResolvedArgs(): List[(String, String)] = {
     try {
@@ -37,9 +49,12 @@ case class Signal(val signalName: String, val genSeq: List[Any],
     }
   }
   
-  /*
-   * Resolves all args for a sequence based signal. Thanks to the innerIndex
-   * it is possible to resolve the identity variable
+  /* 
+   * A method called on sequence-based Signals only!
+   * Accesses the specific primitive Signal using innerIndex variable.
+   * For each Signal argument converts its list of Strings and Tuples
+   * to a single String by replacing variables with their values
+   * Returns a list of arguments in format of (name, value)
    */
   def getResolvedArgs(innerIndex: Int): List[(String, String)] = {
     try {
@@ -65,6 +80,9 @@ case class Signal(val signalName: String, val genSeq: List[Any],
     }
   }
   
+  /*
+   * Checks, whether the arguments of the Signal are uniquely named.
+   */
   private def checkArgsUniqueness() {
     try {
 	    val argsNames = args map Function.tupled((name, _) => name)
