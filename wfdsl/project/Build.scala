@@ -4,7 +4,7 @@ import Keys._
 
 object HelloBuild extends Build {
   val hwsettings = Defaults.defaultSettings ++ Seq(
-    name := "kompilatory",
+    name := "wfdsl",
     version := "1.0.0",
     scalaVersion := "2.10.1",
     scalacOptions ++= Seq("-deprecation", "-feature"),
