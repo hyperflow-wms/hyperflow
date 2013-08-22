@@ -2,6 +2,12 @@ var fsp = require('./fileSplitter.js'),
     cmd = require('./command.js'),
     scanDir = require('./DirScanner').scanDir;
 
+function print(ins, outs, executor, config, cb) {
+	console.log("INS:", ins);
+	console.log("OUTS:", outs);
+	cb(null, outs);
+}
+
 function add(ins, outs, executor, config, cb) {
     var sum=0.0;
     for (var i=0; i<ins.length; ++i) {
@@ -32,6 +38,23 @@ function length(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
+function chooseEvenOdd(ins, outs, executor, config, cb) {
+    var sum=0;
+    console.log("choose INS=", ins);
+    for (var i=0; i<ins.length; ++i) {
+        if ("value" in ins[i]) {
+            sum += parseInt(ins[i].value);
+        }
+    }
+	if (sum % 2 == 0) {
+		outs[0].value = sum;
+		outs[0].condition = "true";
+	} else {
+		outs[1].value = sum;
+		outs[1].condition = "true";
+	}
+    cb(null, outs);
+}
 
 function scanDirForJs(ins, outs, executor, config, cb) {
     var inPath = ins[0].value, outPath;
@@ -69,6 +92,7 @@ function montage_mProjectPP(ins, outs, executor, config, cb) {
 }
 */
 
+exports.print = print;
 exports.add = add;
 exports.sqr = sqr;
 exports.length = length;
@@ -76,3 +100,4 @@ exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
+exports.chooseEvenOdd = chooseEvenOdd;
