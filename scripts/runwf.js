@@ -31,7 +31,7 @@ function init(cb) {
 if (!argv._[0]) {
     console.log("runwf: runs a workflow instance\n");
     console.log("Usage: node runwf.js WFID [--db=DBID]");
-    console.log("  WFID: Redis db id of the workflow instance");
+    console.log("  WFID: Redis wfId of the workflow instance");
     console.log("  --db: Redis db number where the wf state is stored (default=0)");
     process.exit();
 }
