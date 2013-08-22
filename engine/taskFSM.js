@@ -1,4 +1,4 @@
- /* Hypermedia workflow. 
+/* Hypermedia workflow. 
  ** Implementation of Finite State Machine of a basic task. This task waits for all inputs,
  ** then invokes the task's function and emits all outputs. 
  ** 
@@ -9,42 +9,34 @@ var TaskFSM = {
     name: "task",
     logic: TaskLogic,
 
-    state : [ 
-        {
-	    name: "ready",
-            initial: true
-	},
-    	{ 
-	    name: "running",
-            onEnter: "running_onEnter",
-            onExit: "running_onExit"
-	},
-    	{
-	    name: "finished",
-            onEnter: "finished_onEnter"
-	}
-    ],
+    state : [ {
+        name: "ready",
+        initial: true
+    }, { 
+        name: "running",
+        onEnter: "running_onEnter",
+        onExit: "running_onExit"
+    }, {
+        name: "finished",
+        onEnter: "finished_onEnter"
+    } ],
 
-    transition : [ 
-        { 
-	    event       : "ReRe",
-	    from        : "ready",
-	    to          : "ready",
-	    onTransition: "trReRe",
-	},
-        { 
-	    event       : "ReRu",
-	    from        : "ready",
-	    to          : "running",
-	    onTransition: "trReRu",
-	},
-        { 
-	    event       : "RuFi",
-	    from        : "running",
-	    to          : "finished",
-	    onTransition: "trRuFi",
-	},
-    ]
+    transition : [ {
+        event       : "ReRe",
+        from        : "ready",
+        to          : "ready",
+        onTransition: "trReRe",
+    }, { 
+        event       : "ReRu",
+        from        : "ready",
+        to          : "running",
+        onTransition: "trReRu",
+    }, { 
+        event       : "RuFi",
+        from        : "running",
+        to          : "finished",
+        onTransition: "trRuFi",
+    } ]
 };
 
 // This function is invoked when one of task's inputs becomes ready. What happens next depends 
@@ -74,14 +66,14 @@ function TaskLogic() {
     this.init = function(engine, wfId, taskId, session) {
         this.engine = engine;
         this.wflib = engine.wflib;
-	this.tasks = engine.tasks;
-	this.wfId = wfId;
-	this.id = taskId;
-	this.ins = engine.ins[taskId];
-	this.n = engine.ins[taskId].length;
-	this.outs = engine.outs[taskId];
-	this.sources = engine.sources;
-	this.sinks = engine.sinks;
+        this.tasks = engine.tasks;
+        this.wfId = wfId;
+        this.id = taskId;
+        this.ins = engine.ins[taskId];
+        this.n = engine.ins[taskId].length;
+        this.outs = engine.outs[taskId];
+        this.sources = engine.sources;
+        this.sinks = engine.sinks;
         session.addListener({
             contextCreated      : function( obj ) {    },
             contextDestroyed    : function( obj ) {    },
@@ -97,8 +89,8 @@ function TaskLogic() {
 
     this.running_onEnter = function(session, state, transition, msg) {
         console.log("Enter state running: "+this.id);
-	(function(task) {
-	    task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
+        (function(task) {
+            task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
                 if (err) { throw err; }
                 var emul = task.engine.emulate;
                 task.wflib.invokeTaskFunction(task.wfId, task.id, task.ins, task.outs, emul, function(err, outs) {
@@ -123,24 +115,24 @@ function TaskLogic() {
     };
 
     this.finished_onEnter = function(session, state, transition, msg) {
-	(function(task) {
-	    task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
-		if (err) {
-		    throw err;
-		}
-		console.log("Enter state finished: "+task.id);
-		task.engine.taskFinished(task.id);
-	    });
-	})(this);
+        (function(task) {
+            task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
+                if (err) {
+                    throw err;
+                }
+                console.log("Enter state finished: "+task.id);
+                task.engine.taskFinished(task.id);
+            });
+        })(this);
     };
 
     this.trReRe = function(session, state, transition, msg) {
-	this.cnt++;
-	//console.log(this.id+","+this.cnt+","+this.n);
-	if (this.cnt == this.n) {
-	    //console.log("dispatching ReRu");
-	    session.dispatch( {msgId: "ReRu"} );
-	}
+        this.cnt++;
+        //console.log(this.id+","+this.cnt+","+this.n);
+        if (this.cnt == this.n) {
+            //console.log("dispatching ReRu");
+            session.dispatch( {msgId: "ReRu"} );
+        }
         //console.log("Transition ReRu, task "+this.id);
     };
 
@@ -150,10 +142,10 @@ function TaskLogic() {
 
     this.trRuFi = function(session, state, transition, msg) {
         /*var dataIds = [];
-	for (var i=0; i<this.outs.length; ++i) {
-            dataIds.push(this.outs[i]);
-	    //markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks, function() { });
-	}
+          for (var i=0; i<this.outs.length; ++i) {
+          dataIds.push(this.outs[i]);
+        //markDataReadyAndNotifySinks(this.wfId, this.outs[i], this.tasks, function() { });
+        }
         this.engine.markDataReady(dataIds, function() {});*/
     };
 
