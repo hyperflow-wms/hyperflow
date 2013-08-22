@@ -8,7 +8,7 @@ var redis = require('redis'),
 function init(cb) {
     rcl.select(1, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-	    wflib.createInstanceFromFile('../workflows/Wf_grepfiles.json', '', 
+	    wflib.createInstanceFromFile('../workflows/Wf_grepfiles5_generated.json', '', 
                 function(err, id) {
                     cb(err, id);
                 }
@@ -24,7 +24,9 @@ init(function(err, wfId) {
             var spec = [{'id': '1', 'value': 'tmp1'}, 
 	                {'id': '2', 'value': 'tmp2'},
 	                {'id': '3', 'value': 'tmp3'},
-	                {'id': '22', 'value': 'require'}];
+	                {'id': '4', 'value': 'tmp1'},
+	                {'id': '5', 'value': 'tmp2'},
+	                {'id': '36', 'value': 'require'}];
 	    engine.fireSignals(spec);
         });
     });
