@@ -23,12 +23,38 @@ var TaskFSM        = require('./taskFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
 var TaskSplitterFSM = require('./taskSplitterFSM.js');
 var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
+var TaskChoiceFSM = require('./taskChoiceFSM.js');
 
 // TODO: automatically import and register all task FSMs in the current directory
 fsm.registerFSM(TaskFSM); 
 fsm.registerFSM(TaskForeachFSM);
 fsm.registerFSM(TaskSplitterFSM);
 fsm.registerFSM(TaskStickyServiceFSM);
+fsm.registerFSM(TaskChoiceFSM);
+
+// binary search algorithm for finding elements in workflow arrays
+// patching Array's prototype like this causes erroneous behavior elsewhere!!!
+/*Array.prototype.binSearch = function(needle, case_insensitive) {
+	if (!this.length) return -1;
+
+	var high = this.length - 1;
+	var low = 0;
+	case_insensitive = (typeof(case_insensitive) !== 'undefined' && case_insensitive) ? true:false;
+	needle = (case_insensitive) ? needle.toLowerCase():needle;
+
+	while (low <= high) {
+		mid = parseInt((low + high) / 2)
+			element = (case_insensitive) ? this[mid].toLowerCase():this[mid];
+		if (element > needle) {
+			high = mid - 1;
+		} else if (element < needle) {
+			low = mid + 1;
+		} else {
+			return mid;
+		}
+	}
+	return -1;
+};*/
 
 // Engine constructor
 // @config: JSON object which contains Engine configuration:
@@ -41,9 +67,11 @@ var Engine = function(config, wflib, wfId, cb) {
     this.outs = [];
     this.sources = [];
     this.sinks = [];
+	this.wfOuts = [];
     this.trace = "";  // trace: list of task ids in the sequence they were finished
     this.nTasksLeft = 0;  // how many tasks left (not finished)? FIXME: what if a task can 
                           // never be finished (e.g. TaskService?)
+	this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
                           
     this.emulate = config.emulate == "true" ? true: false;       
@@ -73,7 +101,11 @@ var Engine = function(config, wflib, wfId, cb) {
                     engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
                 }
             }
-            cb(null);
+            engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
+				engine.wfOuts = wfOuts;
+				engine.nWfOutsLeft = wfOuts.length;
+				cb(null);
+			});
         });
     })(this);
 }
@@ -139,15 +171,20 @@ Engine.prototype.markDataReady = function(dataIds, cb) {
 Engine.prototype.taskFinished = function(taskId) {
     this.trace += taskId;
     this.nTasksLeft--;
-    if (!this.nTasksLeft) {
+	//console.log("OUTS LEFT:", this.nWfOutsLeft);
+	if (this.nWfOutsLeft == 0) {
+		this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
+	} else {
+		this.trace += ",";
+	}
+}
+
+Engine.prototype.workflowFinished = function() {
         console.log(this.trace+'. ['+this.wfId+']');
-        console.log(this.syncCb);
+        //console.log(this.syncCb);
         if (this.syncCb) {
             this.syncCb();
         }
-    } else {
-        this.trace += ',';
-    }
 }
 
 
@@ -166,35 +203,37 @@ Engine.prototype.taskFinished = function(taskId) {
 // FIXME: protect against firing signals more than once (currently some task 
 // implementations will break in such a case). 
 Engine.prototype.fireSignals = function(sigs, cb) {
-    var spec = {}, ids = [];
-    for (var i in sigs) { 
-        var sigId = sigs[i].id;
-        ids.push(sigId);
-        if (sigs[i].type  == "control") { // this is a control signal
-            spec[sigId] = {}; // TODO: should we also mark this signal as ready?
-        } else { // this is a data signal
-	    spec[sigId] = sigs[i]; // copy all attributes...
-	    delete spec[sigId].id; // ... except 'id'
-	    spec[sigId].status = "ready"; // mark data element as "ready" (produced)
-        }
-    }
+	var spec = {}, ids = [];
+	for (var i in sigs) { 
+		var sigId = sigs[i].id;
+		ids.push(sigId);
+		if (sigs[i].type  == "control") { // this is a control signal
+			spec[sigId] = {}; // TODO: should we also mark this signal as ready?
+		} else { // this is a data signal
+			spec[sigId] = sigs[i]; // copy all attributes...
+			delete spec[sigId].id; // ... except 'id'
+			spec[sigId].status = "ready"; // mark data element as "ready" (produced)
+			if (this.wfOuts.indexOf(sigId) != -1) { // a workflow output has been produced
+				this.nWfOutsLeft--;
+			}
+		}
+	}
 
-    // notify sinks of all fired signals
-    (function(engine) {
-        //console.log(spec);
-        engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
-            //console.log("Will notify: "+JSON.stringify(sigs));
-            async.each(ids, function iterator(sigId, doneIter) {
-                notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
-                    doneIter(null);
-                });
-            }, function doneAll(err) {
-                if (cb) { cb(err); }
-            });
-        });
-    })(this);
+	// notify sinks of all fired signals
+	(function(engine) {
+		//console.log(spec);
+		engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
+			//console.log("Will notify: "+JSON.stringify(sigs));
+			async.each(ids, function iterator(sigId, doneIter) {
+				notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
+					doneIter(null);
+				});
+			}, function doneAll(err) {
+				if (cb) { cb(err); }
+			});
+		});
+	})(this);
 }
-
 
 module.exports = Engine;
 
@@ -223,22 +262,22 @@ function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
 // quasi-deprecated (only used by the engine when emulating the execution to fire wf ins)
 // TODO: refactor engine to use fireSignals instead
 function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
-    var obj = {};
-    obj[dataId] = {"status": "ready" };
-    wflib.setDataState(wfId, obj, function(err, rep) {
-	if (err) { throw(err); }
-	wflib.getDataSinks(wfId, dataId, function(err, sinks) {
-	    if (err) { throw(err); }
-	    for (var j=0; j<sinks.length; j+=2) {
-                // send event that an input is ready
-                taskFSMs[sinks[j]].fireCustomEvent({
-		    wfId: wfId, 
-		    taskId: sinks[j], 
-		    inId: sinks[j+1] 
+	var obj = {};
+	obj[dataId] = {"status": "ready" };
+	wflib.setDataState(wfId, obj, function(err, rep) {
+		if (err) { throw(err); }
+		wflib.getDataSinks(wfId, dataId, function(err, sinks) {
+			if (err) { throw(err); }
+			for (var j=0; j<sinks.length; j+=2) {
+				// send event that an input is ready
+				taskFSMs[sinks[j]].fireCustomEvent({
+					wfId: wfId, 
+					taskId: sinks[j], 
+					inId: sinks[j+1] 
+				});
+				console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
+			}
+			if (cb) { cb(); } 
 		});
-		console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
-	    }
-	    if (cb) { cb(); } 
 	});
-    });
 }
