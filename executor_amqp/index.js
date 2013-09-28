@@ -25,7 +25,7 @@ exports.init = function() {
 	
 //    	console.log(task)
     
-	var connection = amqp.createConnection( { host: '149.156.10.132', port: 19164 } );
+	var connection = amqp.createConnection( { host: 'localhost', port: 19164 } );
 	
 	connection.on('ready', function() {
 //		console.log('connection ready');
