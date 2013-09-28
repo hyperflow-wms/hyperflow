@@ -22,26 +22,14 @@ exports.init = function() {
     //////////////////////////////////////////////////////////////////////////
 
     function public_execute(task, server, cb) {
-        var args = [server, 'cd', 'montage-working/0.5/input', ';', task['@'].name, task.argument];
-
-	var proc = spawn('ssh', args);
-	proc.stdout.on('data', function(data) {
-		console.log(task['@'].name + '-'+ task['@'].id + ' stdout:' + data);
-	});
-	proc.stderr.on('data', function(data) {
-		console.log(task['@'].name + '-'+ task['@'].id + ' stdout:' + data);
-	});
-	proc.on('exit', function(code) {
-		console.log(task['@'].name + '-'+ task['@'].id + ' stdout:' + code);
-		cb(null, code);
-	});
 	
-	//this seems unnecessary
+//    	console.log(task)
+    	
 	setTimeout(function() {
-
+		cb(null, 'some output');
 	}, 1000);
+	
     }
-    
 
     return {
         execute: public_execute,
