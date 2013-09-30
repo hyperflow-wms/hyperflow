@@ -1,4 +1,10 @@
 function amqpCommand(ins, outs, executor, config, cb) {
+	
+	var executable = config.executor.executable
+	var args = config.executor.args
+	
+	console.log("exec:" + executable + ", args:" + args);
+	cb(null, 0);
 
 	var connection = amqp.createConnection( { host: 'localhost', port: 19164 } );
 

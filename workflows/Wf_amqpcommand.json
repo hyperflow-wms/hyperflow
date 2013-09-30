@@ -7,7 +7,7 @@
     "tasks": [ {
         "name": "execution",
         "type": "task",
-        "function": "amqpCommand",
+        "function": "command",
         "executor": "syscommand",
         "config": {
         	"executor": {
