@@ -1,4 +1,5 @@
-
+var amqp = require('amqp');
+var uuid = require('uuid');
 
 function amqpCommand(ins, outs, executor, config, cb) {
 	
