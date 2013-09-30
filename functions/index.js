@@ -98,6 +98,7 @@ exports.sqr = sqr;
 exports.length = length;
 exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
+exports.amqpCommand = cmd.amqpCommand;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
