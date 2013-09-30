@@ -3,8 +3,8 @@ var uuid = require('uuid');
 
 function amqpCommand(ins, outs, executor, config, cb) {
 	
-	var executable = config.executor.executable
-	var args = config.executor.args
+	var executable = config.executor.executable;
+	var args = config.executor.args;
 	
 	var connection = amqp.createConnection( { host: 'localhost', port: 5672 } );
 
@@ -16,12 +16,10 @@ function amqpCommand(ins, outs, executor, config, cb) {
 
 			queue.subscribe({ exclusive: true }, function(message, headers, deliveryInfo) {
 				console.log("message recieved");
-				console.log(JSON.parse(message.data.toString()));
 				if(deliveryInfo.correlationId == corrId) {
-					console.log('corr id match!, message:');
-					console.log(message);
+					console.log('corr id match!');
 					//TODO: Add proper interpretation of job outcome, throw some output on screen
-					cb(null, 0);
+					cb(null, outs);
 				} else {
 					console.log("unexpected message");
 				}
