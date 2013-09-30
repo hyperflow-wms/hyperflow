@@ -1,18 +1,18 @@
 {
     "name": "Wf_executor",
     "functions": [ {
-        "name": "command",
+        "name": "amqpCommand",
         "module": "functions"
     } ],
     "tasks": [ {
         "name": "execution",
         "type": "task",
-        "function": "command",
-        "executor": "executor_simple",
+        "function": "amqpCommand",
+        "executor": "syscommand",
         "config": {
         	"executor": {
         		"executable": "ls",
-        		"args": "sadssad"
+        		"args": ""
         	}
         },
         "ins": [ 0 ],
