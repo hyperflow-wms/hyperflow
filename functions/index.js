@@ -1,6 +1,6 @@
 var fsp = require('./fileSplitter.js'), 
     cmd = require('./command.js'),
-    amqpCmd = require('./amqpcommand.js'),
+    amqpCmd = require('./amqpCommand.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, executor, config, cb) {

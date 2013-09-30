@@ -1,3 +1,5 @@
+
+
 function amqpCommand(ins, outs, executor, config, cb) {
 	
 	var executable = config.executor.executable
