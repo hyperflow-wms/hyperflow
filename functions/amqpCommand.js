@@ -6,17 +6,17 @@ function amqpCommand(ins, outs, executor, config, cb) {
 	var executable = config.executor.executable
 	var args = config.executor.args
 	
-	console.log("exec:" + executable + ", args:" + args);
-	cb(null, 0);
-
-	var connection = amqp.createConnection( { host: 'localhost', port: 19164 } );
+	var connection = amqp.createConnection( { host: 'localhost', port: 5672 } );
 
 	connection.on('ready', function() {
+		console.log("connection ready");
 		var q = connection.queue ('', { exclusive: true }, function(queue) {
+			console.log("queue ready");
 			var corrId = uuid.v4();
-		
+
 			queue.subscribe({ exclusive: true }, function(message, headers, deliveryInfo) {
-				//console.log(JSON.parse(message.data.toString()));
+				console.log("message recieved");
+				console.log(JSON.parse(message.data.toString()));
 				if(deliveryInfo.correlationId == corrId) {
 					console.log('corr id match!, message:');
 					console.log(message);
@@ -29,6 +29,7 @@ function amqpCommand(ins, outs, executor, config, cb) {
 		
 			//publish job
 			var exchange = connection.exchange('', {}, function(exchange) {
+				console.log("job published");
 				exchange.publish('hyperflow.jobs', '{ "executable" : "/bin/ls", "args": "", "inputs": [], "outputs": [] }',
 						{replyTo: queue.name, contentType: 'application/json', correlationId: corrId});
 			});				
