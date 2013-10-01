@@ -11,8 +11,8 @@
         "executor": "syscommand",
         "config": {
         	"executor": {
-        		"executable": "echo -n",
-        		"args": "wafle"
+        		"executable": "echo",
+        		"args": "-n wafle"
         	}
         },
         "ins": [ 0 ],
