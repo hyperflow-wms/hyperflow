@@ -1,11 +1,11 @@
 {
     "functions": [ {
-        "name": "command",
+        "name": "amqpCommand",
         "module": "functions"
     } ],
     "tasks": [ {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -17,7 +17,7 @@
         "outs": [ 1, 2 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -29,7 +29,7 @@
         "outs": [ 5, 6 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -41,7 +41,7 @@
         "outs": [ 8, 9 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -53,7 +53,7 @@
         "outs": [ 11, 12 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -65,7 +65,7 @@
         "outs": [ 14, 15 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -77,7 +77,7 @@
         "outs": [ 17, 18 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -89,7 +89,7 @@
         "outs": [ 20, 21 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -101,7 +101,7 @@
         "outs": [ 23, 24 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -113,7 +113,7 @@
         "outs": [ 26, 27 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -125,7 +125,7 @@
         "outs": [ 29, 30 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -137,7 +137,7 @@
         "outs": [ 32, 33 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -149,7 +149,7 @@
         "outs": [ 35, 36 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -161,7 +161,7 @@
         "outs": [ 38, 39 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -173,7 +173,7 @@
         "outs": [ 41, 42 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -185,7 +185,7 @@
         "outs": [ 44, 45 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -197,7 +197,7 @@
         "outs": [ 47, 48 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -209,7 +209,7 @@
         "outs": [ 50, 51 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -221,7 +221,7 @@
         "outs": [ 53, 54 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -233,7 +233,7 @@
         "outs": [ 56, 57 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -245,7 +245,7 @@
         "outs": [ 59, 60 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -257,7 +257,7 @@
         "outs": [ 62, 63 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -269,7 +269,7 @@
         "outs": [ 65, 66 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -281,7 +281,7 @@
         "outs": [ 68, 69 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -293,7 +293,7 @@
         "outs": [ 71, 72 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -305,7 +305,7 @@
         "outs": [ 74, 75 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -317,7 +317,7 @@
         "outs": [ 77, 78 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -329,7 +329,7 @@
         "outs": [ 80, 81 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -341,7 +341,7 @@
         "outs": [ 83, 84 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -353,7 +353,7 @@
         "outs": [ 86, 87 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -365,7 +365,7 @@
         "outs": [ 89, 90 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -377,7 +377,7 @@
         "outs": [ 92, 93 ]
     }, {
         "name": "mProjectPP",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -389,7 +389,7 @@
         "outs": [ 95, 96 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -401,7 +401,7 @@
         "outs": [ 99, 100 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -413,7 +413,7 @@
         "outs": [ 101, 102 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -425,7 +425,7 @@
         "outs": [ 103, 104 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -437,7 +437,7 @@
         "outs": [ 105, 106 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -449,7 +449,7 @@
         "outs": [ 107, 108 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -461,7 +461,7 @@
         "outs": [ 109, 110 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -473,7 +473,7 @@
         "outs": [ 111, 112 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -485,7 +485,7 @@
         "outs": [ 113, 114 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -497,7 +497,7 @@
         "outs": [ 115, 116 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -509,7 +509,7 @@
         "outs": [ 117, 118 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -521,7 +521,7 @@
         "outs": [ 119, 120 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -533,7 +533,7 @@
         "outs": [ 121, 122 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -545,7 +545,7 @@
         "outs": [ 123, 124 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -557,7 +557,7 @@
         "outs": [ 125, 126 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -569,7 +569,7 @@
         "outs": [ 127, 128 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -581,7 +581,7 @@
         "outs": [ 129, 130 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -593,7 +593,7 @@
         "outs": [ 131, 132 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -605,7 +605,7 @@
         "outs": [ 133, 134 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -617,7 +617,7 @@
         "outs": [ 135, 136 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -629,7 +629,7 @@
         "outs": [ 137, 138 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -641,7 +641,7 @@
         "outs": [ 139, 140 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -653,7 +653,7 @@
         "outs": [ 141, 142 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -665,7 +665,7 @@
         "outs": [ 143, 144 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -677,7 +677,7 @@
         "outs": [ 145, 146 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -689,7 +689,7 @@
         "outs": [ 147, 148 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -701,7 +701,7 @@
         "outs": [ 149, 150 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -713,7 +713,7 @@
         "outs": [ 151, 152 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -725,7 +725,7 @@
         "outs": [ 153, 154 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -737,7 +737,7 @@
         "outs": [ 155, 156 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -749,7 +749,7 @@
         "outs": [ 157, 158 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -761,7 +761,7 @@
         "outs": [ 159, 160 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -773,7 +773,7 @@
         "outs": [ 161, 162 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -785,7 +785,7 @@
         "outs": [ 163, 164 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -797,7 +797,7 @@
         "outs": [ 165, 166 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -809,7 +809,7 @@
         "outs": [ 167, 168 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -821,7 +821,7 @@
         "outs": [ 169, 170 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -833,7 +833,7 @@
         "outs": [ 171, 172 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -845,7 +845,7 @@
         "outs": [ 173, 174 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -857,7 +857,7 @@
         "outs": [ 175, 176 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -869,7 +869,7 @@
         "outs": [ 177, 178 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -881,7 +881,7 @@
         "outs": [ 179, 180 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -893,7 +893,7 @@
         "outs": [ 181, 182 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -905,7 +905,7 @@
         "outs": [ 183, 184 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -917,7 +917,7 @@
         "outs": [ 185, 186 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -929,7 +929,7 @@
         "outs": [ 187, 188 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -941,7 +941,7 @@
         "outs": [ 189, 190 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -953,7 +953,7 @@
         "outs": [ 191, 192 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -965,7 +965,7 @@
         "outs": [ 193, 194 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -977,7 +977,7 @@
         "outs": [ 195, 196 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -989,7 +989,7 @@
         "outs": [ 197, 198 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1001,7 +1001,7 @@
         "outs": [ 199, 200 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1013,7 +1013,7 @@
         "outs": [ 201, 202 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1025,7 +1025,7 @@
         "outs": [ 203, 204 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1037,7 +1037,7 @@
         "outs": [ 205, 206 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1049,7 +1049,7 @@
         "outs": [ 207, 208 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1061,7 +1061,7 @@
         "outs": [ 209, 210 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1073,7 +1073,7 @@
         "outs": [ 211, 212 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1085,7 +1085,7 @@
         "outs": [ 213, 214 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1097,7 +1097,7 @@
         "outs": [ 215, 216 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1109,7 +1109,7 @@
         "outs": [ 217, 218 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1121,7 +1121,7 @@
         "outs": [ 219, 220 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1133,7 +1133,7 @@
         "outs": [ 221, 222 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1145,7 +1145,7 @@
         "outs": [ 223, 224 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1157,7 +1157,7 @@
         "outs": [ 225, 226 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1169,7 +1169,7 @@
         "outs": [ 227, 228 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1181,7 +1181,7 @@
         "outs": [ 229, 230 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1193,7 +1193,7 @@
         "outs": [ 231, 232 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1205,7 +1205,7 @@
         "outs": [ 233, 234 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1217,7 +1217,7 @@
         "outs": [ 235, 236 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1229,7 +1229,7 @@
         "outs": [ 237, 238 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1241,7 +1241,7 @@
         "outs": [ 239, 240 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1253,7 +1253,7 @@
         "outs": [ 241, 242 ]
     }, {
         "name": "mDiffFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1265,7 +1265,7 @@
         "outs": [ 243, 244 ]
     }, {
         "name": "mConcatFit",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1277,7 +1277,7 @@
         "outs": [ 246 ]
     }, {
         "name": "mBgModel",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1289,7 +1289,7 @@
         "outs": [ 248 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1301,7 +1301,7 @@
         "outs": [ 249, 250 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1313,7 +1313,7 @@
         "outs": [ 251, 252 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1325,7 +1325,7 @@
         "outs": [ 253, 254 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1337,7 +1337,7 @@
         "outs": [ 255, 256 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1349,7 +1349,7 @@
         "outs": [ 257, 258 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1361,7 +1361,7 @@
         "outs": [ 259, 260 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1373,7 +1373,7 @@
         "outs": [ 261, 262 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1385,7 +1385,7 @@
         "outs": [ 263, 264 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1397,7 +1397,7 @@
         "outs": [ 265, 266 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1409,7 +1409,7 @@
         "outs": [ 267, 268 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1421,7 +1421,7 @@
         "outs": [ 269, 270 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1433,7 +1433,7 @@
         "outs": [ 271, 272 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1445,7 +1445,7 @@
         "outs": [ 273, 274 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1457,7 +1457,7 @@
         "outs": [ 275, 276 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1469,7 +1469,7 @@
         "outs": [ 277, 278 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1481,7 +1481,7 @@
         "outs": [ 279, 280 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1493,7 +1493,7 @@
         "outs": [ 281, 282 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1505,7 +1505,7 @@
         "outs": [ 283, 284 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1517,7 +1517,7 @@
         "outs": [ 285, 286 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1529,7 +1529,7 @@
         "outs": [ 287, 288 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1541,7 +1541,7 @@
         "outs": [ 289, 290 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1553,7 +1553,7 @@
         "outs": [ 291, 292 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1565,7 +1565,7 @@
         "outs": [ 293, 294 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1577,7 +1577,7 @@
         "outs": [ 295, 296 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1589,7 +1589,7 @@
         "outs": [ 297, 298 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1601,7 +1601,7 @@
         "outs": [ 299, 300 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1613,7 +1613,7 @@
         "outs": [ 301, 302 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1625,7 +1625,7 @@
         "outs": [ 303, 304 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1637,7 +1637,7 @@
         "outs": [ 305, 306 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1649,7 +1649,7 @@
         "outs": [ 307, 308 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1661,7 +1661,7 @@
         "outs": [ 309, 310 ]
     }, {
         "name": "mBackground",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1673,7 +1673,7 @@
         "outs": [ 311, 312 ]
     }, {
         "name": "mImgtbl",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1685,7 +1685,7 @@
         "outs": [ 314 ]
     }, {
         "name": "mAdd",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1697,7 +1697,7 @@
         "outs": [ 316, 317 ]
     }, {
         "name": "mShrink",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {
@@ -1709,7 +1709,7 @@
         "outs": [ 318 ]
     }, {
         "name": "mJPEG",
-        "function": "command",
+        "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
             "executor": {

@@ -9,7 +9,8 @@ function amqpCommand(ins, outs, executor, config, cb) {
 	var args = config.executor.args;
 	var deliberatelyExit = false;
 	
-	var connection = amqp.createConnection( { host: 'localhost', port: 5672 } );
+	var connection = amqp.createConnection( { host: '149.156.10.132', port: 44248 } );
+//	var connection = amqp.createConnection( { host: 'localhost', port: 5672 } );
 	
 	connection.on('error', function(err) {
 		if (deliberatelyExit) {
