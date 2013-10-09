@@ -10,4 +10,4 @@ if (!argv._[0]) {
 
 pc.convertFromFile(argv._[0], function(err, wfOut) {
 	console.log(JSON.stringify(wfOut, null, 2));
-})
+});
