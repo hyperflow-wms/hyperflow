@@ -50,10 +50,13 @@ function parseDax(filename, cb) {
         if (err) { 
             cb(new Error("File read error. Doesn't exist?"));
         } else {
-            parser.parseString(data, function(err, result) {
+            var dag = data.toString();
+            dag = dag.replace(/<file name="(.*)".*>/g, "$1");
+            parser.parseString(dag, function(err, result) {
                 if (err) {
                     cb(new Error("File parse error."));
                 } else {
+			//console.log(JSON.stringify(result, null, 2));
                     cb(null, result);
                 }
             });
@@ -65,6 +68,7 @@ function parseDax(filename, cb) {
 function createWorkflow(dax, cb) {
     dax.adag.job.forEach(function(job) {
         ++nextTaskId;
+	var args = job.argument[0];
         wfOut.tasks.push({ 
             "name": job['$'].name, 
             "function": "command", 
@@ -72,7 +76,7 @@ function createWorkflow(dax, cb) {
             "config": {
                 "executor": {
                     "executable": job['$'].name, 
-                    "args": job.argument
+                    "args": args
                 }
             },
             "ins": [],
