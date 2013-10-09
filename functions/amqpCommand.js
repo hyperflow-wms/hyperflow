@@ -38,7 +38,11 @@ function amqpCommand(ins, outs, executor, config, cb) {
 					deliberatelyExit = true;
 					
 					connection.end();
-					cb(null, outs);
+					if(message.return_code != "0") {
+						cb(null, outs);
+					} else {
+						cb("Error during job execution!", outs);
+					}
 				} else {
 					console.log("ERROR: unexpected message, got: ", deliveryInfo.correlationId, "expected:", corrId);
 					throw new Error("Unexpected message received!");
