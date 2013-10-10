@@ -52,6 +52,7 @@ function parseDax(filename, cb) {
         } else {
             var dag = data.toString();
             dag = dag.replace(/<file name="(.*)".*>/g, "$1");
+            dag = dag.replace(/<filename file="(.*)".*>/g, "$1");
             parser.parseString(dag, function(err, result) {
                 if (err) {
                     cb(new Error("File parse error."));
