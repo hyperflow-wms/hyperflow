@@ -33,7 +33,7 @@ PegasusConverter.prototype.convertFromFile = function(filename, cb) {
 
 
 var wfOut = { 
-    functions: [ {"name": "command", "module": "functions"} ],
+    functions: [ {"name": "amqpCommand", "module": "functions"} ],
     tasks: [],
     data: [],
     ins: [],
@@ -72,7 +72,7 @@ function createWorkflow(dax, cb) {
 	var args = job.argument[0];
         wfOut.tasks.push({ 
             "name": job['$'].name, 
-            "function": "command", 
+            "function": "amqpCommand", 
             "executor": "syscommand",
             "config": {
                 "executor": {
