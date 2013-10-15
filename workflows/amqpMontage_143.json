@@ -13,7 +13,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90315 2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0900032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90315 2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0900032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -32,7 +32,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90240 2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0890220.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90240 2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0890220.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -51,7 +51,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90423 2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0880044.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90423 2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0880044.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -70,7 +70,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.10266 2mass-atlas-000206s-j0140245.fits p2mass-atlas-000206s-j0140245.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.10266 2mass-atlas-000206s-j0140245.fits p2mass-atlas-000206s-j0140245.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -89,7 +89,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.10296 2mass-atlas-000206s-j0140233.fits p2mass-atlas-000206s-j0140233.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.10296 2mass-atlas-000206s-j0140233.fits p2mass-atlas-000206s-j0140233.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -108,7 +108,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90274 2mass-atlas-001124n-j0900044.fits p2mass-atlas-001124n-j0900044.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90274 2mass-atlas-001124n-j0900044.fits p2mass-atlas-001124n-j0900044.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -127,7 +127,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90274 2mass-atlas-001124n-j0890232.fits p2mass-atlas-001124n-j0890232.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90274 2mass-atlas-001124n-j0890232.fits p2mass-atlas-001124n-j0890232.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -146,7 +146,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90373 2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0870220.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90373 2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0870220.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -165,7 +165,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90382 2mass-atlas-001124n-j0880056.fits p2mass-atlas-001124n-j0880056.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90382 2mass-atlas-001124n-j0880056.fits p2mass-atlas-001124n-j0880056.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -184,7 +184,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90232 2mass-atlas-001124n-j0900056.fits p2mass-atlas-001124n-j0900056.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90232 2mass-atlas-001124n-j0900056.fits p2mass-atlas-001124n-j0900056.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -203,7 +203,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90598 2mass-atlas-001124n-j0860056.fits p2mass-atlas-001124n-j0860056.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90598 2mass-atlas-001124n-j0860056.fits p2mass-atlas-001124n-j0860056.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -222,7 +222,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90465 2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0880032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90465 2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0880032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -241,7 +241,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90448 2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870244.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90448 2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870244.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -260,7 +260,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90415 2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0870232.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90415 2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0870232.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -279,7 +279,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90640 2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0860044.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90640 2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0860044.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -298,7 +298,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90682 2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0860032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90682 2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0860032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -317,7 +317,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.10245 2mass-atlas-000206s-j0140257.fits p2mass-atlas-000206s-j0140257.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.10245 2mass-atlas-000206s-j0140257.fits p2mass-atlas-000206s-j0140257.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -336,7 +336,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90307 2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0890244.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90307 2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0890244.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -355,7 +355,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90799 2mass-atlas-001124n-j0840056.fits p2mass-atlas-001124n-j0840056.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90799 2mass-atlas-001124n-j0840056.fits p2mass-atlas-001124n-j0840056.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -374,7 +374,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.06248 2mass-atlas-981017s-j1150021.fits p2mass-atlas-981017s-j1150021.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.06248 2mass-atlas-981017s-j1150021.fits p2mass-atlas-981017s-j1150021.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -393,7 +393,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90849 2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0840044.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90849 2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0840044.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -412,7 +412,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90565 2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0850232.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90565 2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0850232.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -431,7 +431,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90598 2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0850244.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90598 2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0850244.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -450,7 +450,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90540 2mass-atlas-001124n-j0850220.fits p2mass-atlas-001124n-j0850220.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90540 2mass-atlas-001124n-j0850220.fits p2mass-atlas-001124n-j0850220.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -469,7 +469,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.06297 2mass-atlas-981017s-j1150044.fits p2mass-atlas-981017s-j1150044.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.06297 2mass-atlas-981017s-j1150044.fits p2mass-atlas-981017s-j1150044.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -488,7 +488,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.06277 2mass-atlas-981017s-j1150033.fits p2mass-atlas-981017s-j1150033.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.06277 2mass-atlas-981017s-j1150033.fits p2mass-atlas-981017s-j1150033.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -507,7 +507,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90899 2mass-atlas-001124n-j0840032.fits p2mass-atlas-001124n-j0840032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90899 2mass-atlas-001124n-j0840032.fits p2mass-atlas-001124n-j0840032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -526,7 +526,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90507 2mass-atlas-001124n-j0880021.fits p2mass-atlas-001124n-j0880021.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90507 2mass-atlas-001124n-j0880021.fits p2mass-atlas-001124n-j0880021.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -545,7 +545,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90482 2mass-atlas-001124n-j0870256.fits p2mass-atlas-001124n-j0870256.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90482 2mass-atlas-001124n-j0870256.fits p2mass-atlas-001124n-j0870256.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -564,7 +564,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90724 2mass-atlas-001124n-j0860021.fits p2mass-atlas-001124n-j0860021.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90724 2mass-atlas-001124n-j0860021.fits p2mass-atlas-001124n-j0860021.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -583,7 +583,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90332 2mass-atlas-001124n-j0890256.fits p2mass-atlas-001124n-j0890256.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90332 2mass-atlas-001124n-j0890256.fits p2mass-atlas-001124n-j0890256.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -602,7 +602,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90348 2mass-atlas-001124n-j0900021.fits p2mass-atlas-001124n-j0900021.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90348 2mass-atlas-001124n-j0900021.fits p2mass-atlas-001124n-j0900021.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -621,7 +621,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90941 2mass-atlas-001124n-j0840021.fits p2mass-atlas-001124n-j0840021.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90941 2mass-atlas-001124n-j0840021.fits p2mass-atlas-001124n-j0840021.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -640,7 +640,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 1.06228 2mass-atlas-981017s-j1150009.fits p2mass-atlas-981017s-j1150009.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 1.06228 2mass-atlas-981017s-j1150009.fits p2mass-atlas-981017s-j1150009.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -659,7 +659,7 @@
       "config": {
         "executor": {
           "executable": "mProjectPP",
-          "args": "-X -x 0.90632 2mass-atlas-001124n-j0850256.fits p2mass-atlas-001124n-j0850256.fits big_region_20131010_122929_13630.hdr"
+          "args": "-X -x 0.90632 2mass-atlas-001124n-j0850256.fits p2mass-atlas-001124n-j0850256.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -678,7 +678,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000001.000004.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-000206s-j0140245.fits diff.000001.000004.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000001.000004.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-000206s-j0140245.fits diff.000001.000004.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -702,7 +702,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000001.000006.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0900044.fits diff.000001.000006.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000001.000006.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0900044.fits diff.000001.000006.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -726,7 +726,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000001.000007.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0890232.fits diff.000001.000007.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000001.000007.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0890232.fits diff.000001.000007.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -750,7 +750,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000001.000017.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-000206s-j0140257.fits diff.000001.000017.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000001.000017.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-000206s-j0140257.fits diff.000001.000017.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -774,7 +774,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000001.000018.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0890244.fits diff.000001.000018.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000001.000018.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0890244.fits diff.000001.000018.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -798,7 +798,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000001.000032.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0900021.fits diff.000001.000032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000001.000032.txt p2mass-atlas-001124n-j0900032.fits p2mass-atlas-001124n-j0900021.fits diff.000001.000032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -822,7 +822,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000002.000003.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0880044.fits diff.000002.000003.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000002.000003.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0880044.fits diff.000002.000003.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -846,7 +846,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000002.000006.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0900044.fits diff.000002.000006.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000002.000006.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0900044.fits diff.000002.000006.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -870,7 +870,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000002.000007.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0890232.fits diff.000002.000007.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000002.000007.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0890232.fits diff.000002.000007.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -894,7 +894,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000002.000009.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0880056.fits diff.000002.000009.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000002.000009.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0880056.fits diff.000002.000009.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -918,7 +918,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000002.000010.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0900056.fits diff.000002.000010.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000002.000010.txt p2mass-atlas-001124n-j0890220.fits p2mass-atlas-001124n-j0900056.fits diff.000002.000010.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -942,7 +942,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000003.000007.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0890232.fits diff.000003.000007.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000003.000007.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0890232.fits diff.000003.000007.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -966,7 +966,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000003.000008.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0870220.fits diff.000003.000008.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000003.000008.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0870220.fits diff.000003.000008.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -990,7 +990,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000003.000009.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0880056.fits diff.000003.000009.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000003.000009.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0880056.fits diff.000003.000009.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1014,7 +1014,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000003.000012.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0880032.fits diff.000003.000012.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000003.000012.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0880032.fits diff.000003.000012.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1038,7 +1038,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000003.000014.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0870232.fits diff.000003.000014.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000003.000014.txt p2mass-atlas-001124n-j0880044.fits p2mass-atlas-001124n-j0870232.fits diff.000003.000014.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1062,7 +1062,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000004.000005.txt p2mass-atlas-000206s-j0140245.fits p2mass-atlas-000206s-j0140233.fits diff.000004.000005.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000004.000005.txt p2mass-atlas-000206s-j0140245.fits p2mass-atlas-000206s-j0140233.fits diff.000004.000005.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1086,7 +1086,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000004.000006.txt p2mass-atlas-000206s-j0140245.fits p2mass-atlas-001124n-j0900044.fits diff.000004.000006.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000004.000006.txt p2mass-atlas-000206s-j0140245.fits p2mass-atlas-001124n-j0900044.fits diff.000004.000006.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1110,7 +1110,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000004.000017.txt p2mass-atlas-000206s-j0140245.fits p2mass-atlas-000206s-j0140257.fits diff.000004.000017.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000004.000017.txt p2mass-atlas-000206s-j0140245.fits p2mass-atlas-000206s-j0140257.fits diff.000004.000017.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1134,7 +1134,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000005.000006.txt p2mass-atlas-000206s-j0140233.fits p2mass-atlas-001124n-j0900044.fits diff.000005.000006.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000005.000006.txt p2mass-atlas-000206s-j0140233.fits p2mass-atlas-001124n-j0900044.fits diff.000005.000006.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1158,7 +1158,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000005.000010.txt p2mass-atlas-000206s-j0140233.fits p2mass-atlas-001124n-j0900056.fits diff.000005.000010.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000005.000010.txt p2mass-atlas-000206s-j0140233.fits p2mass-atlas-001124n-j0900056.fits diff.000005.000010.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1182,7 +1182,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000006.000007.txt p2mass-atlas-001124n-j0900044.fits p2mass-atlas-001124n-j0890232.fits diff.000006.000007.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000006.000007.txt p2mass-atlas-001124n-j0900044.fits p2mass-atlas-001124n-j0890232.fits diff.000006.000007.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1206,7 +1206,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000006.000010.txt p2mass-atlas-001124n-j0900044.fits p2mass-atlas-001124n-j0900056.fits diff.000006.000010.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000006.000010.txt p2mass-atlas-001124n-j0900044.fits p2mass-atlas-001124n-j0900056.fits diff.000006.000010.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1230,7 +1230,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000007.000012.txt p2mass-atlas-001124n-j0890232.fits p2mass-atlas-001124n-j0880032.fits diff.000007.000012.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000007.000012.txt p2mass-atlas-001124n-j0890232.fits p2mass-atlas-001124n-j0880032.fits diff.000007.000012.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1254,7 +1254,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000007.000018.txt p2mass-atlas-001124n-j0890232.fits p2mass-atlas-001124n-j0890244.fits diff.000007.000018.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000007.000018.txt p2mass-atlas-001124n-j0890232.fits p2mass-atlas-001124n-j0890244.fits diff.000007.000018.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1278,7 +1278,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000008.000009.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0880056.fits diff.000008.000009.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000008.000009.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0880056.fits diff.000008.000009.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1302,7 +1302,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000008.000011.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0860056.fits diff.000008.000011.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000008.000011.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0860056.fits diff.000008.000011.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1326,7 +1326,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000008.000014.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0870232.fits diff.000008.000014.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000008.000014.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0870232.fits diff.000008.000014.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1350,7 +1350,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000008.000015.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0860044.fits diff.000008.000015.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000008.000015.txt p2mass-atlas-001124n-j0870220.fits p2mass-atlas-001124n-j0860044.fits diff.000008.000015.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1374,7 +1374,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000011.000015.txt p2mass-atlas-001124n-j0860056.fits p2mass-atlas-001124n-j0860044.fits diff.000011.000015.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000011.000015.txt p2mass-atlas-001124n-j0860056.fits p2mass-atlas-001124n-j0860044.fits diff.000011.000015.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1398,7 +1398,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000011.000024.txt p2mass-atlas-001124n-j0860056.fits p2mass-atlas-001124n-j0850220.fits diff.000011.000024.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000011.000024.txt p2mass-atlas-001124n-j0860056.fits p2mass-atlas-001124n-j0850220.fits diff.000011.000024.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1422,7 +1422,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000012.000013.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0870244.fits diff.000012.000013.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000012.000013.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0870244.fits diff.000012.000013.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1446,7 +1446,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000012.000014.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0870232.fits diff.000012.000014.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000012.000014.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0870232.fits diff.000012.000014.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1470,7 +1470,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000012.000018.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0890244.fits diff.000012.000018.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000012.000018.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0890244.fits diff.000012.000018.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1494,7 +1494,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000012.000028.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0880021.fits diff.000012.000028.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000012.000028.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0880021.fits diff.000012.000028.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1518,7 +1518,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000013.000014.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870232.fits diff.000013.000014.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000013.000014.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870232.fits diff.000013.000014.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1542,7 +1542,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000013.000016.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0860032.fits diff.000013.000016.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000013.000016.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0860032.fits diff.000013.000016.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1566,7 +1566,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000013.000028.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0880021.fits diff.000013.000028.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000013.000028.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0880021.fits diff.000013.000028.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1590,7 +1590,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000013.000029.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870256.fits diff.000013.000029.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000013.000029.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870256.fits diff.000013.000029.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1614,7 +1614,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000013.000030.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0860021.fits diff.000013.000030.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000013.000030.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0860021.fits diff.000013.000030.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1638,7 +1638,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000014.000015.txt p2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0860044.fits diff.000014.000015.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000014.000015.txt p2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0860044.fits diff.000014.000015.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1662,7 +1662,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000014.000016.txt p2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0860032.fits diff.000014.000016.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000014.000016.txt p2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0860032.fits diff.000014.000016.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1686,7 +1686,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000015.000016.txt p2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0860032.fits diff.000015.000016.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000015.000016.txt p2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0860032.fits diff.000015.000016.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1710,7 +1710,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000015.000022.txt p2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0850232.fits diff.000015.000022.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000015.000022.txt p2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0850232.fits diff.000015.000022.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1734,7 +1734,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000015.000024.txt p2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0850220.fits diff.000015.000024.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000015.000024.txt p2mass-atlas-001124n-j0860044.fits p2mass-atlas-001124n-j0850220.fits diff.000015.000024.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1758,7 +1758,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000016.000022.txt p2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0850232.fits diff.000016.000022.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000016.000022.txt p2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0850232.fits diff.000016.000022.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1782,7 +1782,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000016.000023.txt p2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0850244.fits diff.000016.000023.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000016.000023.txt p2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0850244.fits diff.000016.000023.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1806,7 +1806,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000016.000030.txt p2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0860021.fits diff.000016.000030.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000016.000030.txt p2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0860021.fits diff.000016.000030.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1830,7 +1830,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000017.000032.txt p2mass-atlas-000206s-j0140257.fits p2mass-atlas-001124n-j0900021.fits diff.000017.000032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000017.000032.txt p2mass-atlas-000206s-j0140257.fits p2mass-atlas-001124n-j0900021.fits diff.000017.000032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1854,7 +1854,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000018.000028.txt p2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0880021.fits diff.000018.000028.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000018.000028.txt p2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0880021.fits diff.000018.000028.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1878,7 +1878,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000018.000031.txt p2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0890256.fits diff.000018.000031.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000018.000031.txt p2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0890256.fits diff.000018.000031.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1902,7 +1902,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000018.000032.txt p2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0900021.fits diff.000018.000032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000018.000032.txt p2mass-atlas-001124n-j0890244.fits p2mass-atlas-001124n-j0900021.fits diff.000018.000032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1926,7 +1926,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000019.000021.txt p2mass-atlas-001124n-j0840056.fits p2mass-atlas-001124n-j0840044.fits diff.000019.000021.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000019.000021.txt p2mass-atlas-001124n-j0840056.fits p2mass-atlas-001124n-j0840044.fits diff.000019.000021.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1950,7 +1950,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000019.000024.txt p2mass-atlas-001124n-j0840056.fits p2mass-atlas-001124n-j0850220.fits diff.000019.000024.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000019.000024.txt p2mass-atlas-001124n-j0840056.fits p2mass-atlas-001124n-j0850220.fits diff.000019.000024.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1974,7 +1974,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000019.000025.txt p2mass-atlas-001124n-j0840056.fits p2mass-atlas-981017s-j1150044.fits diff.000019.000025.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000019.000025.txt p2mass-atlas-001124n-j0840056.fits p2mass-atlas-981017s-j1150044.fits diff.000019.000025.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -1998,7 +1998,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000020.000026.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-981017s-j1150033.fits diff.000020.000026.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000020.000026.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-981017s-j1150033.fits diff.000020.000026.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2022,7 +2022,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000020.000027.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-001124n-j0840032.fits diff.000020.000027.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000020.000027.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-001124n-j0840032.fits diff.000020.000027.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2046,7 +2046,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000020.000033.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-001124n-j0840021.fits diff.000020.000033.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000020.000033.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-001124n-j0840021.fits diff.000020.000033.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2070,7 +2070,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000020.000034.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-981017s-j1150009.fits diff.000020.000034.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000020.000034.txt p2mass-atlas-981017s-j1150021.fits p2mass-atlas-981017s-j1150009.fits diff.000020.000034.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2094,7 +2094,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000021.000022.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0850232.fits diff.000021.000022.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000021.000022.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0850232.fits diff.000021.000022.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2118,7 +2118,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000021.000024.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0850220.fits diff.000021.000024.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000021.000024.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0850220.fits diff.000021.000024.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2142,7 +2142,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000021.000025.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-981017s-j1150044.fits diff.000021.000025.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000021.000025.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-981017s-j1150044.fits diff.000021.000025.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2166,7 +2166,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000021.000026.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-981017s-j1150033.fits diff.000021.000026.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000021.000026.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-981017s-j1150033.fits diff.000021.000026.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2190,7 +2190,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000021.000027.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0840032.fits diff.000021.000027.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000021.000027.txt p2mass-atlas-001124n-j0840044.fits p2mass-atlas-001124n-j0840032.fits diff.000021.000027.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2214,7 +2214,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000022.000023.txt p2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0850244.fits diff.000022.000023.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000022.000023.txt p2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0850244.fits diff.000022.000023.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2238,7 +2238,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000022.000024.txt p2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0850220.fits diff.000022.000024.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000022.000024.txt p2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0850220.fits diff.000022.000024.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2262,7 +2262,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000022.000027.txt p2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0840032.fits diff.000022.000027.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000022.000027.txt p2mass-atlas-001124n-j0850232.fits p2mass-atlas-001124n-j0840032.fits diff.000022.000027.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2286,7 +2286,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000023.000027.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0840032.fits diff.000023.000027.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000023.000027.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0840032.fits diff.000023.000027.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2310,7 +2310,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000023.000030.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0860021.fits diff.000023.000030.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000023.000030.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0860021.fits diff.000023.000030.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2334,7 +2334,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000023.000033.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0840021.fits diff.000023.000033.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000023.000033.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0840021.fits diff.000023.000033.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2358,7 +2358,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000023.000035.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0850256.fits diff.000023.000035.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000023.000035.txt p2mass-atlas-001124n-j0850244.fits p2mass-atlas-001124n-j0850256.fits diff.000023.000035.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2382,7 +2382,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000025.000026.txt p2mass-atlas-981017s-j1150044.fits p2mass-atlas-981017s-j1150033.fits diff.000025.000026.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000025.000026.txt p2mass-atlas-981017s-j1150044.fits p2mass-atlas-981017s-j1150033.fits diff.000025.000026.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2406,7 +2406,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000026.000027.txt p2mass-atlas-981017s-j1150033.fits p2mass-atlas-001124n-j0840032.fits diff.000026.000027.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000026.000027.txt p2mass-atlas-981017s-j1150033.fits p2mass-atlas-001124n-j0840032.fits diff.000026.000027.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2430,7 +2430,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000027.000033.txt p2mass-atlas-001124n-j0840032.fits p2mass-atlas-001124n-j0840021.fits diff.000027.000033.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000027.000033.txt p2mass-atlas-001124n-j0840032.fits p2mass-atlas-001124n-j0840021.fits diff.000027.000033.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2454,7 +2454,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000028.000029.txt p2mass-atlas-001124n-j0880021.fits p2mass-atlas-001124n-j0870256.fits diff.000028.000029.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000028.000029.txt p2mass-atlas-001124n-j0880021.fits p2mass-atlas-001124n-j0870256.fits diff.000028.000029.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2478,7 +2478,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000028.000031.txt p2mass-atlas-001124n-j0880021.fits p2mass-atlas-001124n-j0890256.fits diff.000028.000031.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000028.000031.txt p2mass-atlas-001124n-j0880021.fits p2mass-atlas-001124n-j0890256.fits diff.000028.000031.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2502,7 +2502,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000029.000030.txt p2mass-atlas-001124n-j0870256.fits p2mass-atlas-001124n-j0860021.fits diff.000029.000030.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000029.000030.txt p2mass-atlas-001124n-j0870256.fits p2mass-atlas-001124n-j0860021.fits diff.000029.000030.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2526,7 +2526,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000030.000035.txt p2mass-atlas-001124n-j0860021.fits p2mass-atlas-001124n-j0850256.fits diff.000030.000035.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000030.000035.txt p2mass-atlas-001124n-j0860021.fits p2mass-atlas-001124n-j0850256.fits diff.000030.000035.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2550,7 +2550,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000031.000032.txt p2mass-atlas-001124n-j0890256.fits p2mass-atlas-001124n-j0900021.fits diff.000031.000032.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000031.000032.txt p2mass-atlas-001124n-j0890256.fits p2mass-atlas-001124n-j0900021.fits diff.000031.000032.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2574,7 +2574,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000033.000034.txt p2mass-atlas-001124n-j0840021.fits p2mass-atlas-981017s-j1150009.fits diff.000033.000034.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000033.000034.txt p2mass-atlas-001124n-j0840021.fits p2mass-atlas-981017s-j1150009.fits diff.000033.000034.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2598,7 +2598,7 @@
       "config": {
         "executor": {
           "executable": "mDiffFit",
-          "args": "-s fit.000033.000035.txt p2mass-atlas-001124n-j0840021.fits p2mass-atlas-001124n-j0850256.fits diff.000033.000035.fits big_region_20131010_122929_13630.hdr"
+          "args": "-s fit.000033.000035.txt p2mass-atlas-001124n-j0840021.fits p2mass-atlas-001124n-j0850256.fits diff.000033.000035.fits big_region_20131015_185655_13112.hdr"
         }
       },
       "ins": [
@@ -2622,7 +2622,7 @@
       "config": {
         "executor": {
           "executable": "mConcatFit",
-          "args": "statfile_20131010_122929_13630.tbl fits.tbl ."
+          "args": "statfile_20131015_185655_13112.tbl fits.tbl ."
         }
       },
       "ins": [
@@ -2720,7 +2720,7 @@
       "config": {
         "executor": {
           "executable": "mBgModel",
-          "args": "-i 100000 pimages_20131010_122929_13630.tbl fits.tbl corrections.tbl"
+          "args": "-i 100000 pimages_20131015_185655_13112.tbl fits.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2738,7 +2738,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0900032.fits c2mass-atlas-001124n-j0900032.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0900032.fits c2mass-atlas-001124n-j0900032.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2759,7 +2759,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0890220.fits c2mass-atlas-001124n-j0890220.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0890220.fits c2mass-atlas-001124n-j0890220.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2780,7 +2780,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0880044.fits c2mass-atlas-001124n-j0880044.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0880044.fits c2mass-atlas-001124n-j0880044.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2801,7 +2801,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-000206s-j0140245.fits c2mass-atlas-000206s-j0140245.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-000206s-j0140245.fits c2mass-atlas-000206s-j0140245.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2822,7 +2822,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-000206s-j0140233.fits c2mass-atlas-000206s-j0140233.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-000206s-j0140233.fits c2mass-atlas-000206s-j0140233.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2843,7 +2843,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0900044.fits c2mass-atlas-001124n-j0900044.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0900044.fits c2mass-atlas-001124n-j0900044.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2864,7 +2864,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0890232.fits c2mass-atlas-001124n-j0890232.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0890232.fits c2mass-atlas-001124n-j0890232.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2885,7 +2885,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0870220.fits c2mass-atlas-001124n-j0870220.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0870220.fits c2mass-atlas-001124n-j0870220.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2906,7 +2906,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0880056.fits c2mass-atlas-001124n-j0880056.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0880056.fits c2mass-atlas-001124n-j0880056.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2927,7 +2927,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0900056.fits c2mass-atlas-001124n-j0900056.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0900056.fits c2mass-atlas-001124n-j0900056.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2948,7 +2948,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0860056.fits c2mass-atlas-001124n-j0860056.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0860056.fits c2mass-atlas-001124n-j0860056.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2969,7 +2969,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0880032.fits c2mass-atlas-001124n-j0880032.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0880032.fits c2mass-atlas-001124n-j0880032.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -2990,7 +2990,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0870244.fits c2mass-atlas-001124n-j0870244.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0870244.fits c2mass-atlas-001124n-j0870244.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3011,7 +3011,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0870232.fits c2mass-atlas-001124n-j0870232.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0870232.fits c2mass-atlas-001124n-j0870232.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3032,7 +3032,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0860044.fits c2mass-atlas-001124n-j0860044.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0860044.fits c2mass-atlas-001124n-j0860044.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3053,7 +3053,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0860032.fits c2mass-atlas-001124n-j0860032.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0860032.fits c2mass-atlas-001124n-j0860032.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3074,7 +3074,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-000206s-j0140257.fits c2mass-atlas-000206s-j0140257.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-000206s-j0140257.fits c2mass-atlas-000206s-j0140257.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3095,7 +3095,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0890244.fits c2mass-atlas-001124n-j0890244.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0890244.fits c2mass-atlas-001124n-j0890244.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3116,7 +3116,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0840056.fits c2mass-atlas-001124n-j0840056.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0840056.fits c2mass-atlas-001124n-j0840056.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3137,7 +3137,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-981017s-j1150021.fits c2mass-atlas-981017s-j1150021.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-981017s-j1150021.fits c2mass-atlas-981017s-j1150021.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3158,7 +3158,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0840044.fits c2mass-atlas-001124n-j0840044.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0840044.fits c2mass-atlas-001124n-j0840044.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3179,7 +3179,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0850232.fits c2mass-atlas-001124n-j0850232.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0850232.fits c2mass-atlas-001124n-j0850232.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3200,7 +3200,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0850244.fits c2mass-atlas-001124n-j0850244.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0850244.fits c2mass-atlas-001124n-j0850244.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3221,7 +3221,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0850220.fits c2mass-atlas-001124n-j0850220.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0850220.fits c2mass-atlas-001124n-j0850220.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3242,7 +3242,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-981017s-j1150044.fits c2mass-atlas-981017s-j1150044.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-981017s-j1150044.fits c2mass-atlas-981017s-j1150044.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3263,7 +3263,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-981017s-j1150033.fits c2mass-atlas-981017s-j1150033.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-981017s-j1150033.fits c2mass-atlas-981017s-j1150033.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3284,7 +3284,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0840032.fits c2mass-atlas-001124n-j0840032.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0840032.fits c2mass-atlas-001124n-j0840032.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3305,7 +3305,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0880021.fits c2mass-atlas-001124n-j0880021.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0880021.fits c2mass-atlas-001124n-j0880021.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3326,7 +3326,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0870256.fits c2mass-atlas-001124n-j0870256.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0870256.fits c2mass-atlas-001124n-j0870256.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3347,7 +3347,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0860021.fits c2mass-atlas-001124n-j0860021.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0860021.fits c2mass-atlas-001124n-j0860021.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3368,7 +3368,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0890256.fits c2mass-atlas-001124n-j0890256.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0890256.fits c2mass-atlas-001124n-j0890256.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3389,7 +3389,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0900021.fits c2mass-atlas-001124n-j0900021.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0900021.fits c2mass-atlas-001124n-j0900021.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3410,7 +3410,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0840021.fits c2mass-atlas-001124n-j0840021.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0840021.fits c2mass-atlas-001124n-j0840021.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3431,7 +3431,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-981017s-j1150009.fits c2mass-atlas-981017s-j1150009.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-981017s-j1150009.fits c2mass-atlas-981017s-j1150009.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3452,7 +3452,7 @@
       "config": {
         "executor": {
           "executable": "mBackground",
-          "args": "-t p2mass-atlas-001124n-j0850256.fits c2mass-atlas-001124n-j0850256.fits pimages_20131010_122929_13630.tbl corrections.tbl"
+          "args": "-t p2mass-atlas-001124n-j0850256.fits c2mass-atlas-001124n-j0850256.fits pimages_20131015_185655_13112.tbl corrections.tbl"
         }
       },
       "ins": [
@@ -3473,7 +3473,7 @@
       "config": {
         "executor": {
           "executable": "mImgtbl",
-          "args": "-t cimages_20131010_122929_13630.tbl . newcimages.tbl"
+          "args": "-t cimages_20131015_185655_13112.tbl . newcimages.tbl"
         }
       },
       "ins": [
@@ -3525,7 +3525,7 @@
       "config": {
         "executor": {
           "executable": "mAdd",
-          "args": "-e newcimages.tbl region_20131010_122929_13630.hdr mosaic_20131010_122929_13630.fits"
+          "args": "-e newcimages.tbl region_20131015_185655_13112.hdr mosaic_20131015_185655_13112.fits"
         }
       },
       "ins": [
@@ -3614,7 +3614,7 @@
       "config": {
         "executor": {
           "executable": "mShrink",
-          "args": "mosaic_20131010_122929_13630.fits shrunken_20131010_122929_13630.fits 2"
+          "args": "mosaic_20131015_185655_13112.fits shrunken_20131015_185655_13112.fits 2"
         }
       },
       "ins": [
@@ -3631,7 +3631,7 @@
       "config": {
         "executor": {
           "executable": "mJPEG",
-          "args": "-ct 1 -gray shrunken_20131010_122929_13630.fits min max gaussianlog -out shrunken_20131010_122929_13630.jpg"
+          "args": "-ct 1 -gray shrunken_20131015_185655_13112.fits min max gaussianlog -out shrunken_20131015_185655_13112.jpg"
         }
       },
       "ins": [
@@ -3653,7 +3653,7 @@
       "name": "p2mass-atlas-001124n-j0900032_area.fits"
     },
     {
-      "name": "big_region_20131010_122929_13630.hdr"
+      "name": "big_region_20131015_185655_13112.hdr"
     },
     {
       "name": "2mass-atlas-001124n-j0890220.fits"
@@ -4454,13 +4454,13 @@
       "name": "diff.000033.000035.fits"
     },
     {
-      "name": "statfile_20131010_122929_13630.tbl"
+      "name": "statfile_20131015_185655_13112.tbl"
     },
     {
       "name": "fits.tbl"
     },
     {
-      "name": "pimages_20131010_122929_13630.tbl"
+      "name": "pimages_20131015_185655_13112.tbl"
     },
     {
       "name": "corrections.tbl"
@@ -4676,25 +4676,25 @@
       "name": "c2mass-atlas-001124n-j0850256_area.fits"
     },
     {
-      "name": "cimages_20131010_122929_13630.tbl"
+      "name": "cimages_20131015_185655_13112.tbl"
     },
     {
       "name": "newcimages.tbl"
     },
     {
-      "name": "region_20131010_122929_13630.hdr"
+      "name": "region_20131015_185655_13112.hdr"
     },
     {
-      "name": "mosaic_20131010_122929_13630.fits"
+      "name": "mosaic_20131015_185655_13112.fits"
     },
     {
-      "name": "mosaic_20131010_122929_13630_area.fits"
+      "name": "mosaic_20131015_185655_13112_area.fits"
     },
     {
-      "name": "shrunken_20131010_122929_13630.fits"
+      "name": "shrunken_20131015_185655_13112.fits"
     },
     {
-      "name": "shrunken_20131010_122929_13630.jpg"
+      "name": "shrunken_20131015_185655_13112.jpg"
     }
   ],
   "ins": [
