@@ -65,7 +65,7 @@ exports.init = function(redisClient) {
             var dataNum = ret;
             if (to < 0) {
                 rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
-                    if (err) { cb(err); return; }
+                    if (err) return cb(err); 
                     var to1 = ret+to+1;
                     //console.log("From: "+from+", to: "+to1);
                     getTasks1(wfId, from, to1, dataNum, cb);
@@ -179,8 +179,6 @@ exports.init = function(redisClient) {
 
     function public_getTaskInfo(wfId, taskId, cb) {
         var taskKey = "wf:"+wfId+":task:"+taskId;
-        var task, ins, outs, data = {};
-
         rcl.hgetall(taskKey, function(err, reply) {
             err ? cb(err): cb(null, reply);
         });
@@ -292,6 +290,172 @@ exports.init = function(redisClient) {
         });
     }
 
+    // Part of NEW API for continuous processes with FIFO queues
+    function public_getTaskInfoFull1(wfId, taskId, insIds, outsIds, cb) {
+        var taskKey = "wf:"+wfId+":task:"+taskId;
+        var task, ins, outs, data_ins = {}, data_outs = {}, asyncTasks = [];
+
+        // Retrieve task info
+        asyncTasks.push(function(callback) {
+            rcl.hgetall(taskKey, function(err, reply) {
+                task = err ? err: reply;
+                callback(null, task);
+            });
+        });
+
+        // Retrieve all inputs of the task given in 'insIds'
+        for (i=0; i<insIds.length; ++i) {
+            (function(inIdx) {
+                var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+insIds[inIdx];
+                var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId+":"+idx;
+                asyncTasks.push(function(callback) {
+                    rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+                        ins = err ? err: ret;
+                        callback(null, ins);
+                    });
+                });
+            })(i);
+        }
+
+        // Retrieve all outputs of the task given in 'outsIds'
+        asyncTasks.push(function(callback) {
+            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+                outs = err ? err: ret;
+                callback(null, outs);
+            });
+        });
+
+        async.parallel(asyncTasks, function done(err, result) {
+            if (err) {
+                cb(err);
+            } else {
+                asyncTasks = [];
+                for (var i=0; i<ins.length; ++i) {
+                    (function(i) {
+                        var dataKey = "wf:"+wfId+":data:"+ins[i];
+                        asyncTasks.push(function(callback) {
+                            rcl.hgetall(dataKey, function(err, reply) {
+                                if (err) {
+                                    data_ins[ins[i]] = err;
+                                } else {
+                                    data_ins[ins[i]] = reply;
+                                    data_ins[ins[i]].id = ins[i]; // TODO: redundant (key is the id)
+                                    // but WARNING: invoke currently may rely on it
+                                }
+                                callback(null, reply);
+                            });
+                        });
+                    })(i);
+                }
+                for (var i=0; i<outs.length; ++i) {
+                    (function(i) {
+                        var dataKey = "wf:"+wfId+":data:"+outs[i];
+                        asyncTasks.push(function(callback) {
+                            rcl.hgetall(dataKey, function(err, reply) {
+                                if (err) {
+                                    data_outs[outs[i]] = err;
+                                } else {
+                                    data_outs[outs[i]] = reply;
+                                    data_outs[outs[i]].id = outs[i]; // TODO: redundant
+                                }
+                                callback(null, reply);
+                            });
+                        });
+                    })(i);
+                }
+
+                async.parallel(asyncTasks, function done(err, result) {
+                    if (err) {
+                        cb(err);
+                    } else {
+                        cb(null, task, data_ins, data_outs);
+                    }
+                });
+            }
+        });
+    }
+
+    function pushInput(wfId, taskId, sigId, sigIdx, cb) {
+        var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+        // checking if this input signal is on a 'sticky' port
+        rcl.sismember("wf:"+wfId+":task:"+taskId+":sticky", sigId, function(err, isSticky) {
+            if (isSticky) {
+                // if the input is 'sticky', the new signal is not queued, only replaces the old one
+                // (there is no queue of signals, just the 'currrent' signal value)
+                rcl.llen(queueKey, function(err, llen) {
+                    if (llen) {
+                        rcl.lset(queueKey, 0, sigIdx, function(err, rep) { 
+                            cb(err); 
+                        });
+                    } else {
+                        rcl.rpush(queueKey, sigIdx, function(err, rep) { 
+                            cb(err); 
+                        });
+                    }
+                    console.log("STICKY PUSH sigId=", sigId, "LLEN=", llen, "Idx=", sigIdx);
+                });
+
+            } else {
+                rcl.rpush(queueKey, sigIdx, function(err, rep) { 
+                    rcl.llen(queueKey, function(err, llen) {
+                        console.log("PUSH sigId=", sigId, "LLEN=", llen, "Idx=", sigIdx);
+                        cb(err); 
+                    });
+                });
+            }
+        });
+    }
+
+    function popInput(wfId, taskId, sigId, cb) {
+        var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+        var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
+        // checking if this input signal is on a 'sticky' port
+        rcl.sismember("wf:"+wfId+":task:"+taskId+":sticky", sigId, function(err, isSticky) {
+            if (isSticky) {
+                //console.log("STICKY!", taskId, sigId);
+                // if the input is 'sticky', the signal is not removed, just its value is retrieved
+                // (there is no queue of signals, just the 'currrent' signal value which is persistent)
+                rcl.lindex(sigQueueKey, 0, function(err, sigIdx) { 
+                    rcl.hget(sigInstanceKey, sigIdx, function(err, sigValue) {
+                        var sig = JSON.parse(sigValue);
+                        //sig._id = sigId;
+                        cb(err, sig); 
+                    });
+                });
+            } else {
+                rcl.lpop(sigQueueKey, function(err, sigIdx) { 
+                    rcl.hget(sigInstanceKey, sigIdx, function(err, sigValue) {
+                        var sig = JSON.parse(sigValue);
+                        //sig._id = sigId;
+                        rcl.hlen(sigInstanceKey, function(err, hlen) {
+                            rcl.llen(sigQueueKey, function(err, llen) {
+                                console.log("sigId=", sigId, "LLEN=", llen, "HLEN=", hlen, "Idx=", sigIdx);
+                                cb(err, sig); 
+                            });
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    function resetStickyPorts(wfId, taskId, cb) {
+        rcl.smembers("wf:"+wfId+":task:"+taskId+":sticky", function(err, sigs) {
+            async.each(sigs, function(sigId, cbNext) {
+                var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+                rcl.lpop(queueKey, function(err, rep) { 
+                    rcl.llen(queueKey, function(err, len) {
+                        console.log(queueKey, "LEN="+len);
+                        cbNext(err);
+                    });
+                });
+            },
+            function(err) {
+                err ? cb(null): cb(err);
+            });
+        });
+    }
+
 
     function public_setTaskState(wfId, taskId, obj, cb) {
         rcl.hmset("wf:"+wfId+":task:"+taskId, obj, function(err, rep) {
@@ -331,6 +495,7 @@ exports.init = function(redisClient) {
     }
 
     // returns full data element info
+    // OBSOLETED BY getSignalInfo
     function public_getDataInfoFull(wfId, dataId, cb) {
         var data, sources, sinks, dataKey, taskKeyPfx, tasks = {};
         var multi = rcl.multi();
@@ -380,6 +545,72 @@ exports.init = function(redisClient) {
             } else {
                 cb(null, data, sources, sinks);
             }
+        });
+    }
+
+    // given @sigs - an array of signal Ids, returns their information (metadata)
+    // - @sigs: array of signal ids, e.g [1,3,7]
+    // - @cb = function(err, sigInfo), where sigInfo the output array 
+    //   sigInfo[i] = { "_id": sigId, attr: value, attr: value, ... }
+    function getSignalInfo(wfId, sigs, cb) {
+        var asyncTasks = [], sigInfo = [];
+        for (var i=0; i<sigs.length; ++i) {
+            (function(idx) {
+                asyncTasks.push(function(callback) {
+                    var sigId = sigs[idx];
+                    sigKey = "wf:"+wfId+":data:"+sigId; 
+                    rcl.hgetall(sigKey, function(err, sig) { 
+                        if (err || sig == -1) { callback(new Error("Redis error")); }
+                        sigInfo[idx] = sig;
+                        sigInfo[idx]._id = sigId;
+                        sigInfo[idx].id = sigId; // FIXME compatibility with OLD API: to be removed
+                        callback(null, sig);
+                    });
+                });
+            })(i);
+        }
+        async.parallel(asyncTasks, function done(err, result) {
+            cb(err, sigInfo);
+        });
+    }
+
+    // checks if given input signals are ready (in the queues), and returns their values
+    // @spec format: [ [ sigId, count], [sigId, count], ... ]
+    // @deref (boolean): if true and all sigs are ready, their values will be returned
+    // @cb: function(result, [sigValues])
+    //   result: true if 'count' instances of each signal 'sigId' are present in the queues
+    //   sigValues (optional) format: [ [ spec[0] signal values ], [ spec[1] signal values ], ... ]
+    //                       example: [ [ { name: 'filename',
+    //                                      path: 'tmp1/asynctest.js',
+    //                                      uri: '/workflow/Wf_continuous_file_splitter/instances/1/data-1',
+    //                                      _id: '1',
+    //                                      _ts: 8 
+    //                                } ] ]
+    //   
+    function fetchInputs(wfId, taskId, spec, deref, cb) {
+        var sigValues = [];
+        async.every(spec, function (sig, callback) {
+            var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig[0];
+            rcl.llen(queueKey, function(err, len) {
+                //console.log("FETCH SIG", sig, "LEN", len);
+                callback(!err && len>=sig[1]); 
+            });
+        }, function(result) {
+            if (!result || !deref) return cb(result);
+            async.times(spec.length, function(n, cbNext) {
+                sigValues[n] = [];
+                async.timesSeries(spec[n][1] /* count */, function(m, cbNextInner) {
+                    popInput(wfId, taskId, spec[n][0] /* sigId */, function(err, sig) {
+                        sigValues[n].push(sig);
+                        cbNextInner();
+                    });
+                }, function(err, res) {
+                    cbNext();
+                });
+            }, function(err, res) {
+                console.log("CHECK INPUT DEREF:", sigValues);
+                cb(result, sigValues);
+            });
         });
     }
 
@@ -501,7 +732,7 @@ function public_getWfMap(wfId, cb) {
             // Create info about task types (all remaining tasks have the default type "task")
             // TODO: pull the list of types dynamically from redis
             asyncTasks.push(function(callback) {
-                async.each(["foreach", "service", "splitter", "stickyservice", "choice"],
+                async.each(["foreach", "service", "splitter", "csplitter", "stickyservice", "choice", "dataflow"],
                     function iterator(type, next) {
                         rcl.smembers(wfKey+":tasktype:"+type, function(err, rep) {
                             if (err || rep == -1) { throw(new Error("Redis error")); }
@@ -522,8 +753,6 @@ function public_getWfMap(wfId, cb) {
             async.parallel(asyncTasks, function done(err, result) {
                 cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo);
             });
-
-
         });
     });
 }
@@ -584,16 +813,18 @@ function public_getDataSources(wfId, dataId, cb) {
 }
 
 // Retrieves a list of data sinks (tasks). 
-function public_getDataSinks(wfId, dataId, cb) {
-    var replies = [], reply = [], asyncTasks = [];
+function public_getDataSinks(wfId, dataId, withports, cb) {
     var dataKey = "wf:"+wfId+":data:"+dataId;
-    //var multi = rcl.multi();
 
-    rcl.zcard(dataKey+":sinks", function(err, rep) {
-        rcl.zrangebyscore( dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
+    if (withports) {
+        rcl.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
             err ? cb(err): cb(null, ret);
         });
-    });
+    } else {
+        rcl.zrangebyscore(dataKey+":sinks", 0, "+inf", function(err, ret) { 
+            err ? cb(err): cb(null, ret);
+        });
+    }
 }
 
 
@@ -635,14 +866,10 @@ function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, emulate, cb)
             }, 100);
         } else {
             if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
-                cb(null, null);
-                return;
+                return cb(null, null);
             }
             rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
-                if (err) {
-                    cb(err);
-                    return;
-                }
+                if (err) return cb(err);
                 // FIXME: how to know the (relative?) path to the module?
                 var f = require('../'+fun.module)[taskInfo.fun]; 
                 var ins = [], outs = [];
@@ -681,6 +908,185 @@ function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, emulate, cb)
     });
 }
 
+// Part of NEW API for continuous processes with FIFO queues
+// invokes function assinged to task passing input signal values and output signal placeholders
+// whose ids are in arrays 'insIds' and 'outsIds'. 
+function public_invokeTaskFunction1(wfId, taskId, insIds_, outsIds_, emulate, cb) {
+    function isArray(what) {
+        return Object.prototype.toString.call(what) === '[object Array]';
+    }
+    var insIds = [], outsIds = [];
+    isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
+    isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
+
+    var ins = [], outs = [];
+
+    public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
+        if (err) return cb(err); 
+
+        var asyncTasks = [];
+
+        // retrieve inputs signals given in 'insIds' from their queues
+        for (i=0; i<insIds.length; ++i) {
+            (function(idx) {
+                asyncTasks.push(function(callback) {
+                    popInput(wfId, taskId, insIds[idx], function(err, inValue) {
+                        ins[idx] = inValue;
+                        callback(err, inValue);
+                    });
+                });
+            })(i);
+        }
+
+        // retrieve task outputs given in 'outsIds'
+        for (i=0; i<outsIds.length; ++i) {
+            (function(idx) {
+                asyncTasks.push(function(callback) {
+                    var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
+                    rcl.hgetall(dataKey, function(err, dataInfo) {
+                        outs[idx] = dataInfo;
+                        callback(err, dataInfo);
+                    });
+                })
+            })(i);
+        }
+
+        async.parallel(asyncTasks, function done(err, result) {
+            if (err) return cb(err);
+
+            if (emulate) {
+                setTimeout(function() {
+                    return cb(null, outs);
+                }, 100);
+            }
+
+            if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
+                return cb(new Error("No function defined for task."));
+            }
+
+            /////////////////////////
+            // INVOKE THE FUNCTION //
+            /////////////////////////
+
+            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
+                if (err) return cb(err);
+                // FIXME: how to know the (relative?) path to the module?
+                var f = require('../'+fun.module)[taskInfo.fun]; 
+                //console.log("INS:", ins);
+                //console.log("OUTS:", outs);
+                //console.log(JSON.stringify(taskInfo.config));  //DEBUG
+                var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
+                var executor = taskInfo.executor ? taskInfo.executor: null;
+
+                f(ins, outs, executor, conf, function(err, outs) {
+                    //if (outs) { console.log("VALUE="+outs[0].value); } // DEBUG 
+                    cb(null, outs);
+                });
+            });
+        });
+    });
+}
+
+
+// Part of NEW API for continuous processes with FIFO queues
+// @sig format:
+// ... TODO
+// TODO: implement as a Lua script
+function public_sendSignal(wfId, sig, cb) {
+    //console.log("sendSignal:", sig);
+    var sigId = sig._id;
+    delete sig._id;
+
+    // create a new instance of this signal (at hash = "wf:{id}:sigs:{sigId}", field = sig instance id)
+    // (signal with a given id may be emitted multiple times within a workflow execution)
+    // (hash is better than a list because of easier cleanup of old signals)
+    rcl.incr("wf:"+wfId+":sigs:"+sigId+":nextId", function(err, rep) {
+        if (err) return cb(err); 
+        var idx = rep.toString();
+        var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
+        rcl.hset(sigInstanceKey, idx, JSON.stringify(sig), function(err, rep) {
+            if (err) { 
+                cb(err); 
+            } else {
+                public_getDataSinks(wfId, sigId, false, function(err, sinks) {
+                    //console.log("sendSignal: ", sigId, sinks);
+                    if (err) { 
+                        cb(err);
+                    } else {
+                        // insert the signal (its index in the hash) in the queues of its sinks
+                        //console.log("SINKS: ", sinks);
+                        async.each(sinks, function iterator(taskId, doneIter) {
+                            pushInput(wfId, taskId, sigId, idx, function(err) {
+                                doneIter(err);
+                            });
+                            //var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+                            //rcl.rpush(queueKey, idx, function(err, rep) {
+                            //   doneIter(err);
+                            //});
+                        }, function doneAll(err) {
+                            cb(null, sinks);
+                        });
+                    }
+                });
+            }
+        });
+    });
+}
+
+// Part of NEW API for continuous processes with FIFO queues
+// Creates a new signal group to wait for.
+// @spec = specification of the group: "{ sigGroupName: [ sigId, sigId, sigId, ... ], ... }", where
+//         sigGroup - a unique name for the signal group to wait for.
+//         sigId    - signal Id; can be repeated multiple times which denotes wait for multiple
+//                    occurrences of this signal. 
+// @cb   = function(err) - callback
+//
+// Example: waitForSignals(1, 44, { "data": [1,2,3,3,4,4,5] }, function(err) { })
+//
+// TODO: rewrite this in Lua
+function public_waitForSignals(wfId, taskId, spec, cb) {
+    for (group in spec) {
+        // add the group name to the set of all waiting groups
+        rcl.sadd("wf:"+wfId+":task:"+taskId+":waiting", group, function(err, reply) {
+            if (err) return cb(err); 
+            // For each group, add the sigIds to their respective waiting set, increasing its score by 1 for each
+            // occurrence of the sigId
+            async.each(spec.group, function iterator(sigId, doneIter) {
+                var waitSetKey = "wf:"+wfId+":task:"+taskId+":waiting:"+group;
+                rcl.zincrby(waitSetKey, 1, sigId, function(err, rep) {
+                    doneIter(err);
+                });
+            }, function doneAll(err) {
+                cb(err);
+            });
+        });
+    }
+}
+
+// checks if all signals with specified ids are ready for a given task; if so, returns their values
+// @spec - array of elements: [ { "id": id, "count": count }, { "id": id, "count": count }, ... ] where
+//             id    - input signal identifier for task taskId
+//             count - number of instances of this signal which are waited for (typically 1, but
+//                     a task may also consume multiple data elements at once from a given port)
+function public_getInsIfReady(wfId, taskId, spec, cb) {
+    async.reduce(spec, 0, function iterator(memo, sig, cbNext) {
+        var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig.id;
+        rcl.llen(queueKey, function(err, len) {
+            err ?  cbNext(err): cbNext(null, memo + (len == sig.count ? 1: 0));
+        });
+    }, function done(err, result) {
+        if (err) return cb(err); 
+        if (result == spec.length) {
+            // all signals are ready
+            var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig.id; 
+            // TODO: retrieve signals
+            //rcl.lrange(queueKey, 0, )
+        } else {
+            cb(null, null);
+        }
+    });
+}
+
 return {
     createInstance: public_createInstance,
     createInstanceFromFile: public_createInstanceFromFile,
@@ -704,7 +1110,13 @@ return {
     getRemoteDataSinks: public_getRemoteDataSinks,
     getWfMap: public_getWfMap,
     getTaskMap: public_getTaskMap,
-    invokeTaskFunction: public_invokeTaskFunction
+    invokeTaskFunction: public_invokeTaskFunction,
+    invokeTaskFunction1: public_invokeTaskFunction1,
+    sendSignal: public_sendSignal,
+    getSignalInfo: getSignalInfo,
+    popInput: popInput,
+    resetStickyPorts: resetStickyPorts,
+    fetchInputs: fetchInputs
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -734,25 +1146,23 @@ function createWfInstance(wfJson, baseUrl, instanceId, cb) {
     }
 
     // add workflow data and control "signals"
-    var multi = rcl.multi();
+    var multi = rcl.multi(); // FIXME: change this to async.parallel
     var dataKey;
     for (var i=0; i<wfJson.data.length; ++i) {
         (function(i) {
             var dataId = i+1, score = -1;
+            var dataObj = wfJson.data[i];
+            dataObj.status = "not_ready"
             dataKey = wfKey+":data:"+dataId;
-            if (wfJson.data[i].control) { // this is a control signal
-                multi.hmset(dataKey, 
-                    "uri", baseUri + '/control-' + dataId, 
-                    "name", wfJson.data[i].name, 
-                    "type", "control", 
-                    function(err, ret) { });
+            if (dataObj.control) { // this is a control signal
+                dataObj.uri = baseUri + '/control-' + dataId;
+                dataObj.type = "control";
+                delete dataObj.control; // FIXME: json & redis representation of control sig attribute should be unified
+                multi.hmset(dataKey, dataObj, function(err, ret) { });
                 score = 2;
             } else {                     // this is a data signal
-                multi.hmset(dataKey, 
-                    "uri", baseUri + '/data-' + dataId, 
-                    "name", wfJson.data[i].name, 
-                    "status", "not_ready", 
-                    function(err, ret) { });
+                dataObj.uri = baseUri + '/data-' + dataId; 
+                multi.hmset(dataKey, dataObj, function(err, ret) { });
                 score = 0;
             }
 
@@ -839,6 +1249,15 @@ function processTask(task, wfname, baseUri, wfKey, taskKey, taskId, wfJson, cb) 
             }
         })(i+1, task.outs[i]+1);
     }
+    // add info on which input ports (if any) are "sticky" 
+    if (!task.sticky) task.sticky = [];
+    for (var i=0; i<task.sticky.length; ++i) {
+        (function(sigId) {
+            //console.log("STICKY ADDING", sigId);
+            rcl.sadd(taskKey+":sticky", sigId, function(err, res) { });
+        })(task.sticky[i]+1);
+    }
+
     multi.exec(function(err, replies) {
         cb();
     });

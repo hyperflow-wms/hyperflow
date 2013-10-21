@@ -60,7 +60,7 @@ init2(function(err, wfId1, wfId2) {
     console.log(sinks);
 });*/
 
-/*wflib.getDataSinks(21, 4, function(err, rep) {
+/*wflib.getDataSinks(21, 4, true, function(err, rep) {
 
 });*/
 

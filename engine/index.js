@@ -22,15 +22,19 @@ var fs = require('fs'),
 var TaskFSM        = require('./taskFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
 var TaskSplitterFSM = require('./taskSplitterFSM.js');
+var TaskCSplitterFSM = require('./taskCSplitterFSM.js');
 var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
 var TaskChoiceFSM = require('./taskChoiceFSM.js');
+var TaskCDataflowFSM = require('./taskCDataflowFSM.js');
 
 // TODO: automatically import and register all task FSMs in the current directory
 fsm.registerFSM(TaskFSM); 
 fsm.registerFSM(TaskForeachFSM);
 fsm.registerFSM(TaskSplitterFSM);
+fsm.registerFSM(TaskCSplitterFSM);
 fsm.registerFSM(TaskStickyServiceFSM);
 fsm.registerFSM(TaskChoiceFSM);
+fsm.registerFSM(TaskCDataflowFSM);
 
 // binary search algorithm for finding elements in workflow arrays
 // patching Array's prototype like this causes erroneous behavior elsewhere!!!
@@ -67,14 +71,16 @@ var Engine = function(config, wflib, wfId, cb) {
     this.outs = [];
     this.sources = [];
     this.sinks = [];
-	this.wfOuts = [];
+    this.wfOuts = [];
     this.trace = "";  // trace: list of task ids in the sequence they were finished
     this.nTasksLeft = 0;  // how many tasks left (not finished)? FIXME: what if a task can 
                           // never be finished (e.g. TaskService?)
-	this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
+    this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
                           
     this.emulate = config.emulate == "true" ? true: false;       
+
+    this.startTime = (new Date()).getTime(); // the start time of this engine (workflow)
 
     (function(engine) {
         engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo) {
@@ -187,6 +193,47 @@ Engine.prototype.workflowFinished = function() {
         }
 }
 
+// NEW API for sending signals for continuous processes with FIFO queues
+// WILL OBSOLETE fireSignals
+// @sigs (array): ids of signals (data and control ones) to be emitted
+//                format: [ { attr: value, 
+//                            ... 
+//                            "_id": sigId
+//                           },
+//                           { attr: value,
+//                                ...
+//                            "_id": sigId
+//                           }
+//                        ]
+Engine.prototype.emitSignals = function(sigs, cb) {
+    var timeStamp; // time stamp to be added to each signal (relative to workflow start time)
+    (function(engine) {
+        timeStamp = (new Date()).getTime() - engine.startTime; 
+        async.each(sigs, function iterator(sig, doneIter) {
+            //console.log(timeStamp);
+            sig._ts = timeStamp;
+            var _sigId = sig._id;
+            engine.wflib.sendSignal(engine.wfId, sig, function(err, sinks) {
+                if (!err) {
+                    // notify sinks that the signals have arrived
+                    for (var j=0; j<sinks.length; j++) {
+                        // send event that an input is ready
+                        engine.tasks[sinks[j]].fireCustomEvent({
+                            wfId: engine.wfId, 
+                            taskId: sinks[j], 
+                            sigId: _sigId
+                        });
+                        console.log("sending signal", _sigId, "to task", sinks[j]);
+                    }
+                }
+                doneIter(err);
+            });
+        }, function doneAll(err) {
+            if (cb) { cb(err); }
+        });
+    })(this);
+}
+
 
 // Fires a set of signals notifying all tasks which are their sinks.
 // For data signals also updates their state (e.g. marks data elements as ready)
@@ -242,7 +289,7 @@ module.exports = Engine;
     //////////////////////////////////////////////////////////////////////////
     
 function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
-    wflib.getDataSinks(wfId, sigId, function(err, sinks) {
+    wflib.getDataSinks(wfId, sigId, true, function(err, sinks) {
         //console.log(sigId, sinks);
         if (err) { throw(err); }
         for (var j=0; j<sinks.length; j+=2) {
@@ -266,7 +313,7 @@ function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
 	obj[dataId] = {"status": "ready" };
 	wflib.setDataState(wfId, obj, function(err, rep) {
 		if (err) { throw(err); }
-		wflib.getDataSinks(wfId, dataId, function(err, sinks) {
+		wflib.getDataSinks(wfId, dataId, true, function(err, sinks) {
 			if (err) { throw(err); }
 			for (var j=0; j<sinks.length; j+=2) {
 				// send event that an input is ready
