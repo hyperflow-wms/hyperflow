@@ -16,7 +16,12 @@
  **   a given input port (currently always 1 data element is waited for any consumed for each port)
  */
 
-var async = require('async');
+var async = require('async')
+    log4js = require('log4js');
+
+    log4js.configure('../log4js.json', { cwd: '../log' });
+
+    var logger = log4js.getLogger('hf-default-logger');
 
 var TaskDataflowFSM = {
     name: "dataflow",
@@ -84,32 +89,32 @@ function fireInput(obj) {
         //sigId = task.ins[msg.inId-1];
         sigId = msg.sigId;
 
-    //if (fi_sync) { console.log("HOPSASA"); process.exit(); return process.nextTick(fireInput(obj)); }
+    //if (fi_sync) { logger.debug("HOPSASA"); process.exit(); return process.nextTick(fireInput(obj)); }
     //fi_sync = true;
 
     if (sigId == task.nextInId) { // "next" signal has arrived
         task.next = true;
-        if (state == "ready" && task.cnt == task.nDataIns) {
+        if (task.ready && task.cnt == task.nDataIns) {
             task.next = false; task.cnt = 0;
-            msg.msgId = "ReRu";
-            obj.session.dispatch(msg);
+            task.ready = false;
+            obj.session.dispatch({ msgId: "ReRu" });
         }
     } else if (sigId == task.doneInId) { // "done" signal has arrived
         task.done = true;
-        if (state == "ready") {
-            msg.msgId = "ReFi"
-            obj.session.dispatch(msg);
+        if (task.ready) {
+            task.ready = false;
+            obj.session.dispatch({ msgId: "ReFi" });
         }
     } else { // something arrived at a data port
         if (!(task.dataIns[sigId])) {
             task.dataIns[sigId] = true;
             task.cnt++;
-            console.log("task", task.id, "cnt="+task.cnt, ", nDataIns="+task.nDataIns);
+            //logger.debug("task", task.id, "cnt="+task.cnt, ", nDataIns="+task.nDataIns);
         }
-        if (state == "ready" && task.cnt == task.nDataIns && (!task.nextInId || task.next == true)) {
+        if (task.ready && task.cnt == task.nDataIns && (!task.nextInId || task.next == true)) {
             task.next = false; task.cnt = 0;
-            msg.msgId = "ReRu";
-            obj.session.dispatch(msg);
+            task.ready = false;
+            obj.session.dispatch({msgId: "ReRu"});
         }
     }
 
@@ -134,8 +139,12 @@ function TaskLogic() {
     this.outs = []; // ids of outputs (data and control signals)
     this.sources = []; 
     this.sinks = [];
+    this.firingInterval = -1; // a task can have 0 data inputs and a firing interval ==> its 
+                              // function will be invoked regularly according to this interval
 
-    this.init = function(engine, wfId, taskId, session) {
+    this.ready = false;
+
+    this.init = function(engine, wfId, taskId, session, fullInfo) {
         this.engine = engine;
         this.wflib = engine.wflib;
 	this.tasks = engine.tasks;
@@ -146,6 +155,12 @@ function TaskLogic() {
 	this.sources = engine.sources;
 	this.sinks = engine.sinks;
         this.nDataIns = engine.ins[taskId].length;
+
+        if (this.nDataIns == 0) { // special case with no data inputs (a 'source' task)
+            // FIXME: add assertion/validation that firing interval is defined!
+            this.firingInterval = fullInfo.firingInterval;
+	}
+
 	if (this.id in engine.cPorts) {
             var taskCPorts = engine.cPorts[this.id];
             if ("ins" in taskCPorts) {
@@ -161,7 +176,7 @@ function TaskLogic() {
                 this.nextOutId = taskCPorts.outs.next;
                 this.doneOutId = taskCPorts.outs.done;
             }
-            //console.log("Cports: "+this.nextInId, this.doneInId, this.nextOutId, this.doneOutId); // DEBUG
+            //logger.debug("Cports: "+this.nextInId, this.doneInId, this.nextOutId, this.doneOutId); // DEBUG
 	}
         session.addListener({
             contextCreated      : function( obj ) {    },
@@ -174,13 +189,21 @@ function TaskLogic() {
 
     this.ready_onEnter = function(session, state, transition, msg) {
         var task = session.logic;
+        task.ready = true;
         if (task.done) {
-            msg.msgId = "ReFi";
-            session.dispatch(msg);
+            task.ready = false;
+            session.dispatch({ msgId: "ReFi"});
         } else if ((!task.nextInId || task.next) && task.cnt == task.nDataIns) {
             task.next = false;
-            msg.msgId = "ReRu";
-            session.dispatch(msg);
+            if (task.nDataIns == 0) { // a "source" task: to be fired regurarly according to a firing interval
+                task.ready = false;
+                setTimeout(function() {
+                    session.dispatch( {msgId: "ReRu"} );
+                }, task.firingInterval);
+            } else {
+                task.ready = false;
+                session.dispatch( {msgId: "ReRu"} );
+            }
         }
         console.log("Enter state ready: "+task.id);
     };
@@ -213,7 +236,7 @@ function TaskLogic() {
                         }
                     }
 
-                    //console.log(funcIns, funcOuts);
+                    //logger.debug(funcIns, funcOuts);
                     task.wflib.invokeTaskFunction1(task.wfId, task.id, funcIns, funcOuts, emul, function(err, outs) {
                         err ? cb(err): cb(null, outs);
                     });
