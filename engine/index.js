@@ -1,6 +1,4 @@
-/* Hypermedia workflow. 
- ** Hypermedia workflow execution engine based on a DEDS/FSM (Discrete-Event Dynamic System / Finite State Machine)
- ** execution model.
+/** Hypermedia workflow execution engine. 
  ** Author: Bartosz Balis (2013)
  */
 
@@ -26,6 +24,7 @@ var TaskCSplitterFSM = require('./taskCSplitterFSM.js');
 var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
 var TaskChoiceFSM = require('./taskChoiceFSM.js');
 var TaskCDataflowFSM = require('./taskCDataflowFSM.js');
+var TaskCChoiceFSM = require('./taskCChoiceFSM.js');
 
 // TODO: automatically import and register all task FSMs in the current directory
 fsm.registerFSM(TaskFSM); 
@@ -34,6 +33,7 @@ fsm.registerFSM(TaskSplitterFSM);
 fsm.registerFSM(TaskCSplitterFSM);
 fsm.registerFSM(TaskStickyServiceFSM);
 fsm.registerFSM(TaskChoiceFSM);
+fsm.registerFSM(TaskCChoiceFSM);
 fsm.registerFSM(TaskCDataflowFSM);
 
 // binary search algorithm for finding elements in workflow arrays
@@ -82,38 +82,37 @@ var Engine = function(config, wflib, wfId, cb) {
 
     this.startTime = (new Date()).getTime(); // the start time of this engine (workflow)
 
-    (function(engine) {
-        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo) {
-            //console.log("cPortsInfo:"); console.log(cPortsInfo); // DEBUG
-            engine.nTasksLeft = nTasks;
-            engine.ins = ins;
-            engine.outs = outs;
-            engine.sources = sources;
-            engine.sinks = sinks;
-            engine.cPorts = cPortsInfo;
+    var engine = this;
+    engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo, fullInfo) {
+        //console.log("cPortsInfo:"); console.log(cPortsInfo); // DEBUG
+        engine.nTasksLeft = nTasks;
+        engine.ins = ins;
+        engine.outs = outs;
+        engine.sources = sources;
+        engine.sinks = sinks;
+        engine.cPorts = cPortsInfo;
 
-            // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
-            for (var type in types) {
-                //console.log("type: "+type+", "+types[type]); // DEBUG
-                types[type].forEach(function(taskId) {
-                    engine.tasks[taskId] = fsm.createSession(type);
-                    engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
-                });
+        // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
+        for (var type in types) {
+            //console.log("type: "+type+", "+types[type]); // DEBUG
+            types[type].forEach(function(taskId) {
+                engine.tasks[taskId] = fsm.createSession(type);
+                engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
+            });
+        }
+        // create all other tasks (assuming the default type "task")
+        for (var taskId=1; taskId<=nTasks; ++taskId) {
+            if (!engine.tasks[taskId]) {
+                engine.tasks[taskId] = fsm.createSession("task");
+                engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
             }
-            // create all other tasks (assuming the default type "task")
-            for (var taskId=1; taskId<=nTasks; ++taskId) {
-                if (!engine.tasks[taskId]) {
-                    engine.tasks[taskId] = fsm.createSession("task");
-                    engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
-                }
-            }
-            engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
-				engine.wfOuts = wfOuts;
-				engine.nWfOutsLeft = wfOuts.length;
-				cb(null);
-			});
+        }
+        engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
+            engine.wfOuts = wfOuts;
+            engine.nWfOutsLeft = wfOuts.length;
+            cb(null);
         });
-    })(this);
+    });
 }
 	
     //////////////////////////////////////////////////////////////////////////
@@ -121,9 +120,17 @@ var Engine = function(config, wflib, wfId, cb) {
     //////////////////////////////////////////////////////////////////////////
 
 Engine.prototype.runInstance = function (cb) {
-    this.wflib.setWfInstanceState( this.wfId, { "status": "running" }, function(err, rep) {
-        cb(err);
-        //console.log("Finished");
+    var engine = this;
+    engine.wflib.setWfInstanceState(engine.wfId, { "status": "running" }, function(err, rep) {
+        if (err) return cb(err);
+        // send initial signals (if any) to the instance
+        engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
+            if (sigs) {
+                engine.emitSignals(sigs, function(err) {
+                    cb(err);
+                });
+            }
+        });
     });
 
     // Emulate workflow execution: change state of all workflow inputs to "ready" and send
@@ -249,6 +256,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
 //                        ]
 // FIXME: protect against firing signals more than once (currently some task 
 // implementations will break in such a case). 
+// Will be made OBSOLETE by emitSignals
 Engine.prototype.fireSignals = function(sigs, cb) {
 	var spec = {}, ids = [];
 	for (var i in sigs) { 
@@ -310,7 +318,7 @@ function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
 // TODO: refactor engine to use fireSignals instead
 function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
 	var obj = {};
-	obj[dataId] = {"status": "ready" };
+	obj[dataId] = { "status": "ready" };
 	wflib.setDataState(wfId, obj, function(err, rep) {
 		if (err) { throw(err); }
 		wflib.getDataSinks(wfId, dataId, true, function(err, sinks) {
