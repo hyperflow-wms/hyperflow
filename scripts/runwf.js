@@ -38,7 +38,8 @@ if (!argv.id && !argv.f) {
 }
 
 if (argv.d) {
-    dbId = argv.db;
+    dbId = argv.d;
+    console.log("DBID", dbId);
 }
 
 var runWf = function(wfId) { 
