@@ -16,12 +16,12 @@
  **   a given input port (currently always 1 data element is waited for any consumed for each port)
  */
 
-var async = require('async')
+var async = require('async'),
     log4js = require('log4js');
 
-    log4js.configure('../log4js.json', { cwd: '../log' });
+    //log4js.configure('log4js.json');
 
-    var logger = log4js.getLogger('hf-default-logger');
+    //var logger = log4js.getLogger('hf-default-logger');
 
 var TaskDataflowFSM = {
     name: "dataflow",

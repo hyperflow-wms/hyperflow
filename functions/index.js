@@ -3,9 +3,23 @@ var fsp = require('./fileSplitter.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, executor, config, cb) {
-	console.log("INS:", ins);
-	console.log("OUTS:", outs);
+	//console.log("INS:", ins);
+	//console.log("OUTS:", outs);
+	console.log("Hello");
 	cb(null, outs);
+}
+
+function echo(ins, outs, executor, config, cb) {
+    outs[0] = ins[0];
+    console.log(outs[0].value);
+    cb(null, outs);
+}
+
+function echoWithDelay(ins, outs, executor, config, cb) {
+    outs[0] = ins[0];
+    setTimeout(function() {
+        cb(null, outs);
+    }, Math.floor(Math.random()*1000+1));
 }
 
 function add(ins, outs, executor, config, cb) {
@@ -35,7 +49,9 @@ function length(ins, outs, executor, config, cb) {
     } else {
         outs[0].value = ins[0].value.length;
     }
-    cb(null, outs);
+    setTimeout(function() {
+        cb(null, outs);
+    }, 1000);
 }
 
 function chooseEvenOdd(ins, outs, executor, config, cb) {
@@ -101,3 +117,5 @@ exports.command = cmd.command;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
+exports.echo = echo;
+exports.echoWithDelay = echoWithDelay;

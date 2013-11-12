@@ -18,9 +18,9 @@
 var async = require('async')
     log4js = require('log4js');
 
-    log4js.configure('../log4js.json', { cwd: '../log' });
+    //log4js.configure('../log4js.json', { cwd: '../log' });
 
-    var logger = log4js.getLogger('hf-default-logger');
+    //var logger = log4js.getLogger('hf-default-logger');
 
 var TaskCChoiceFSM = {
     name: "cchoice",
