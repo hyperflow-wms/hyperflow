@@ -564,10 +564,10 @@ exports.init = function(redisClient) {
     //   result: true if 'count' instances of each signal 'sigId' are present in the queues
     //   sigValues (optional) format: [ [ spec[0] signal values ], [ spec[1] signal values ], ... ]
     //                       example: [ [ { name: 'filename',
-    //                                      path: 'tmp1/asynctest.js',
     //                                      uri: '/workflow/Wf_continuous_file_splitter/instances/1/data-1',
     //                                      _id: '1',
     //                                      _ts: 8 
+    //                                      data: [ { path: 'tmp1/asynctest.js' } ]
     //                                } ] ]
     //   
     function fetchInputs(wfId, taskId, spec, deref, cb) {
@@ -979,6 +979,95 @@ function public_invokeTaskFunction1(wfId, taskId, insIds_, outsIds_, emulate, cb
 }
 
 
+/*
+ * @insValues - array of input signal values as returned by fetchInputs
+ */
+function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, emulate, cb) {
+    function isArray(what) {
+        return Object.prototype.toString.call(what) === '[object Array]';
+    }
+
+    var insIds = [], outsIds = [];
+    isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
+    isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
+
+
+    var convertSigValuesToFunctionInputs = function() {
+        var funcIns = [];
+        for (var i=0; i<insIds.length; ++i) {
+            funcIns[i] = insValues[i][0]; // for start, copy the first signal instance
+            delete funcIns[i]._ts;
+            delete funcIns[i].ts;
+            delete funcIns[i]._uri;
+            delete funcIns[i].uri;
+            delete funcIns[i].status;
+            // if there were more signal instances, only copy their data
+            for (var j=1; j<insValues[i].length; ++j) {
+                funcIns[i].data.push(insValues[i][j].data);
+            }
+        }
+        return funcIns;
+    }
+
+    var ins = convertSigValuesToFunctionInputs(), outs = [];
+
+    public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
+        if (err) return cb(err); 
+
+        var asyncTasks = [];
+
+        // retrieve task outputs given in 'outsIds'
+        for (i=0; i<outsIds.length; ++i) {
+            (function(idx) {
+                asyncTasks.push(function(callback) {
+                    var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
+                    rcl.hgetall(dataKey, function(err, dataInfo) {
+                        outs[idx] = dataInfo;
+                        callback(err, dataInfo);
+                    });
+                })
+            })(i);
+        }
+
+        async.parallel(asyncTasks, function done(err, result) {
+            if (err) return cb(err);
+
+            if (emulate) {
+                setTimeout(function() {
+                    return cb(null, outs);
+                }, 100);
+            }
+
+            if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
+                return cb(new Error("No function defined for task."));
+            }
+
+            /////////////////////////
+            // INVOKE THE FUNCTION //
+            /////////////////////////
+
+            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
+                if (err) return cb(err);
+                // FIXME: how to know the (relative?) path to the module?
+                var f = require('../'+fun.module)[taskInfo.fun]; 
+                //console.log("INS:", ins);
+                //console.log("OUTS:", outs);
+                //console.log(JSON.stringify(taskInfo.config));  //DEBUG
+                var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
+                var executor = taskInfo.executor ? taskInfo.executor: null;
+
+                //console.log("INS VALUES", insValues);
+
+                f(ins, outs, executor, conf, function(err, outs) {
+                    //if (outs) { console.log("VALUE="+outs[0].value); } // DEBUG 
+                    cb(null, outs);
+                });
+            });
+        });
+    });
+}
+
+
 function getInitialSignals(wfId, cb) {
     var wfKey = "wf:"+wfId;
     rcl.hgetall(wfKey + ":initialsigs", function(err, sigs) {
@@ -1163,6 +1252,7 @@ return {
     getTaskMap: public_getTaskMap,
     invokeTaskFunction: public_invokeTaskFunction,
     invokeTaskFunction1: public_invokeTaskFunction1,
+    invokeTaskFunction2: public_invokeTaskFunction2,
     sendSignal: public_sendSignal,
     getSignalInfo: getSignalInfo,
     popInput: popInput,
