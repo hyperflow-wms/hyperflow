@@ -201,26 +201,52 @@ Engine.prototype.workflowFinished = function() {
 }
 
 // NEW API for sending signals for continuous processes with FIFO queues
-// WILL OBSOLETE fireSignals
+// WILL DEPRECATE fireSignals
 // @sigs (array): ids of signals (data and control ones) to be emitted
 //                format: [ { attr: value, 
 //                            ... 
-//                            "_id": sigId
+//                            "_id": sigId,
+//                            "data": [ { ... }, ... { ... } ] => multiple instances of this signal
 //                           },
 //                           { attr: value,
 //                                ...
-//                            "_id": sigId
+//                            "_id": sigId,
+//                            "data": [ { ... }, ... { ... } ] => multiple instances of this signal
 //                           }
 //                        ]
 Engine.prototype.emitSignals = function(sigs, cb) {
     var timeStamp; // time stamp to be added to each signal (relative to workflow start time)
-    (function(engine) {
-        timeStamp = (new Date()).getTime() - engine.startTime; 
-        async.each(sigs, function iterator(sig, doneIter) {
-            //console.log(timeStamp);
-            sig._ts = timeStamp;
-            var _sigId = sig._id;
-            engine.wflib.sendSignal(engine.wfId, sig, function(err, sinks) {
+    var engine = this;
+
+    var copySignal = function(sig) {
+        var copy = {};
+        if (null == sig || "object" != typeof sig) return sig;
+        for (var attr in sig) {
+            if (sig.hasOwnProperty(attr) && attr != "data") 
+                copy[attr] = sig[attr];
+        }
+        return copy;
+    }
+
+    timeStamp = (new Date()).getTime() - engine.startTime; 
+
+    async.each(sigs, function iterator(sig, doneIter) {
+        var sigInstances = [];
+        sig._ts = timeStamp;
+        if (sig.data) { // there is a 'data' array which may contain multiple instances of this signal
+            for (var i in sig.data) {
+                var s = copySignal(sig);
+                s.data = [sig.data[i]];
+                sigInstances.push(s);
+            }
+        } else {
+            sigInstances.push(sig);
+        }
+
+        // send all instances of a given signal
+        async.each(sigInstances, function(s, doneIterInner) {
+            var _sigId = s._id;
+            engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
                 if (!err) {
                     // notify sinks that the signals have arrived
                     for (var j=0; j<sinks.length; j++) {
@@ -233,12 +259,15 @@ Engine.prototype.emitSignals = function(sigs, cb) {
                         console.log("sending signal", _sigId, "to task", sinks[j]);
                     }
                 }
-                doneIter(err);
+                doneIterInner(err);
             });
-        }, function doneAll(err) {
-            if (cb) { cb(err); }
+        }, function doneAllInner(err) {
+            doneIter(err);
         });
-    })(this);
+
+    }, function doneAll(err) {
+        if (cb) { cb(err); }
+    });
 }
 
 
@@ -256,7 +285,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
 //                        ]
 // FIXME: protect against firing signals more than once (currently some task 
 // implementations will break in such a case). 
-// Will be made OBSOLETE by emitSignals
+// Will be DEPRECATED by emitSignals
 Engine.prototype.fireSignals = function(sigs, cb) {
 	var spec = {}, ids = [];
 	for (var i in sigs) { 
