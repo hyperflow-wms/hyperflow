@@ -35,7 +35,7 @@ function twitterSource(ins, outs, executor, config, cb) {
     if (deltaLink) {
         options = querystr.parse(deltaLink.substr(1));
     } else {
-        options = { q: 'krakow OR krakowie OR cracow' };
+        options = { q: 'krakow OR krakowa OR krakowie OR cracow' };
     }
 
     twit.get('/search/tweets', options, function(err, data, response) {
@@ -58,7 +58,6 @@ function twitterSource(ins, outs, executor, config, cb) {
 
 
 function partitionTweets(ins, outs, executor, config, cb) {
-    //console.log(JSON.stringify(ins, null, 2));
     if (ins[0].data.length == 0)
         return cb(null, outs); 
     console.log("Partitioning tweets:", ins[0].data.length);
@@ -97,9 +96,10 @@ function generateTweetStats(ins, outs, executor, config, cb) {
 }
 
 function aggregateTweetStats(ins, outs, executor, config, cb) {
-    var tweet = ins[0].data;
-    console.log(tweet);
-    outs[0].data = tweet;
+    //console.log(JSON.stringify(ins, null, 2));
+    var tweet = ins[0].data[0];
+    console.log("Aggregating:", tweet);
+    outs[0].data = [ tweet ];
     cb(null, outs);
 }
 

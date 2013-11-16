@@ -75,8 +75,7 @@ var TaskDataflowFSM = {
     ]
 };
 
-// This function is invoked when one of task's inputs becomes ready. What happens next depends 
-// on the particular task type semantics. 
+// This function is invoked on arrival of an input signal.
 // 'obj.message' is a JSON object which should contain:
 // - wfId: workflow instance id
 // - taskId: id of task whose input is fired
@@ -89,38 +88,62 @@ function fireInput(obj) {
         //sigId = task.ins[msg.inId-1];
         sigId = msg.sigId;
 
-    //if (fi_sync) { logger.debug("HOPSASA"); process.exit(); return process.nextTick(fireInput(obj)); }
-    //fi_sync = true;
-
-    if (sigId == task.nextInId) { // "next" signal has arrived
-        task.next = true;
-        if (task.ready && task.cnt == task.nDataIns) {
-            task.next = false; task.cnt = 0;
-            task.ready = false;
-            obj.session.dispatch({ msgId: "ReRu" });
-        }
-    } else if (sigId == task.doneInId) { // "done" signal has arrived
+    if (sigId == task.doneInId) { // "done" signal has arrived
         task.done = true;
-        if (task.ready) {
-            task.ready = false;
-            obj.session.dispatch({ msgId: "ReFi" });
-        }
-    } else { // something arrived at a data port
-        if (!(task.dataIns[sigId])) {
-            task.dataIns[sigId] = true;
-            task.cnt++;
-            //logger.debug("task", task.id, "cnt="+task.cnt, ", nDataIns="+task.nDataIns);
-        }
-        if (task.ready && task.cnt == task.nDataIns && (!task.nextInId || task.next == true)) {
-            task.next = false; task.cnt = 0;
-            task.ready = false;
-            obj.session.dispatch({msgId: "ReRu"});
-        }
     }
 
-    //fi_sync = false;
+    tryTransition(task, obj.session);
 }
 
+
+function fetchInputs(task, cb) {
+    var sigs = task.firingSigs.slice(0); // clone the array
+    if (task.nextInId) { 
+        sigs.push([task.nextInId, 1]); 
+    }
+    task.wflib.fetchInputs(task.wfId, task.id, sigs, true, function(arrived, sigValues) {
+        //console.log("Task", task.id, "fetch attempt:", arrived);
+        if (arrived) {
+            if (sigs[sigs.length-1][0] == task.nextInId) {
+                sigValues.pop(); // remove next signal (should not be passed to the function)
+            }
+            task.sigValues = sigValues; // set input signal values to be passed to the function
+        } else {
+            task.ready = true;
+        }
+        cb(arrived, sigValues);
+    });
+}
+
+
+function tryTransition(task, session) {
+    if (task.ready && task.done) {
+        task.ready = false;
+        session.dispatch({ msgId: "ReFi"});
+    }
+
+    if (task.nDataIns == 0 && task.ready) { 
+        // a "source" task: to be fired regularly according to a firing interval
+        task.ready = false;
+        if (task.firstInvocation) {
+            task.firstInvocation = false;
+            session.dispatch( {msgId: "ReRu"} );
+        } else {
+            setTimeout(function() {
+                session.dispatch( {msgId: "ReRu"} );
+            }, task.firingInterval);
+        }
+    } else if (task.ready) {
+        task.ready = false;
+        fetchInputs(task, function(arrived, sigValues) {
+            if (arrived) {
+                session.dispatch({msgId: "ReRu"});
+            } else {
+                task.ready = true;
+            }
+        });
+    }
+}
 
 function TaskLogic() {
     this.tasks = []; // array of all task FSM "sessions" (so that tasks can send events to other tasks)
@@ -141,6 +164,8 @@ function TaskLogic() {
     this.sinks = [];
     this.firingInterval = -1; // a task can have 0 data inputs and a firing interval ==> its 
                               // function will be invoked regularly according to this interval
+    this.firingSigs = [];
+    this.sigValues = null;
 
     this.ready = false;
 
@@ -155,6 +180,7 @@ function TaskLogic() {
 	this.sources = engine.sources;
 	this.sinks = engine.sinks;
         this.nDataIns = engine.ins[taskId].length;
+        this.firstInvocation = true;
 
         if (this.nDataIns == 0) { // special case with no data inputs (a 'source' task)
             // FIXME: add assertion/validation that firing interval is defined!
@@ -178,6 +204,14 @@ function TaskLogic() {
             }
             //logger.debug("Cports: "+this.nextInId, this.doneInId, this.nextOutId, this.doneOutId); // DEBUG
 	}
+
+        for (var i in this.ins) {
+            var sigId = this.ins[i];
+            if ((sigId != this.nextInId) && (sigId != this.doneInId)) {
+                this.firingSigs.push([sigId, 1]);
+            }
+        }
+
         session.addListener({
             contextCreated      : function( obj ) {    },
             contextDestroyed    : function( obj ) {    },
@@ -190,21 +224,9 @@ function TaskLogic() {
     this.ready_onEnter = function(session, state, transition, msg) {
         var task = session.logic;
         task.ready = true;
-        if (task.done) {
-            task.ready = false;
-            session.dispatch({ msgId: "ReFi"});
-        } else if ((!task.nextInId || task.next) && task.cnt == task.nDataIns) {
-            task.next = false;
-            if (task.nDataIns == 0) { // a "source" task: to be fired regurarly according to a firing interval
-                task.ready = false;
-                setTimeout(function() {
-                    session.dispatch( {msgId: "ReRu"} );
-                }, task.firingInterval);
-            } else {
-                task.ready = false;
-                session.dispatch( {msgId: "ReRu"} );
-            }
-        }
+
+        tryTransition(task, session);
+
         console.log("Enter state ready: "+task.id);
     };
 
@@ -222,13 +244,15 @@ function TaskLogic() {
                 // 2. invoke the function
                 function(cb) {
                     // create arrays of data ins and outs ids
-                    // FIXME: done not very efficiently
-                    for (var i in task.ins) {
+                    for (var i in task.firingSigs) {
+                        funcIns.push(task.firingSigs[i][0]);
+                    }
+                    /*
                         inId = task.ins[i];
                         if ((inId != task.nextInId) && inId != task.doneInId) {
                             funcIns.push(inId);
                         }
-                    }
+                    }*/
                     for (var i in task.outs) {
                         outId = task.outs[i];
                         if ((outId != task.nextOutId) && outId != task.doneOutId) {
@@ -237,9 +261,16 @@ function TaskLogic() {
                     }
 
                     //logger.debug(funcIns, funcOuts);
-                    task.wflib.invokeTaskFunction1(task.wfId, task.id, funcIns, funcOuts, emul, function(err, outs) {
-                        err ? cb(err): cb(null, outs);
-                    });
+                    task.wflib.invokeTaskFunction2(
+                            task.wfId, 
+                            task.id, 
+                            funcIns, 
+                            task.sigValues, 
+                            funcOuts, emul, 
+                            function(err, outs) {
+                                err ? cb(err): cb(null, outs);
+                            }
+                    );
                 },
                 // 2a. pop next signal (if such port exists) 
                 // FIXME: temporary; need a clean way to pop all input signals in one place
