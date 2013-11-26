@@ -8,9 +8,9 @@ function amqpCommand(ins, outs, executor, config, cb) {
 	var executable = config.executor.executable;
 	var args = config.executor.args;
 	var deliberatelyExit = false;
-	
-	var connection = amqp.createConnection( { host: '149.156.10.132', port: 44248 } );
-//	var connection = amqp.createConnection( { host: 'localhost', port: 5672 } );
+
+	var AMQP_URL = process.env.AMQP_URL ? process.env.AMQP_URL : "amqp://localhost:5672";
+	var connection = amqp.createConnection({ url: AMQP_URL });
 	
 	connection.on('error', function(err) {
 		if (deliberatelyExit) {
