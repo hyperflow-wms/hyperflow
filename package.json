@@ -14,7 +14,7 @@
     "ejs":"",
     "eyes":"",
     "async":"",
-    "redis":"0.8.x",
+    "redis":"0.9.x",
     "xml2js":"0.2.7",
     "automata":"",
     "underscore":"1.x",
