@@ -6,7 +6,12 @@ var fs = require('fs'),
     redis = require('redis'),
     async = require('async'),
     ZSchema = require('z-schema'),
+    toobusy = require('toobusy'),
     rcl;
+
+// for profiling
+var fetchInputsTime = 0;
+var sendSignalTime = 0;
 
 exports.init = function(redisClient) {
     // FIXME: only this module should have a connection to redis. Currently app.js creates
@@ -40,14 +45,107 @@ exports.init = function(redisClient) {
 
     // creates a new workflow instance from its JSON representation
     function public_createInstance(wfJson, baseUrl, cb) { 
-        var instanceId;
+
+        // converts JSON representation from object style to array style
+        var convertFromObjectStyle = function(wfJson) {
+
+            var findIndexByName = function(arr, name) {
+                for (var i=0; i<arr.length; ++i) {
+                    if (arr[i].name && arr[i].name == name) 
+                        return i;
+                }
+                return -1;
+            }
+
+            // both "tasks" and "processes" are allowed as a name for array of processes
+            if (wfJson.processes) {
+                wfJson.tasks = wfJson.processes;
+                delete wfJson.processes;
+            }
+
+            // both "signals" and "data" are allowed as a name of array of signals
+            if (wfJson.signals) {
+                wfJson.data = wfJson.signals;
+                delete wfJson.signals;
+            }
+
+            var tasks = [];
+            if (typeof wfJson.tasks == "object") {
+                for (var t in wfJson.tasks) {
+                    var task = wfJson.tasks[t];
+                    task.name = t; // task object's key becomes task's name
+                    tasks.push(task);
+                }
+            }
+
+            var sigs = [];
+            if (typeof wfJson.data == "object") {
+                for (var s in wfJson.data) {
+                    var sig = wfJson.data[s];
+                    sig.name = s; // signal object's key becomes signal's name
+                    sigs.push(sig);
+                }
+            }
+
+            // convert tasks' ins and outs arrays
+            if (typeof wfJson.tasks == "object") {
+                for (var i in tasks) {
+                    for (var j in tasks[i].ins) {
+                        tasks[i].ins[j] = findIndexByName(sigs, tasks[i].ins[j]);
+                    }
+                    for (var j in tasks[i].outs) {
+                        tasks[i].outs[j] = findIndexByName(sigs, tasks[i].outs[j]);
+                    }
+                }
+                wfJson.tasks = tasks;
+            }
+
+            // convert ins and outs of the whole workflow
+            var ins = [], outs = [];
+            if (typeof wfJson.data == "object" && wfJson.ins) {
+                for (var i in wfJson.ins) {
+                    ins[i] = findIndexByName(sigs, wfJson.ins[i]);
+                }
+            }
+            if (typeof wfJson.data == "object" && wfJson.outs) {
+                for (var i in wfJson.outs) {
+                    outs[i] = findIndexByName(sigs, wfJson.outs[i]);
+                }
+            }
+
+            if (typeof wfJson.data == "object") {
+                for (var i=0; i<sigs.length; ++i) {
+                    if (sigs[i].input && sigs[i].input == true) {
+                        ins.push(i);
+                        delete sigs[i].input;
+                    }
+                    if (sigs[i].output && sigs[i].output == true) {
+                        outs.push(i);
+                        delete sigs[i].output;
+                    }
+                }
+                wfJson.data = sigs;
+            }
+
+            if (ins.length > 0) 
+                wfJson.ins = ins;
+
+            if (outs.length > 0) 
+                wfJson.outs = outs;
+
+            return wfJson;
+        }
+
+        var wfId;
         var start, finish; 
         rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
             if (err) { return cb(err); }
-            instanceId = ret.toString();
-            console.log("instanceId="+instanceId);
-            createWfInstance(wfJson, baseUrl, instanceId, function(err) {
-                cb(null, instanceId);
+            wfId = ret.toString();
+            //onsole.log("wfId="+wfId);
+            var wfJson1 = convertFromObjectStyle(wfJson);
+            //onsole.log(JSON.stringify(wfJson1, null, 2));
+            createWfInstance(wfJson1, baseUrl, wfId, function(err) {
+                cb(null, wfId);
             });
         });
     }
@@ -61,7 +159,7 @@ exports.init = function(redisClient) {
                 rcl.zcard("wf:"+wfId+":tasks", function(err, ret) {
                     if (err) return cb(err); 
                     var to1 = ret+to+1;
-                    //console.log("From: "+from+", to: "+to1);
+                    //onsole.log("From: "+from+", to: "+to1);
                     getTasks1(wfId, from, to1, dataNum, cb);
                 });
             }  else {
@@ -358,8 +456,35 @@ exports.init = function(redisClient) {
         });
     }
 
+
+
     function pushInput(wfId, taskId, sigId, sigIdx, cb) {
-        var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+        var isStickyKey = "wf:"+wfId+":task:"+taskId+":sticky"; // KEYS[1]
+        var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId; // KEYS[2]
+
+        // LUA Script
+        // ARGS[1] = sigId
+        // ARGS[2] = sigIdx
+        var pushScript = '\
+            local ret \
+            if redis.call("SISMEMBER", KEYS[1], ARGV[1]) == 1 then \
+                local len = redis.call("LLEN", KEYS[2]) \
+                if (len > 0) then \
+                    ret = redis.call("LSET", KEYS[2], ARGV[2]) \
+                else \
+                    ret = redis.call("RPUSH", KEYS[2], ARGV[2]) \
+                end \
+            else \
+                ret = redis.call("RPUSH", KEYS[2], ARGV[2]) \
+            end \
+            return ret';
+
+        rcl.eval([pushScript, 2, isStickyKey, queueKey, sigId, sigIdx], function(err, res) {
+            cb(err);
+        });
+        return; 
+
+        // OLD non-Lua implementation
         // checking if this input signal is on a 'sticky' port
         rcl.sismember("wf:"+wfId+":task:"+taskId+":sticky", sigId, function(err, isSticky) {
             if (isSticky) {
@@ -375,15 +500,16 @@ exports.init = function(redisClient) {
                             cb(err); 
                         });
                     }
-                    //console.log("STICKY PUSH sigId=", sigId, "LLEN=", llen, "Idx=", sigIdx);
+                    //onsole.log("STICKY PUSH sigId=", sigId, "LLEN=", llen, "Idx=", sigIdx);
                 });
 
             } else {
                 rcl.rpush(queueKey, sigIdx, function(err, rep) { 
-                    rcl.llen(queueKey, function(err, llen) {
-                        //console.log("PUSH sigId=", sigId, "LLEN=", llen, "Idx=", sigIdx);
-                        cb(err); 
-                    });
+                    cb(err); 
+                    //rcl.llen(queueKey, function(err, llen) {
+                        //onsole.log("PUSH sigId=", sigId, "LLEN=", llen, "Idx=", sigIdx);
+                        //cb(err); 
+                    //});
                 });
             }
         });
@@ -392,10 +518,34 @@ exports.init = function(redisClient) {
     function popInput(wfId, taskId, sigId, cb) {
         var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
         var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
+        var isStickyKey = "wf:"+wfId+":task:"+taskId+":sticky";
+
+        // LUA Script
+        // KEYS[1] = sigQueueKey
+        // KEYS[2] = sigInstanceKey
+        // KEYS[3] = isStickyKey
+        // ARGS[1] = sigId
+        var popScript = '\
+            local sigval \
+            if redis.call("SISMEMBER", KEYS[3], ARGV[1]) == 1 then \
+                local idx = redis.call("LINDEX", KEYS[1], 0) \
+                sigval = redis.call("HGET", KEYS[2], idx) \
+            else \
+                local idx = redis.call("LPOP", KEYS[1]) \
+                sigval = redis.call("HGET", KEYS[2], idx) \
+            end \
+            return sigval';
+
+        rcl.eval([popScript, 3, sigQueueKey, sigInstanceKey, isStickyKey, sigId], function(err, sigval) {
+            cb(err, JSON.parse(sigval));
+        });
+        return; 
+
+        // OLD non-Lua implementation
         // checking if this input signal is on a 'sticky' port
         rcl.sismember("wf:"+wfId+":task:"+taskId+":sticky", sigId, function(err, isSticky) {
             if (isSticky) {
-                //console.log("STICKY!", taskId, sigId);
+                //onsole.log("STICKY!", taskId, sigId);
                 // if the input is 'sticky', the signal is not removed, just its value is retrieved
                 // (there is no queue of signals, just the 'currrent' signal value which is persistent)
                 rcl.lindex(sigQueueKey, 0, function(err, sigIdx) { 
@@ -410,12 +560,13 @@ exports.init = function(redisClient) {
                     rcl.hget(sigInstanceKey, sigIdx, function(err, sigValue) {
                         var sig = JSON.parse(sigValue);
                         //sig._id = sigId;
-                        rcl.hlen(sigInstanceKey, function(err, hlen) {
-                            rcl.llen(sigQueueKey, function(err, llen) {
-                                //console.log("sigId=", sigId, "LLEN=", llen, "HLEN=", hlen, "Idx=", sigIdx);
-                                cb(err, sig); 
-                            });
-                        });
+                        cb(err, sig); 
+                        //rcl.hlen(sigInstanceKey, function(err, hlen) {
+                         //   rcl.llen(sigQueueKey, function(err, llen) {
+                                //onsole.log("sigId=", sigId, "LLEN=", llen, "HLEN=", hlen, "Idx=", sigIdx);
+                                //cb(err, sig); 
+                            //});
+                        //});
                     });
                 });
             }
@@ -428,7 +579,7 @@ exports.init = function(redisClient) {
                 var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
                 rcl.lpop(queueKey, function(err, rep) { 
                     rcl.llen(queueKey, function(err, len) {
-                        //console.log(queueKey, "LEN="+len);
+                        //onsole.log(queueKey, "LEN="+len);
                         cbNext(err);
                     });
                 });
@@ -503,7 +654,7 @@ exports.init = function(redisClient) {
                         for (var i=0; i<reply.length; i+=3) {
                             sources.push({"uri": reply[i], "name": reply[i+1], "status": reply[i+2]});
                         }
-                        //console.log("sources[0]: "+sources[0]);
+                        //onsole.log("sources[0]: "+sources[0]);
                     }
                 });
 
@@ -518,7 +669,7 @@ exports.init = function(redisClient) {
                         for (var i=0; i<reply.length; i+=3) {
                             sinks.push({"uri": reply[i], "name": reply[i+1], "status": reply[i+2]});
                         }
-                        //console.log("sinks[0]: "+sinks[0]);
+                        //onsole.log("sinks[0]: "+sinks[0]);
                     }
                 });
 
@@ -570,12 +721,15 @@ exports.init = function(redisClient) {
     //                                      data: [ { path: 'tmp1/asynctest.js' } ]
     //                                } ] ]
     //   
+    // TODO: optimize by introducing a counter of how many signals await on ALL ports of a given task.
+    //       in many cases it will be enough to tell if a task is ready to fire, without checking all queues 
     function fetchInputs(wfId, taskId, spec, deref, cb) {
+        //var time = (new Date()).getTime();
         var sigValues = [];
         async.every(spec, function (sig, callback) {
             var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig[0];
             rcl.llen(queueKey, function(err, len) {
-                //console.log("FETCH SIG", sig, "LEN", len);
+                //onsole.log("FETCH SIG", sig, "LEN", len);
                 callback(!err && len>=sig[1]); 
             });
         }, function(result) {
@@ -591,7 +745,10 @@ exports.init = function(redisClient) {
                     cbNext();
                 });
             }, function(err, res) {
-                //console.log("CHECK INPUT DEREF:", sigValues);
+                //time -= (new Date()).getTime();
+                //onsole.log("FETCHING INPUTS FOR", taskId , "TOOK", -time+"ms");
+                //fetchInputsTime -= time;
+                //onsole.log("CHECK INPUT DEREF:", sigValues);
                 cb(result, sigValues);
             });
         });
@@ -606,11 +763,11 @@ exports.init = function(redisClient) {
         var multi = rcl.multi(),
             notEmpty = false;
         for (var i in spec) {
-            //console.log(i, spec[i]);
+            //onsole.log(i, spec[i]);
             var obj = spec[i];
             if (Object.keys(spec).length) { // spec not empty
                 (function(dataId, obj) {
-                    //console.log(dataId, obj);
+                    //onsole.log(dataId, obj);
                     multi.hmset("wf:"+wfId+":data:"+dataId, obj, function(err, rep) { });
                     notEmpty = true;
                 })(i, obj);
@@ -657,7 +814,7 @@ function public_getWfMap(wfId, cb) {
                         rcl.hgetall(taskKey, function(err, taskInfo) {
                             fullInfo[taskId] = taskInfo;
                             callback(null, taskInfo);
-                            //console.log("FULL TASK INFO:", fullInfo[taskId]);
+                            //onsole.log("FULL TASK INFO:", fullInfo[taskId]);
                         });
                     });
                     asyncTasks.push(function(callback) {
@@ -700,35 +857,39 @@ function public_getWfMap(wfId, cb) {
                     });
                 })(i);
             }
-            for (i=1; i<=nData; ++i) {
+            for (var i=1; i<=nData; ++i) {
                 (function(dataId) {
-                    dataKey = wfKey+":data:"+dataId;
+                    var dataKey = wfKey+":data:"+dataId;
+                    // info about all signal sources
                     asyncTasks.push(function(callback) {
                         rcl.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) { 
                             if (err || ret == -1) { throw(new Error("Redis error")); }
                             sources[dataId] = ret;
-                            //console.log(dataId+";"+ret);
+                            //onsole.log(dataId+";"+ret);
                             //sources[dataId].unshift(null);
                             callback(null, ret);
                         });
-                        /*multi.zrangebyscore(dataKey+":sinks", 0, "+inf", "withscores", function(err, ret) { 
-                          if (err) {
-                          }
-                          sinks[dataId] = ret;
-                        //sinks[dataId].unshift(null);
-                        });*/
                     });
+                    // info about signal sinks
+                    /*asyncTasks.push(function(callback) {
+                        rcl.zrange(dataKey+":sinks", 0, -1, function(err, ret) { 
+                            if (err || ret == -1) { throw(new Error("Redis error")); }
+                            sinks[dataId] = ret;
+                            //sinks[dataId].unshift(null);
+                            callback(null, ret);
+                        });
+                    });*/
                 })(i);
             }
             // Create info about task types (all remaining tasks have the default type "task")
             // TODO: pull the list of types dynamically from redis
             asyncTasks.push(function(callback) {
-                async.each(["foreach", "service", "splitter", "csplitter", "stickyservice", "choice", "cchoice", "dataflow"],
+                async.each(["foreach", "service", "splitter", "csplitter", "stickyservice", "choice", "cchoice", "dataflow", "dataflow1"],
                     function iterator(type, next) {
                         rcl.smembers(wfKey+":tasktype:"+type, function(err, rep) {
                             if (err || rep == -1) { throw(new Error("Redis error")); }
                             if (rep) {
-                                //console.log(type, rep); // DEBUG
+                                //onsole.log(type, rep); // DEBUG
                                 types[type] = rep;
                             }
                             next();
@@ -870,14 +1031,14 @@ function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, emulate, cb)
                 for (var i in outsIds) {
                     outs.push(taskOuts[outsIds[i]]);
                 }                   
-                //console.log("INS:", ins);
-                //console.log("OUTS:", outs);
-                //console.log(JSON.stringify(taskInfo.config));  //DEBUG
+                //onsole.log("INS:", ins);
+                //onsole.log("OUTS:", outs);
+                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
                 var conf = taskInfo.config ? JSON.parse(taskInfo.config): null, 
                 executor = taskInfo.executor ? taskInfo.executor: null;
 
             f(ins, outs, executor, conf, function(err, outs) {
-                //if (outs) { console.log("VALUE="+outs[0].value); } // DEBUG 
+                //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
                 cb(null, outs);
                 // write values if any
                 /*var spec = {};
@@ -886,9 +1047,9 @@ function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, emulate, cb)
                   spec[out.id] = { "value": out.value };
                   }
                   });
-                //console.log(spec);
+                //onsole.log(spec);
                 if (Object.keys(spec).length) { // not empty
-                console.log(spec); // DEBUG
+                onsole.log(spec); // DEBUG
                 public_setDataState(wfId, spec, function(err, reps) {
                 cb(null, outs);
                 });
@@ -963,14 +1124,14 @@ function public_invokeTaskFunction1(wfId, taskId, insIds_, outsIds_, emulate, cb
                 if (err) return cb(err);
                 // FIXME: how to know the (relative?) path to the module?
                 var f = require('../'+fun.module)[taskInfo.fun]; 
-                //console.log("INS:", ins);
-                //console.log("OUTS:", outs);
-                //console.log(JSON.stringify(taskInfo.config));  //DEBUG
+                //onsole.log("INS:", ins);
+                //onsole.log("OUTS:", outs);
+                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
                 var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
                 var executor = taskInfo.executor ? taskInfo.executor: null;
 
                 f(ins, outs, executor, conf, function(err, outs) {
-                    //if (outs) { console.log("VALUE="+outs[0].value); } // DEBUG 
+                    //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
                     cb(null, outs);
                 });
             });
@@ -990,7 +1151,6 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
     var insIds = [], outsIds = [];
     isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
     isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
-
 
     var convertSigValuesToFunctionInputs = function() {
         var funcIns = [];
@@ -1050,16 +1210,16 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 if (err) return cb(err);
                 // FIXME: how to know the (relative?) path to the module?
                 var f = require('../'+fun.module)[taskInfo.fun]; 
-                //console.log("INS:", ins);
-                //console.log("OUTS:", outs);
-                //console.log(JSON.stringify(taskInfo.config));  //DEBUG
+                //onsole.log("INS:", ins);
+                //onsole.log("OUTS:", outs);
+                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
                 var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
                 var executor = taskInfo.executor ? taskInfo.executor: null;
 
-                //console.log("INS VALUES", insValues);
+                //onsole.log("INS VALUES", insValues);
 
                 f(ins, outs, executor, conf, function(err, outs) {
-                    //if (outs) { console.log("VALUE="+outs[0].value); } // DEBUG 
+                    //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
                     cb(null, outs);
                 });
             });
@@ -1075,6 +1235,7 @@ function getInitialSignals(wfId, cb) {
         for (var sigId in sigs) {
             sigInstances = JSON.parse(sigs[sigId]);
             for (var idx in sigInstances) {
+                // FIXME: retrieve signal metadata to 's' and set 's.data = sigInstances[ids]'
                 var s = sigInstances[idx];
                 s._id = sigId;
                 sigSpec.push(s);
@@ -1084,21 +1245,70 @@ function getInitialSignals(wfId, cb) {
     });
 }
 
+function sendSignalLua(wfId, sigValue, cb) {
+    var sigId = sigValue._id; // ARGS[1]
+    var sigKey = "wf:"+wfId+":data:"+sigId; // KEYS[1]
+    var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId; // KEYS[2]
+    var sigNextIdKey = "wf:"+wfId+":sigs:"+sigId+":nextId"; // KEYS[3]
+    var sigSinksKey = sigKey + ":sinks"; // KEYS[4]
+    var wfKey = "wf:" + wfId; // KEYS[5]
+    var sig = JSON.stringify(sigValue); // ARGS[2]
+    //onsole.log(sigInstanceKey);
+    //onsole.log(sigNextIdKey);
+    //onsole.log(sigSinksKey);
+    //onsole.log(sig);
+
+    //var time = (new Date()).getTime(); // for profiling
+
+    var sendSignalScript = '\
+        local ret \
+        local sigIdx = tostring(redis.call("INCR", KEYS[3])) \
+        redis.call("HSET", KEYS[2], sigIdx, ARGV[2]) \
+        local sinks = redis.call("ZRANGE", KEYS[4], 0, -1) \
+        for k,taskId in pairs(sinks) do \
+            local ret \
+            local isStickyKey = KEYS[5] .. ":task:" .. taskId .. ":sticky" \
+            local sigQueueKey = KEYS[5] .. ":task:" .. taskId .. ":ins:" .. ARGV[1] \
+            if redis.call("SISMEMBER", isStickyKey, ARGV[1]) == 1 then \
+                local len = redis.call("LLEN", sigQueueKey) \
+                if (len > 0) then \
+                    ret = redis.call("LSET", sigQueueKey, sigIdx) \
+                else \
+                    ret = redis.call("RPUSH", sigQueueKey, sigIdx) \
+                end \
+            else \
+                ret = redis.call("RPUSH", sigQueueKey, sigIdx) \
+            end \
+        end \
+        return sinks';
+
+    rcl.eval([sendSignalScript, 5, sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey, sigId, sig], function(err, res) {
+        //time -= (new Date()).getTime();
+        //onsole.log("SENDING SIGNAL X", sigId, "TOOK", -time+"ms");
+        //sendSignalTime -= time;
+        /*var delay = 0;
+        if (toobusy()) { onsole.log("TOO BUSY !!!!!!!!!!!!!!!!!!!!!!!!!!"); delay = 40; }
+        setTimeout(function() { cb(err, res); }, delay);*/
+	cb(err, res);
+    });
+}
+
 
 // Part of NEW API for continuous processes with FIFO queues
 // @sig format:
 // ... TODO
-// TODO: implement as a Lua script
 function public_sendSignal(wfId, sig, cb) {
-    //console.log("sendSignal:", sig);
+    //onsole.log("sendSignal:", sig);
     var sigId = sig._id;
     delete sig._id;
+
+    var time = (new Date()).getTime();
 
     var validateSignal = function(cb) {
         // get signal information (metadata)
         var sigKey = "wf:"+wfId+":data:"+sigId;
         rcl.hgetall(sigKey, function(err, sigInfoStr) {
-            //console.log('VALIDATING', typeof sig, sig, "AGAINST", typeof sigInfoStr, sigInfoStr);
+            //onsole.log('VALIDATING', typeof sig, sig, "AGAINST", typeof sigInfoStr, sigInfoStr);
             var sigInfo = sigInfoStr;
             if (err) { return cb(err, false); }
             if (!sigInfo.schema) { return cb(null, true); } // no schema to validate signal against
@@ -1106,10 +1316,10 @@ function public_sendSignal(wfId, sig, cb) {
                 if (err) { return cb(err, false); }
                 ZSchema.validate(sig, JSON.parse(sigSchema), function(err, report) {
                     if (err) { return cb(err, false); }
-                    //console.log("REPORT"); 
-                    //console.log(sig); 
-                    //console.log(sigSchema);
-                    //console.log(report);
+                    //onsole.log("REPORT"); 
+                    //onsole.log(sig); 
+                    //onsole.log(sigSchema);
+                    //onsole.log(report);
                     cb(null, true);
                 });
             });
@@ -1122,6 +1332,16 @@ function public_sendSignal(wfId, sig, cb) {
     // (hash is better than a list because of easier cleanup of old signals)                            //
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     
+    function p0() {
+        return (new Date()).getTime();
+    }
+
+    function p1(start, name) {
+        var end = (new Date()).getTime();
+        console.log(name, "TOOK", end - start + "ms");
+        return end;
+    }
+
     async.waterfall([
         // 1. validate the signal
         function(cb) {
@@ -1145,11 +1365,14 @@ function public_sendSignal(wfId, sig, cb) {
         },
         // 4. put the signal in the queues of all its sinks
         function(idx, cb) {
+            //var s = p0();
             public_getDataSinks(wfId, sigId, false, function(err, sinks) {
-                //console.log("sendSignal: ", sigId, sinks);
+                //p1(s, "GET SINKS ("+sinks.length+")");
+                //var t = p0();
+                //onsole.log("sendSignal: ", sigId, sinks);
                 if (err) { return cb(err); }
                 // insert the signal (its index in the hash) in the queues of its sinks
-                //console.log("SINKS: ", sinks);
+                //onsole.log("SINKS: ", sinks);
                 async.each(sinks, function iterator(taskId, doneIter) {
                     pushInput(wfId, taskId, sigId, idx, function(err) {
                         doneIter(err);
@@ -1159,12 +1382,16 @@ function public_sendSignal(wfId, sig, cb) {
                     //   doneIter(err);
                     //});
                 }, function doneAll(err) {
+                    //p1(t, "PUSH ALL SIGS");
                     err ? cb(err): cb(null, sinks);
                 });
             });
         }],
         // 5. all done
         function(err, sinks) {
+            time -= (new Date()).getTime();
+            //onsole.log("SENDING SIGNAL Y", sigId, "TOOK", -time+"ms");
+            sendSignalTime -= time;
             if (err) {
                 console.log(err.toString(), err.stack);
             }
@@ -1172,6 +1399,107 @@ function public_sendSignal(wfId, sig, cb) {
         }
     );
 }
+
+// Part of NEW API for continuous processes with FIFO queues
+// @sig format:
+// ... TODO
+function sendSignalSinks(wfId, sig, sinks, cb) {
+    //onsole.log("sendSignal:", sig);
+    var sigId = sig._id;
+    delete sig._id;
+
+    var time = (new Date()).getTime();
+
+    var validateSignal = function(cb) {
+        // get signal information (metadata)
+        var sigKey = "wf:"+wfId+":data:"+sigId;
+        rcl.hgetall(sigKey, function(err, sigInfoStr) {
+            //onsole.log('VALIDATING', typeof sig, sig, "AGAINST", typeof sigInfoStr, sigInfoStr);
+            var sigInfo = sigInfoStr;
+            if (err) { return cb(err, false); }
+            if (!sigInfo.schema) { return cb(null, true); } // no schema to validate signal against
+            rcl.hget("wf:"+wfId+":schemas", sigInfo.schema, function(err, sigSchema) { // retrieve schema
+                if (err) { return cb(err, false); }
+                ZSchema.validate(sig, JSON.parse(sigSchema), function(err, report) {
+                    if (err) { return cb(err, false); }
+                    //onsole.log("REPORT"); 
+                    //onsole.log(sig); 
+                    //onsole.log(sigSchema);
+                    //onsole.log(report);
+                    cb(null, true);
+                });
+            });
+        });
+    }
+
+    //////////////////////////////////////// SENDING THE SIGNAL: /////////////////////////////////////////
+    // create a new instance of this signal (at hash = "wf:{id}:sigs:{sigId}", field = sig instance id) //
+    // (signal with a given id may be emitted multiple times within a workflow execution)               //
+    // (hash is better than a list because of easier cleanup of old signals)                            //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    function p0() {
+        return (new Date()).getTime();
+    }
+
+    function p1(start, name) {
+        var end = (new Date()).getTime();
+        console.log(name, "TOOK", end - start + "ms");
+        return end;
+    }
+
+    async.waterfall([
+        // 1. validate the signal
+        function(cb) {
+            validateSignal(function(err, isValid) {
+                cb(err);
+            });
+        },
+        // 2. get unique id for the signal instance
+        function(cb) {
+            rcl.incr("wf:"+wfId+":sigs:"+sigId+":nextId", function(err, sigIdx) {
+                err ? cb(err): cb(null, sigIdx);
+            });
+        },
+        // 3. save instance of the signal to redis
+        function(sigIdx, cb) {
+            var idx = sigIdx.toString();
+            var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
+            rcl.hset(sigInstanceKey, idx, JSON.stringify(sig), function(err, rep) {
+                err ? cb(err): cb(null, idx);
+            });
+        },
+        // 4. put the signal in the queues of all its sinks
+        function(idx, cb) {
+            //var t = p0();
+            // insert the signal (its index in the hash) in the queues of its sinks
+            async.each(sinks, function iterator(taskId, doneIter) {
+                pushInput(wfId, taskId, sigId, idx, function(err) {
+                    doneIter(err);
+                });
+                //var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+                //rcl.rpush(queueKey, idx, function(err, rep) {
+                //   doneIter(err);
+                //});
+            }, function doneAll(err) {
+                //p1(t, "PUSH ALL SIGS");
+                err ? cb(err): cb(null, sinks);
+            });
+        }],
+        // 5. all done
+        function(err, sinks) {
+            time -= (new Date()).getTime();
+            //onsole.log("SENDING SIGNAL Y", sigId, "TOOK", -time+"ms");
+            sendSignalTime -= time;
+            if (err) {
+                console.log(err.toString(), err.stack);
+            }
+            err ? cb(err): cb(null, sinks);
+        }
+    );
+}
+
+
 
 // Part of NEW API for continuous processes with FIFO queues
 // Creates a new signal group to wait for.
@@ -1183,7 +1511,7 @@ function public_sendSignal(wfId, sig, cb) {
 //
 // Example: waitForSignals(1, 44, { "data": [1,2,3,3,4,4,5] }, function(err) { })
 //
-// TODO: rewrite this in Lua
+// TODO DEPRECATED: delete this function, deprecated by fetchSignals and no longer used
 function public_waitForSignals(wfId, taskId, spec, cb) {
     for (group in spec) {
         // add the group name to the set of all waiting groups
@@ -1227,48 +1555,15 @@ function public_getInsIfReady(wfId, taskId, spec, cb) {
     });
 }
 
-return {
-    createInstance: public_createInstance,
-    createInstanceFromFile: public_createInstanceFromFile,
-    getWfInfo: public_getWfInfo,
-    getWfInstanceInfo: public_getWfInstanceInfo,
-    setWfInstanceState: public_setWfInstanceState,
-    getWfTasks: public_getWfTasks,
-    getWfIns: public_getWfIns,
-    getWfOuts: public_getWfOuts,
-    getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
-    getTaskInfo: public_getTaskInfo,
-    getTaskInfoFull: public_getTaskInfoFull,
-    getTaskIns: public_getTaskIns,
-    getTaskOuts: public_getTaskOuts,
-    setTaskState: public_setTaskState,
-    getDataInfo: public_getDataInfo,
-    getDataInfoFull: public_getDataInfoFull,
-    setDataState: public_setDataState,
-    getDataSources: public_getDataSinks,
-    getDataSinks: public_getDataSinks,
-    getRemoteDataSinks: public_getRemoteDataSinks,
-    getWfMap: public_getWfMap,
-    getTaskMap: public_getTaskMap,
-    invokeTaskFunction: public_invokeTaskFunction,
-    invokeTaskFunction1: public_invokeTaskFunction1,
-    invokeTaskFunction2: public_invokeTaskFunction2,
-    sendSignal: public_sendSignal,
-    getSignalInfo: getSignalInfo,
-    popInput: popInput,
-    resetStickyPorts: resetStickyPorts,
-    fetchInputs: fetchInputs,
-    getInitialSigs: getInitialSignals
-};
 
 //////////////////////////////////////////////////////////////////////////
 ///////////////////////// private functions //////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-function createWfInstance(wfJson, baseUrl, instanceId, cb) {
+function createWfInstance(wfJson, baseUrl, wfId, cb) {
     var wfname = wfJson.name;
-    var baseUri = baseUrl + '/workflows/' + instanceId;
-    var wfKey = "wf:"+instanceId;
+    var baseUri = baseUrl + '/apps/' + wfId;
+    var wfKey = "wf:"+wfId;
     rcl.hmset(wfKey, "uri", baseUri, 
             "status", "waiting", 
             function(err, ret) { });
@@ -1282,7 +1577,7 @@ function createWfInstance(wfJson, baseUrl, instanceId, cb) {
         sigKey = wfKey+":data:"+sigId;
         if (sigObj.control) { // this is a control signal
             sigObj.type = "control";
-            delete sigObj.control; // FIXME: json & redis representation of control sig attribute should be unified
+	    delete sigObj.control; // FIXME: json & redis representation of control sig attribute should be unified
             score = 2;
         } else {              // this is a data signal
             score = 0;
@@ -1290,7 +1585,7 @@ function createWfInstance(wfJson, baseUrl, instanceId, cb) {
         sigObj.uri = baseUri + '/signals/' + sigId; 
 
         if (sigObj.schema && typeof sigObj.schema === 'object') { // there is an inline schema associated with the signal
-            //console.log("INLINE SCHEMA", sigObj.schema);
+            //onsole.log("INLINE SCHEMA", sigObj.schema);
             var schemasKey = wfKey + ":schemas";
             var schemaField = "$inline$"+sigId; // give a name to the schema, and save it to a hash
             multi.hset(schemasKey, schemaField, JSON.stringify(sigObj.schema), function(err, ret) { });
@@ -1316,7 +1611,7 @@ function createWfInstance(wfJson, baseUrl, instanceId, cb) {
     for (var i=0; i<wfJson.tasks.length; ++i) {
         var taskId = i+1, uri;
         if (wfJson.tasks[i].host) { // TODO: preparation to handle remote sinks
-            uri = wfJson.tasks[i].host + '/workflow/' + wfname + '/instances/' + instanceId;
+            uri = wfJson.tasks[i].host + '/apps/' + wfId;
         } else {
             uri = baseUri;
         } 
@@ -1327,9 +1622,9 @@ function createWfInstance(wfJson, baseUrl, instanceId, cb) {
     // add signal schemas
     if (wfJson.schemas) {
         var schemasKey = wfKey + ":schemas";
-        //console.log(wfJson.schemas);
+        //onsole.log(wfJson.schemas);
         for (var sKey in wfJson.schemas) {
-            //console.log("ADDING SCHEMA", sKey, wfJson.schemas[sKey]);
+            //onsole.log("ADDING SCHEMA", sKey, wfJson.schemas[sKey]);
             multi.hset(schemasKey, sKey, JSON.stringify(wfJson.schemas[sKey]), function(err, ret) { });
         }
     }
@@ -1446,7 +1741,7 @@ function processTask(task, wfname, baseUri, wfKey, taskKey, taskId, wfJson, cb) 
     if (!task.sticky) task.sticky = [];
     for (var i=0; i<task.sticky.length; ++i) {
         (function(sigId) {
-            //console.log("STICKY ADDING", sigId);
+            //onsole.log("STICKY ADDING", sigId);
             rcl.sadd(taskKey+":sticky", sigId, function(err, res) { });
         })(task.sticky[i]+1);
     }
@@ -1559,4 +1854,49 @@ function getTasks1(wfId, from, to, dataNum, cb) {
         }
     });
 }
+
+
+return {
+    createInstance: public_createInstance,
+    createInstanceFromFile: public_createInstanceFromFile,
+    getWfInfo: public_getWfInfo,
+    getWfInstanceInfo: public_getWfInstanceInfo,
+    setWfInstanceState: public_setWfInstanceState,
+    getWfTasks: public_getWfTasks,
+    getWfIns: public_getWfIns,
+    getWfOuts: public_getWfOuts,
+    getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
+    getTaskInfo: public_getTaskInfo,
+    getTaskInfoFull: public_getTaskInfoFull,
+    getTaskIns: public_getTaskIns,
+    getTaskOuts: public_getTaskOuts,
+    setTaskState: public_setTaskState,
+    getDataInfo: public_getDataInfo,
+    getDataInfoFull: public_getDataInfoFull,
+    setDataState: public_setDataState,
+    getDataSources: public_getDataSinks,
+    getDataSinks: public_getDataSinks,
+    getRemoteDataSinks: public_getRemoteDataSinks,
+    getWfMap: public_getWfMap,
+    getTaskMap: public_getTaskMap,
+    invokeTaskFunction: public_invokeTaskFunction,
+    invokeTaskFunction1: public_invokeTaskFunction1,
+    invokeTaskFunction2: public_invokeTaskFunction2,
+    //sendSignal: public_sendSignal,
+    sendSignal: sendSignalLua,
+    getSignalInfo: getSignalInfo,
+    popInput: popInput,
+    resetStickyPorts: resetStickyPorts,
+    fetchInputs: fetchInputs,
+    getInitialSigs: getInitialSignals,
+    sendSignalLua: sendSignalLua,
+    sendSignalSinks: sendSignalSinks
 };
+
+};
+
+
+process.on('exit', function() {
+    console.log("fetchInputs total time:", fetchInputsTime/1000);
+    console.log("sendSignal total time:", sendSignalTime/1000);
+});
