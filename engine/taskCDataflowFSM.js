@@ -90,19 +90,19 @@ function fireInput(obj) {
 
     if (sigId == task.doneInId) { // "done" signal has arrived
         task.done = true;
+    } else {
+        task.cnt++;
+        if (task.cnt >= task.firingSigs.length) {
+            tryTransition(task, obj.session);
+        }
     }
-
-    tryTransition(task, obj.session);
 }
 
 
 function fetchInputs(task, cb) {
-    var sigs = task.firingSigs.slice(0); // clone the array
-    if (task.nextInId) { 
-        sigs.push([task.nextInId, 1]); 
-    }
+    var sigs = task.firingSigs;
     task.wflib.fetchInputs(task.wfId, task.id, sigs, true, function(arrived, sigValues) {
-        //console.log("Task", task.id, "fetch attempt:", arrived);
+        //onsole.log("Task", task.id, "fetch attempt:", arrived);
         if (arrived) {
             if (sigs[sigs.length-1][0] == task.nextInId) {
                 sigValues.pop(); // remove next signal (should not be passed to the function)
@@ -149,7 +149,7 @@ function TaskLogic() {
     this.tasks = []; // array of all task FSM "sessions" (so that tasks can send events to other tasks)
     this.wfId = -1; // workflow instance id
     this.id = -1; // id of this task
-    this.cnt = 0; // how many data inputs have arrived
+    this.cnt = 0; // how many signals are waiting on all ports; TODO: store this in redis for persistence
     this.dataIns = []; // which data inputs have arrived (are ready)? (dataIns[id]==true) 
     this.nDataIns = -1; // how many data inputs are there?
     this.next = false; // has the signal arrived to the control "next" port?
@@ -181,6 +181,7 @@ function TaskLogic() {
 	this.sinks = engine.sinks;
         this.nDataIns = engine.ins[taskId].length;
         this.firstInvocation = true;
+	this.name = fullInfo.name;
 
         if (this.nDataIns == 0) { // special case with no data inputs (a 'source' task)
             // FIXME: add assertion/validation that firing interval is defined!
@@ -211,6 +212,9 @@ function TaskLogic() {
                 this.firingSigs.push([sigId, 1]);
             }
         }
+	if (this.nextInId) {
+            this.firingSigs.push([this.nextInId,1]);
+	}
 
         session.addListener({
             contextCreated      : function( obj ) {    },
@@ -227,11 +231,11 @@ function TaskLogic() {
 
         tryTransition(task, session);
 
-        console.log("Enter state ready: "+task.id);
+        //onsole.log("Enter state ready: "+task.id);
     };
 
     this.running_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state running: "+this.id);
+        console.log("Enter state running: "+this.id+" ("+this.name+")");
         var task = this;
         var funcIns = [], funcOuts = [], emul = task.engine.emulate;
         async.waterfall([
@@ -247,12 +251,6 @@ function TaskLogic() {
                     for (var i in task.firingSigs) {
                         funcIns.push(task.firingSigs[i][0]);
                     }
-                    /*
-                        inId = task.ins[i];
-                        if ((inId != task.nextInId) && inId != task.doneInId) {
-                            funcIns.push(inId);
-                        }
-                    }*/
                     for (var i in task.outs) {
                         outId = task.outs[i];
                         if ((outId != task.nextOutId) && outId != task.doneOutId) {
@@ -285,7 +283,7 @@ function TaskLogic() {
                 },
                 // 3. emit output signals
                 function(outs, cb) {
-                    task.dataIns = []; task.cnt = 0; // back to waiting for all data ins
+                    task.cnt -= task.firingSigs.length; // subtract cnt by the number of consumed signals
                     var outValues = outs;
                     for (var i=0; i<funcOuts.length; ++i) {
                         outValues[i]["_id"] = funcOuts[i];
@@ -302,7 +300,7 @@ function TaskLogic() {
     };
 
     this.running_onExit = function(session, state, transition, msg) {
-        //console.log("Exit state running");
+        //onsole.log("Exit state running: "+this.id+" ("+this.name+")");
     };
 
     this.finished_onEnter = function(session, state, transition, msg) {
