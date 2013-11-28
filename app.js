@@ -423,6 +423,114 @@ app.post('/workflow/:w/instances/:i/data-:j', function(req, res) {
     }
 });
 
+////////////////////////////////////////////////////////////////////////
+//// NEW HTTP API for workflows (experimental) -- in JSON and HTML /////
+////////////////////////////////////////////////////////////////////////
+
+
+// returns a list of input signals for the workflow
+app.get('/workflows/:i/inputs', function(req, res) {
+    var wfId = req.params.i;
+    var wfInsInfo;
+
+    var renderHTML = function() {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        //res.send(wfInsInfo);
+        res.render('workflow-inputs', {
+            title: 'workflow inputs',
+            wfname: 'Workflow',
+            wfins: wfInsInfo,
+            submit_ins_uri: req.url
+        });
+    }
+
+    var renderJSON = function() {
+        res.header('content-type', 'application/json');
+        res.send(wfInsInfo);
+    }
+
+    wflib.getWfIns(wfId, false, function(err, wfIns) {
+        wflib.getSignalInfo(wfId, wfIns, function(err, sigsInfo) {
+            wfInsInfo = sigsInfo;
+            res.format({
+                'text/html': renderHTML,
+                'application/json': renderJSON
+            });
+        });
+    });
+});
+
+// returns info about a signal exchanged within the workflow
+app.get('/workflows/:i/sig-:j', function(req, res) {
+    var wfId = req.params.i, dataId = req.params.j;
+    wflib.getDataInfoFull(wfId, dataId, function(err, wfData, dSource, dSinks) {
+	if (err) {
+	    res.statusCode = 404;
+	    res.send(inst.toString());
+	} else {
+	    var ctype = acceptsXml(req);
+	    res.header('content-type', ctype);
+	    res.render('workflow-data', {
+		title: 'workflow data',
+		wfname: req.params.w,
+		data: wfData,
+		source: dSource,
+		data_id: dataId,
+		sinks: dSinks
+	    });
+	}
+    });
+});
+
+// posts a signal to the workflow
+app.post('/workflows/:i/sig-:j', function(req, res) {
+    var wfId = req.params.i, dataId = req.params.j;
+    var ctype = req.headers["Content-Type"];
+    var sigValue;
+    if (ctype == "application/json") {
+        sigValue = req.body;
+	    
+    } else if (ctype == "application/x-www-form-urlencoded") {
+        sigValue = req.body;
+    }
+    console.log(sigValue);
+
+    // send the signal 
+    // TODO
+
+    /*if (req.body['data-value']) {
+        var spec = {};
+        spec[dataId] = {"value": req.body['data-value']};
+        wflib.setDataState(wfId, spec, function(err, rep) {
+            engine[wfId].markDataReady(dataId, function(err) {
+                if (err) {
+                    res.statusCode = 404;
+                    res.send(err.toString());
+                } else {
+                    res.redirect(req.url, 302);
+                }
+            });
+        });
+    } else {
+        engine[wfId].markDataReady(dataId, function(err) {
+            if (err) {
+                res.statusCode = 404;
+                res.send(err.toString());
+            } else {
+                res.redirect(req.url, 302);
+            }
+        });
+    }*/
+});
+
+////////////////////////////////////////////////////////////////////////
+////                        NEW HTTP API (END)                     /////
+////////////////////////////////////////////////////////////////////////
+
+
+
+
 
 /* support various content-types from clients */
 
