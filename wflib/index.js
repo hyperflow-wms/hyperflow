@@ -6,7 +6,7 @@ var fs = require('fs'),
     redis = require('redis'),
     async = require('async'),
     ZSchema = require('z-schema'),
-    toobusy = require('toobusy'),
+    //toobusy = require('toobusy'),
     rcl;
 
 // for profiling
