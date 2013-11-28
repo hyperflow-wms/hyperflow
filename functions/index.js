@@ -11,11 +11,12 @@ function print(ins, outs, executor, config, cb) {
 
 function echo(ins, outs, executor, config, cb) {
     outs[0] = ins[0];
-    console.log(outs[0].value);
+    process.stdout.write(outs[0].value);
     cb(null, outs);
 }
 
 function echoWithDelay(ins, outs, executor, config, cb) {
+    //console.log(ins, outs);
     outs[0] = ins[0];
     setTimeout(function() {
         cb(null, outs);
@@ -100,6 +101,20 @@ function grepFile(ins, outs, executor, config, cb) {
     cb(null, outs); 
 }
 
+
+var cnt = 0;
+function count(ins, outs, executor, config, cb) {
+    cnt++;
+    outs[0].data = [];
+    outs[0].data[0] = cnt;
+    if (cnt % 1000 == 0) { 
+        console.log("count:", cnt)
+    }
+    if (cnt == 10000)
+        process.exit();
+    cb(null, outs);
+}
+
 /*
 function montage_mProjectPP(ins, outs, executor, config, cb) {
     var execName = "mProjectPP";
@@ -119,3 +134,4 @@ exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
 exports.echo = echo;
 exports.echoWithDelay = echoWithDelay;
+exports.count = count;
