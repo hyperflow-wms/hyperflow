@@ -24,6 +24,7 @@ var TaskCSplitterFSM = require('./taskCSplitterFSM.js');
 var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
 var TaskChoiceFSM = require('./taskChoiceFSM.js');
 var TaskCDataflowFSM = require('./taskCDataflowFSM.js');
+var TaskCDataflow1FSM = require('./taskCDataflowFSM_nofetchinputs.js');
 var TaskCChoiceFSM = require('./taskCChoiceFSM.js');
 
 // TODO: automatically import and register all task FSMs in the current directory
@@ -35,6 +36,7 @@ fsm.registerFSM(TaskStickyServiceFSM);
 fsm.registerFSM(TaskChoiceFSM);
 fsm.registerFSM(TaskCChoiceFSM);
 fsm.registerFSM(TaskCDataflowFSM);
+fsm.registerFSM(TaskCDataflow1FSM);
 
 // binary search algorithm for finding elements in workflow arrays
 // patching Array's prototype like this causes erroneous behavior elsewhere!!!
@@ -73,8 +75,7 @@ var Engine = function(config, wflib, wfId, cb) {
     this.sinks = [];
     this.wfOuts = [];
     this.trace = "";  // trace: list of task ids in the sequence they were finished
-    this.nTasksLeft = 0;  // how many tasks left (not finished)? FIXME: what if a task can 
-                          // never be finished (e.g. TaskService?)
+    this.nTasksLeft = 0;  // how many tasks left (not finished)? 
     this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
                           
@@ -84,7 +85,7 @@ var Engine = function(config, wflib, wfId, cb) {
 
     var engine = this;
     engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo, fullInfo) {
-        //console.log("cPortsInfo:"); console.log(cPortsInfo); // DEBUG
+        //onsole.log("cPortsInfo:"); onsole.log(cPortsInfo); // DEBUG
         engine.nTasksLeft = nTasks;
         engine.ins = ins;
         engine.outs = outs;
@@ -94,7 +95,7 @@ var Engine = function(config, wflib, wfId, cb) {
 
         // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
         for (var type in types) {
-            //console.log("type: "+type+", "+types[type]); // DEBUG
+            //onsole.log("type: "+type+", "+types[type]); // DEBUG
             types[type].forEach(function(taskId) {
                 engine.tasks[taskId] = fsm.createSession(type);
                 engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
@@ -174,7 +175,7 @@ Engine.prototype.markDataReady = function(dataIds, cb) {
         Ids.forEach(function(dataId) {
             markDataReadyAndNotifySinks(engine.wfId, dataId, engine.tasks, engine.wflib, function() {
                 //finish = (new Date()).getTime();
-                //console.log("markDataReady exec time: "+(finish-start));
+                //onsole.log("markDataReady exec time: "+(finish-start));
             });
         });
     })(this);
@@ -184,7 +185,7 @@ Engine.prototype.markDataReady = function(dataIds, cb) {
 Engine.prototype.taskFinished = function(taskId) {
     this.trace += taskId;
     this.nTasksLeft--;
-	//console.log("OUTS LEFT:", this.nWfOutsLeft);
+	//onsole.log("OUTS LEFT:", this.nWfOutsLeft);
 	if (this.nWfOutsLeft == 0) {
 		this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
 	} else {
@@ -194,7 +195,7 @@ Engine.prototype.taskFinished = function(taskId) {
 
 Engine.prototype.workflowFinished = function() {
         console.log(this.trace+'. ['+this.wfId+']');
-        //console.log(this.syncCb);
+        //onsole.log(this.syncCb);
         if (this.syncCb) {
             this.syncCb();
         }
@@ -230,6 +231,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
 
     timeStamp = (new Date()).getTime() - engine.startTime; 
 
+    // iterate over all signals to be sent
     async.each(sigs, function iterator(sig, doneIter) {
         var sigInstances = [];
         sig._ts = timeStamp;
@@ -247,6 +249,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
         async.each(sigInstances, function(s, doneIterInner) {
             var _sigId = s._id;
             engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
+		//onsole.log(sinks);
                 if (!err) {
                     // notify sinks that the signals have arrived
                     for (var j=0; j<sinks.length; j++) {
@@ -256,7 +259,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
                             taskId: sinks[j], 
                             sigId: _sigId
                         });
-                        console.log("sending signal", _sigId, "to task", sinks[j]);
+                        //onsole.log("sending signal", _sigId, "to task", sinks[j]);
                     }
                 }
                 doneIterInner(err);
@@ -305,9 +308,9 @@ Engine.prototype.fireSignals = function(sigs, cb) {
 
 	// notify sinks of all fired signals
 	(function(engine) {
-		//console.log(spec);
+		//onsole.log(spec);
 		engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
-			//console.log("Will notify: "+JSON.stringify(sigs));
+			//onsole.log("Will notify: "+JSON.stringify(sigs));
 			async.each(ids, function iterator(sigId, doneIter) {
 				notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
 					doneIter(null);
@@ -327,7 +330,7 @@ module.exports = Engine;
     
 function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
     wflib.getDataSinks(wfId, sigId, true, function(err, sinks) {
-        //console.log(sigId, sinks);
+        //onsole.log(sigId, sinks);
         if (err) { throw(err); }
         for (var j=0; j<sinks.length; j+=2) {
             // send event that an input is ready
