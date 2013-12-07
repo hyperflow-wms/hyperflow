@@ -15,30 +15,69 @@
         "outs": [ 4, 5, 6, 7 ]
     }, {
         "name": "Add",
-	"type": "task",
+	"type": "dataflow",
         "function": "add",
         "ins": [ 4, 5, 6, 7 ],
         "outs": [ 8 ]
     } ],
     "data": [ {
-        "name": "arg1"
+        "name": "arg1",
+        "schema": "val1",
+        "data": [ 
+          { "value": 1 },
+          { "value": 2 } 
+        ]
     }, {
-        "name": "arg2"
+        "name": "arg2",
+        "schema": "val1",
+        "data": [ 
+          { "value": 2 },
+          { "value": 3 } 
+        ]
     }, {
-        "name": "arg3"
+        "name": "arg3",
+        "schema": "val1",
+        "data": [ 
+          { "value": 3 },
+          { "value": 4 } 
+        ]
     }, {
-        "name": "arg4"
+        "name": "arg4",
+        "schema": "val1",
+        "data": [ 
+          { "value": 4 },
+          { "value": 5 } 
+        ]
     }, {
-        "name": "sqr1"
+        "name": "sqr1",
+        "schema": "val1"
     }, {
-        "name": "sqr2"
+        "name": "sqr2",
+        "schema": "val1"
     }, {
-        "name": "sqr3"
+        "name": "sqr3",
+        "schema": "val1"
     }, {
-        "name": "sqr4"
+        "name": "sqr4",
+        "schema": "val1"
     }, {
-        "name": "sum"
+        "name": "sum",
+        "schema": {
+            "type": "object",
+            "properties" : { 
+                "value" : { "type": "number" }
+            }
+        }
     } ],
+    "schemas": {
+        "val1": {
+            "type": "object",
+            "properties" : { 
+                "value" : { "type": "number" }
+            },
+            "required": ["value"]
+        }
+    },
     "ins": [ 0, 1, 2, 3 ],
     "outs": [ 8 ]
 }

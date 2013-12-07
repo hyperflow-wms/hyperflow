@@ -7,7 +7,7 @@
         "name": "echo",
         "module":"functions"
     } ],
-    "tasks": [ {
+    "processes": [ {
         "name": "Generator1",
 	"type": "dataflow",
         "function": "echoWithDelay",
@@ -38,38 +38,18 @@
         "ins": [ 4 ],
         "outs": [ 5 ]
     } ],
-    "data": [ {
+    "signals": [ {
         "name": "arg1",
-        "data": [ 
-          { "value": "a" },
-          { "value": "a" },
-          { "value": "a" },
-          { "value": "a" } 
-        ]
+        "data": [ "a", "a", "a", "a" ]
     }, {
         "name": "arg2",
-        "data": [ 
-          { "value": "b" },
-          { "value": "b" },
-          { "value": "b" },
-          { "value": "b" }
-        ]
+        "data": [ "b", "b", "b", "b" ]
     }, {
         "name": "arg3",
-        "data": [ 
-          { "value": "c" },
-          { "value": "c" },
-          { "value": "c" },
-          { "value": "c" }
-        ]
+        "data": [ "c", "c", "c", "c" ]
     }, {
         "name": "arg4",
-        "data": [ 
-          { "value": "d" },
-          { "value": "d" },
-          { "value": "d" },
-          { "value": "d" }
-        ]
+        "data": [ "d", "d", "d", "d" ]
     }, {
         "name": "streams"
     }, {
