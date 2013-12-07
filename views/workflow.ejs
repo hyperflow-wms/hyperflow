@@ -1,36 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-  <head>
-    <title><%= title %></title>
-    <link rel='stylesheet' href='/stylesheets/hyperflow.css' />
-  </head>
-  <body>
-    <h1 id="main-title">Hypermedia workflow</h1>
+<head>
+  <title><%= title %></title>
+  <link rel='stylesheet' href='/stylesheets/hyperflow.css' />
+  <link rel='stylesheet' href='/bootstrap/css/bootstrap.min.css' />
+  <script src="/bootstrap/js/bootstrap.min.js"/>
+</head>
+<body>
+  <h1 id="main-title">hypermedia workflow</h1>
 
-<!-- specific part !-->
+  <!-- specific part !-->
 
-<h2 id="page-title">Workflow <%=wfname%></h2>
-<div id="workflow">
-  <form class="workflow-execute" action="/workflow/<%=wfname%>/" method="post">
-    <p class="buttons">
-      <input class="button" type="submit" title="At the moment only 3 instances are allowed" value="Create a new instance" />
-    </p>
-  </form>
-  <div id="workflow-instances">
-    <ul class="all">
-      <li title="Colors: Red=ready, Blue=running Green=finished" class="list-name">Current instances</li>
-      <% for(i=0,x=inst.max;i<x;i++) { %>
+  <h2 id="page-title">workflow <%=wfname%></h2>
+  <div id="workflow">
+    <form class="workflow-execute" action="/workflow/<%=wfname%>/" method="post">
+      <p class="buttons">
+        <input class="button" type="submit" title="at the moment only 3 instances are allowed" value="create a new instance" />
+      </p>
+    </form>
+    <div id="workflow-instances">
+      <ul class="all">
+        <li title="colors: red=ready, blue=running green=finished" class="list-name">current instances</li>
+        <% for(i=0,x=inst.max;i<x;i++) { %>
         <% if (i in inst.data) { %>
-          <li class="instance-status-<%=inst.data[i].status%>">
-             <a rel="workflow-instance" href="<%=inst.data[i].uri%>/">Instance <%=i%></a>
-          </li>
-        <% } %>
-      <% } %>
-    </ul>
-  </div>
-</div>
+        <li class="instance-status-<%=inst.data[i].status%>">
+         <a rel="workflow-instance" href="<%=inst.data[i].uri%>/">instance <%=i%></a>
+       </li>
+       <% } %>
+       <% } %>
+     </ul>
+   </div>
+ </div>
 
-<!-- specific part end !-->
+ <!-- specific part end !-->
 
-  </body>
+</body>
 </html>
