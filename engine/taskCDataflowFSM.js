@@ -92,7 +92,7 @@ function fireInput(obj) {
         task.done = true;
     } else {
         task.cnt++;
-        if (task.cnt >= task.firingSigs.length) {
+        if (task.cnt >= task.firingSigs.length) { // not accurate if signal counts > 1 in the firing pattern
             tryTransition(task, obj.session);
         }
     }
@@ -105,7 +105,7 @@ function fetchInputs(task, cb) {
         //onsole.log("Task", task.id, "fetch attempt:", arrived);
         if (arrived) {
             if (sigs[sigs.length-1][0] == task.nextInId) {
-                sigValues.pop(); // remove next signal (should not be passed to the function)
+                sigValues.pop(); // remove 'next' signal (should not be passed to the function)
             }
             task.sigValues = sigValues; // set input signal values to be passed to the function
         } else {
@@ -181,11 +181,12 @@ function TaskLogic() {
 	this.sinks = engine.sinks;
         this.nDataIns = engine.ins[taskId].length;
         this.firstInvocation = true;
+        this.fullInfo = fullInfo;
 	this.name = fullInfo.name;
 
         if (this.nDataIns == 0) { // special case with no data inputs (a 'source' task)
             // FIXME: add assertion/validation that firing interval is defined!
-            this.firingInterval = fullInfo.firingInterval;
+            this.firingInterval = this.fullInfo.firingInterval;
 	}
 
 	if (this.id in engine.cPorts) {
@@ -199,11 +200,11 @@ function TaskLogic() {
                 this.nextInId = taskCPorts.ins.next;
                 this.doneInId = taskCPorts.ins.done;
             }
-            if ("outs" in engine.cPorts[this.id]) {
+            if ("outs" in taskCPorts) {
                 this.nextOutId = taskCPorts.outs.next;
                 this.doneOutId = taskCPorts.outs.done;
             }
-            //logger.debug("Cports: "+this.nextInId, this.doneInId, this.nextOutId, this.doneOutId); // DEBUG
+            //onsole.log("Cports: "+this.nextInId, this.doneInId, this.nextOutId, this.doneOutId); // DEBUG
 	}
 
         for (var i in this.ins) {
@@ -235,7 +236,7 @@ function TaskLogic() {
     };
 
     this.running_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state running: "+this.id+" ("+this.name+")");
+        //onsole.log("Enter state running: "+this.id+" ("+this.name+")");
         var task = this;
         var funcIns = [], funcOuts = [], emul = task.engine.emulate;
         async.waterfall([
@@ -248,10 +249,13 @@ function TaskLogic() {
                 // 2. invoke the function
                 function(cb) {
                     // create arrays of data ins and outs ids
-                    for (var i in task.firingSigs) {
-                        funcIns.push(task.firingSigs[i][0]);
+                    for (var i=0; i<task.firingSigs.length; ++i) {
+                        var sigId = task.firingSigs[i][0];
+                        if (sigId != task.nextInId && sigId != task.doneInId) {
+                            funcIns.push(task.sigId);
+                        }
                     }
-                    for (var i in task.outs) {
+                    for (var i=0; i<task.outs.length; ++i) {
                         outId = task.outs[i];
                         if ((outId != task.nextOutId) && outId != task.doneOutId) {
                             funcOuts.push(outId);
@@ -272,7 +276,7 @@ function TaskLogic() {
                 },
                 // 2a. pop next signal (if such port exists) 
                 // FIXME: temporary; need a clean way to pop all input signals in one place
-                function(outs, cb) {
+                /*function(outs, cb) {
                     if (task.nextInId) {
                         task.wflib.popInput(task.wfId, task.id, task.nextInId, function(err, inValue) {
                             cb(null, outs);
@@ -280,10 +284,13 @@ function TaskLogic() {
                     } else {
                         cb(null, outs);
                     }
-                },
+                },*/
                 // 3. emit output signals
                 function(outs, cb) {
                     task.cnt -= task.firingSigs.length; // subtract cnt by the number of consumed signals
+                    if (task.fullInfo.sticky) 
+                        task.cnt += task.fullInfo.sticky; // sticky signals weren't actually consumed!
+
                     var outValues = outs;
                     for (var i=0; i<funcOuts.length; ++i) {
                         outValues[i]["_id"] = funcOuts[i];
@@ -307,14 +314,14 @@ function TaskLogic() {
 	(function(task) {
 	    task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
 		if (err) { throw err; }
-		console.log("Enter state finished: "+task.id);
+		//onsole.log("Enter state finished: "+task.id);
 		task.engine.taskFinished(task.id);
 	    });
 	})(this);
     };
 
     this.trReRu = function(session, state, transition, msg) {
-        //console.log("Transition ReRu, task "+this.id);
+        //onsole.log("Transition ReRu, task "+this.id);
     };
 
     this.trReFi = function(session, state, transition, msg) {
