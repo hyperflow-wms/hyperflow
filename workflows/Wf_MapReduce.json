@@ -13,7 +13,7 @@
         "name": "aggregateTweetStats",
         "module":"functions/mapreduce"
     } ],
-    "tasks": [ {
+    "processes": [ {
         "name": "TwitterSource",
 	"type": "dataflow",
         "function": "twitterSource",
@@ -69,7 +69,7 @@
         "ins": [ 7 ],
         "outs": [ 8  ]
     } ],
-    "data": [ {
+    "signals": [ {
         "name": "tweet"
     }, {
         "name": "partitionedTweet"
