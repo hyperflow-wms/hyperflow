@@ -108,6 +108,7 @@ var Engine = function(config, wflib, wfId, cb) {
                 engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
             }
         }
+
         engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
             engine.wfOuts = wfOuts;
             engine.nWfOutsLeft = wfOuts.length;
@@ -185,20 +186,20 @@ Engine.prototype.markDataReady = function(dataIds, cb) {
 Engine.prototype.taskFinished = function(taskId) {
     this.trace += taskId;
     this.nTasksLeft--;
-	//onsole.log("OUTS LEFT:", this.nWfOutsLeft);
-	if (this.nWfOutsLeft == 0) {
-		this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
-	} else {
-		this.trace += ",";
-	}
+    //onsole.log("OUTS LEFT:", this.nWfOutsLeft);
+    if (this.nWfOutsLeft == 0) {
+        this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
+    } else {
+        this.trace += ",";
+    }
 }
 
 Engine.prototype.workflowFinished = function() {
-        console.log(this.trace+'. ['+this.wfId+']');
-        //onsole.log(this.syncCb);
-        if (this.syncCb) {
-            this.syncCb();
-        }
+    console.log(this.trace+'. ['+this.wfId+']');
+    //onsole.log(this.syncCb);
+    if (this.syncCb) {
+        this.syncCb();
+    }
 }
 
 // NEW API for sending signals for continuous processes with FIFO queues
