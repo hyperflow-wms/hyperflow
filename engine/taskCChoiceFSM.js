@@ -245,11 +245,6 @@ function TaskLogic() {
                     for (var i in task.firingSigs) {
                         funcIns.push(task.firingSigs[i][0]);
                     }
-                  /*      inId = task.ins[i];
-                        if ((inId != task.nextInId) && inId != task.doneInId) {
-                            funcIns.push(inId);
-                        }
-                    }*/
                     for (var i in task.outs) {
                         outId = task.outs[i];
                         if ((outId != task.nextOutId) && outId != task.doneOutId) {
