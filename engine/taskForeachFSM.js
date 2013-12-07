@@ -1,9 +1,6 @@
  /* Hypermedia workflow. 
- ** Implementation of Finite State Machine of a 'foreach' task. This task processes its inputs
- ** one by one, sequentially. Algorithm: (i) when task starts, cnt:=1; (ii) if cnt=i and i-th input 
- ** is ready, the task's function is passed this input and invoked; (iv) the result of the
- ** invocation is emitted to the i-th output. (v) when all inputs are served, the task is finished.
- ** Limitation: currently only single-input single-output functions are handled. 
+ ** Implementation of Finite State Machine of a 'serial foreach' process. This process waits for its input
+ ** signals in order and processes each of them synchronously. 
  ** 
  ** Author: Bartosz Balis (2013)
  */
