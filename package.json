@@ -27,6 +27,7 @@
     "crc": "",
     "log4js": "",
     "nconf": "",
-    "file": ""
+    "file": "",
+    "value": ""
    }
 }
