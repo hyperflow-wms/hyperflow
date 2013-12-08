@@ -12,9 +12,9 @@ Latest release of HyperFlow is 1.0.0-beta-2
 
 Installation & running:
 * Download the package: https://github.com/dice-cyfronet/hyperflow/archive/v1.0.0-beta-2.zip
-* Unzip and install dependencies (in `hyperflow` directory): `npm install -d`
-* Get the latest node.js (http://nodejs.org)
-* Get the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
+* Install dependencies (in `hyperflow` directory): `npm install -d`
+* Install the latest node.js (http://nodejs.org)
+* Install the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
 * Start the redis server
 * Run example workflows: `node scripts/runwf.js -f workflows/<workflow_file>`
   * Try `Wf_grepfile_simple.json`, `Wf_MapReduce.json`, `Wf_PingPong.json`
