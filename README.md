@@ -19,7 +19,7 @@ Installation & running:
 * Run example workflows: `node scripts/runwf.js -f workflows/<workflow_file>`
   * Try `Wf_grepfile_simple.json`, `Wf_MapReduce.json`, `Wf_PingPong.json`
 * Also try simulated `Montage` workflows which require the `-s` flag: 
-  * `node scripts/runwf -f workflows/Montage_143.json -s`
+  * `node scripts/runwf.js -f workflows/Montage_143.json -s`
 * Look at sample workflows in the `workflows` directory
 * Look at example functions invoked from workflow tasks in the `functions` directory
 
