@@ -17,26 +17,17 @@ var fs = require('fs'),
     fsm = require('automata'),
     async = require('async');
 
-var TaskFSM        = require('./taskFSM.js');
+var TaskDataflowFSM = require('./taskDataflowFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
 var TaskSplitterFSM = require('./taskSplitterFSM.js');
-var TaskCSplitterFSM = require('./taskCSplitterFSM.js');
-var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
 var TaskChoiceFSM = require('./taskChoiceFSM.js');
-var TaskCDataflowFSM = require('./taskCDataflowFSM.js');
-var TaskCDataflow1FSM = require('./taskCDataflowFSM_nofetchinputs.js');
-var TaskCChoiceFSM = require('./taskCChoiceFSM.js');
+
 
 // TODO: automatically import and register all task FSMs in the current directory
-fsm.registerFSM(TaskFSM); 
+fsm.registerFSM(TaskDataflowFSM);
 fsm.registerFSM(TaskForeachFSM);
 fsm.registerFSM(TaskSplitterFSM);
-fsm.registerFSM(TaskCSplitterFSM);
-fsm.registerFSM(TaskStickyServiceFSM);
 fsm.registerFSM(TaskChoiceFSM);
-fsm.registerFSM(TaskCChoiceFSM);
-fsm.registerFSM(TaskCDataflowFSM);
-fsm.registerFSM(TaskCDataflow1FSM);
 
 // binary search algorithm for finding elements in workflow arrays
 // patching Array's prototype like this causes erroneous behavior elsewhere!!!
