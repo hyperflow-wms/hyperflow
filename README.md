@@ -8,14 +8,18 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 
 ##Getting started
 
-Currently the recommended way to try HyperFlow is as follows:
-* Clone the hyperflow repository
-* Install dependencies (in `hyperflow` directory): `npm install -d`
+Latest release of HyperFlow is 1.0.0-beta-2
+
+Installation & running:
+* Download the package: https://github.com/dice-cyfronet/hyperflow/archive/v1.0.0-beta-2.zip
+* Unzip and install dependencies (in `hyperflow` directory): `npm install -d`
 * Get the latest node.js (http://nodejs.org)
-* Get the latest Redis server (http://redis.io)
+* Get the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
 * Start the redis server
-* Run example workflows in the `test` directory, e.g. `node splitter.test.js`
+* Run example workflows: `node scripts/runwf.js -f workflows/<workflow_file>`
+  * Try `Wf_grepfile_simple.json`, `Wf_MapReduce.json`, `Wf_PingPong.json`
+* Also try simulated `Montage` workflows which require the `-s` flag: 
+  * `node scripts/runwf.js -f workflows/Montage_143.json -s`
 * Look at sample workflows in the `workflows` directory
 * Look at example functions invoked from workflow tasks in the `functions` directory
-
 
