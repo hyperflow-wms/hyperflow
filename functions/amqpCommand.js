@@ -9,7 +9,7 @@ function amqpCommand(ins, outs, executor, config, cb) {
 	var args = config.executor.args;
 	var deliberatelyExit = false;
 	
-	var connection = amqp.createConnection( { host: '149.156.10.132', port: 44248 } );
+	var connection = amqp.createConnection( { host: '149.156.10.132', port: 11581 } );
 //	var connection = amqp.createConnection( { host: 'localhost', port: 5672 } );
 	
 	connection.on('error', function(err) {
@@ -28,7 +28,7 @@ function amqpCommand(ins, outs, executor, config, cb) {
 			queue.subscribe({ exclusive: true, ack: true }, function(message, headers, deliveryInfo) {
 				console.log("amqp message recieved");
 				if(deliveryInfo.correlationId == corrId) {
-					console.log("result: output:", message.stdout, "stderr:", message.stderr, "ret code:", message.return_code);
+					console.log("result: output:", message.stdout, "stderr:", message.stderr, "ret code:", message.return_code, "exceptions:", message.exceptions);
 					
 					//unsubscribe and close connection
 					queue.unsubscribe(consumerTag);
