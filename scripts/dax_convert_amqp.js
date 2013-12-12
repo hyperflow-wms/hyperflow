@@ -1,7 +1,7 @@
 var PegasusConverter = require('../converters/pegasus_dax.js'),
     argv = require('optimist').argv;
 
-var pc = new PegasusConverter();
+var pc = new PegasusConverter("amqpCommand");
 
 if (!argv._[0]) {
 	console.log("Usage: node dax_convert.js <DAX file path>");
