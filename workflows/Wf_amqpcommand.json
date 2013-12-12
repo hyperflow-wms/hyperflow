@@ -6,7 +6,7 @@
     } ],
     "tasks": [ {
         "name": "execution",
-        "type": "task",
+        "type": "dataflow",
         "function": "amqpCommand",
         "executor": "syscommand",
         "config": {
