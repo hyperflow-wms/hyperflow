@@ -1,0 +1,60 @@
+{
+    "name": "Wf_indeterminate",
+    "functions": [ {
+        "name": "echoWithDelay",
+        "module":"functions"
+    }, {
+        "name": "echo",
+        "module":"functions"
+    } ],
+    "processes": [ {
+        "name": "Generator1",
+	"type": "dataflow",
+        "function": "echoWithDelay",
+        "ins": [ 0 ],
+        "outs": [ 4 ]
+    }, {
+        "name": "Generator2",
+	"type": "dataflow",
+        "function": "echoWithDelay",
+        "ins": [ 1 ],
+        "outs": [ 4 ]
+    }, {
+        "name": "Generator3",
+	"type": "dataflow",
+        "function": "echoWithDelay",
+        "ins": [ 2 ],
+        "outs": [ 4 ]
+    }, {
+        "name": "Generator4",
+	"type": "dataflow",
+        "function": "echoWithDelay",
+        "ins": [ 3 ],
+        "outs": [ 4 ]
+    }, {
+        "name": "Merger",
+	"type": "dataflow",
+        "function": "echo",
+        "ins": [ 4 ],
+        "outs": [ 5 ]
+    } ],
+    "signals": [ {
+        "name": "arg1",
+        "data": [ "a", "a", "a", "a" ]
+    }, {
+        "name": "arg2",
+        "data": [ "b", "b", "b", "b" ]
+    }, {
+        "name": "arg3",
+        "data": [ "c", "c", "c", "c" ]
+    }, {
+        "name": "arg4",
+        "data": [ "d", "d", "d", "d" ]
+    }, {
+        "name": "streams"
+    }, {
+        "name": "mergedStream"
+    } ],
+    "ins": [ 0, 1, 2, 3 ],
+    "outs": [ 5 ]
+}

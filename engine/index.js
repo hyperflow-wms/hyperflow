@@ -1,6 +1,4 @@
-/* Hypermedia workflow. 
- ** Hypermedia workflow execution engine based on a DEDS/FSM (Discrete-Event Dynamic System / Finite State Machine)
- ** execution model.
+/** Hypermedia workflow execution engine. 
  ** Author: Bartosz Balis (2013)
  */
 
@@ -19,17 +17,16 @@ var fs = require('fs'),
     fsm = require('automata'),
     async = require('async');
 
-var TaskFSM        = require('./taskFSM.js');
+var TaskDataflowFSM = require('./taskDataflowFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
 var TaskSplitterFSM = require('./taskSplitterFSM.js');
-var TaskStickyServiceFSM = require('./taskStickyServiceFSM.js');
 var TaskChoiceFSM = require('./taskChoiceFSM.js');
 
+
 // TODO: automatically import and register all task FSMs in the current directory
-fsm.registerFSM(TaskFSM); 
+fsm.registerFSM(TaskDataflowFSM);
 fsm.registerFSM(TaskForeachFSM);
 fsm.registerFSM(TaskSplitterFSM);
-fsm.registerFSM(TaskStickyServiceFSM);
 fsm.registerFSM(TaskChoiceFSM);
 
 // binary search algorithm for finding elements in workflow arrays
@@ -67,47 +64,48 @@ var Engine = function(config, wflib, wfId, cb) {
     this.outs = [];
     this.sources = [];
     this.sinks = [];
-	this.wfOuts = [];
+    this.wfOuts = [];
     this.trace = "";  // trace: list of task ids in the sequence they were finished
-    this.nTasksLeft = 0;  // how many tasks left (not finished)? FIXME: what if a task can 
-                          // never be finished (e.g. TaskService?)
-	this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
+    this.nTasksLeft = 0;  // how many tasks left (not finished)? 
+    this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
                           
     this.emulate = config.emulate == "true" ? true: false;       
 
-    (function(engine) {
-        engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo) {
-            //console.log("cPortsInfo:"); console.log(cPortsInfo); // DEBUG
-            engine.nTasksLeft = nTasks;
-            engine.ins = ins;
-            engine.outs = outs;
-            engine.sources = sources;
-            engine.sinks = sinks;
-            engine.cPorts = cPortsInfo;
+    this.startTime = (new Date()).getTime(); // the start time of this engine (workflow)
 
-            // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
-            for (var type in types) {
-                //console.log("type: "+type+", "+types[type]); // DEBUG
-                types[type].forEach(function(taskId) {
-                    engine.tasks[taskId] = fsm.createSession(type);
-                    engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
-                });
+    var engine = this;
+    engine.wflib.getWfMap(wfId, function(err, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo, fullInfo) {
+        //onsole.log("cPortsInfo:"); onsole.log(cPortsInfo); // DEBUG
+        engine.nTasksLeft = nTasks;
+        engine.ins = ins;
+        engine.outs = outs;
+        engine.sources = sources;
+        engine.sinks = sinks;
+        engine.cPorts = cPortsInfo;
+
+        // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
+        for (var type in types) {
+            //onsole.log("type: "+type+", "+types[type]); // DEBUG
+            types[type].forEach(function(taskId) {
+                engine.tasks[taskId] = fsm.createSession(type);
+                engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
+            });
+        }
+        // create all other tasks (assuming the default type "task")
+        for (var taskId=1; taskId<=nTasks; ++taskId) {
+            if (!engine.tasks[taskId]) {
+                engine.tasks[taskId] = fsm.createSession("task");
+                engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
             }
-            // create all other tasks (assuming the default type "task")
-            for (var taskId=1; taskId<=nTasks; ++taskId) {
-                if (!engine.tasks[taskId]) {
-                    engine.tasks[taskId] = fsm.createSession("task");
-                    engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId]);
-                }
-            }
-            engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
-				engine.wfOuts = wfOuts;
-				engine.nWfOutsLeft = wfOuts.length;
-				cb(null);
-			});
+        }
+
+        engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
+            engine.wfOuts = wfOuts;
+            engine.nWfOutsLeft = wfOuts.length;
+            cb(null);
         });
-    })(this);
+    });
 }
 	
     //////////////////////////////////////////////////////////////////////////
@@ -115,9 +113,17 @@ var Engine = function(config, wflib, wfId, cb) {
     //////////////////////////////////////////////////////////////////////////
 
 Engine.prototype.runInstance = function (cb) {
-    this.wflib.setWfInstanceState( this.wfId, { "status": "running" }, function(err, rep) {
-        cb(err);
-        //console.log("Finished");
+    var engine = this;
+    engine.wflib.setWfInstanceState(engine.wfId, { "status": "running" }, function(err, rep) {
+        if (err) return cb(err);
+        // send initial signals (if any) to the instance
+        engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
+            if (sigs) {
+                engine.emitSignals(sigs, function(err) {
+                    cb(err);
+                });
+            }
+        });
     });
 
     // Emulate workflow execution: change state of all workflow inputs to "ready" and send
@@ -161,7 +167,7 @@ Engine.prototype.markDataReady = function(dataIds, cb) {
         Ids.forEach(function(dataId) {
             markDataReadyAndNotifySinks(engine.wfId, dataId, engine.tasks, engine.wflib, function() {
                 //finish = (new Date()).getTime();
-                //console.log("markDataReady exec time: "+(finish-start));
+                //onsole.log("markDataReady exec time: "+(finish-start));
             });
         });
     })(this);
@@ -171,20 +177,92 @@ Engine.prototype.markDataReady = function(dataIds, cb) {
 Engine.prototype.taskFinished = function(taskId) {
     this.trace += taskId;
     this.nTasksLeft--;
-	//console.log("OUTS LEFT:", this.nWfOutsLeft);
-	if (this.nWfOutsLeft == 0) {
-		this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
-	} else {
-		this.trace += ",";
-	}
+    //onsole.log("OUTS LEFT:", this.nWfOutsLeft);
+    if (this.nWfOutsLeft == 0) {
+        this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
+    } else {
+        this.trace += ",";
+    }
 }
 
 Engine.prototype.workflowFinished = function() {
-        console.log(this.trace+'. ['+this.wfId+']');
-        //console.log(this.syncCb);
-        if (this.syncCb) {
-            this.syncCb();
+    console.log(this.trace+'. ['+this.wfId+']');
+    //onsole.log(this.syncCb);
+    if (this.syncCb) {
+        this.syncCb();
+    }
+}
+
+// NEW API for sending signals for continuous processes with FIFO queues
+// WILL DEPRECATE fireSignals
+// @sigs (array): ids of signals (data and control ones) to be emitted
+//                format: [ { attr: value, 
+//                            ... 
+//                            "_id": sigId,
+//                            "data": [ { ... }, ... { ... } ] => multiple instances of this signal
+//                           },
+//                           { attr: value,
+//                                ...
+//                            "_id": sigId,
+//                            "data": [ { ... }, ... { ... } ] => multiple instances of this signal
+//                           }
+//                        ]
+Engine.prototype.emitSignals = function(sigs, cb) {
+    var timeStamp; // time stamp to be added to each signal (relative to workflow start time)
+    var engine = this;
+
+    var copySignal = function(sig) {
+        var copy = {};
+        if (null == sig || "object" != typeof sig) return sig;
+        for (var attr in sig) {
+            if (sig.hasOwnProperty(attr) && attr != "data") 
+                copy[attr] = sig[attr];
         }
+        return copy;
+    }
+
+    timeStamp = (new Date()).getTime() - engine.startTime; 
+
+    // iterate over all signals to be sent
+    async.each(sigs, function iterator(sig, doneIter) {
+        var sigInstances = [];
+        sig._ts = timeStamp;
+        if (sig.data) { // there is a 'data' array which may contain multiple instances of this signal
+            for (var i in sig.data) {
+                var s = copySignal(sig);
+                s.data = [sig.data[i]];
+                sigInstances.push(s);
+            }
+        } else {
+            sigInstances.push(sig);
+        }
+
+        // send all instances of a given signal
+        async.each(sigInstances, function(s, doneIterInner) {
+            var _sigId = s._id;
+            engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
+		//onsole.log(sinks);
+                if (!err) {
+                    // notify sinks that the signals have arrived
+                    for (var j=0; j<sinks.length; j++) {
+                        // send event that an input is ready
+                        engine.tasks[sinks[j]].fireCustomEvent({
+                            wfId: engine.wfId, 
+                            taskId: sinks[j], 
+                            sigId: _sigId
+                        });
+                        //onsole.log("sending signal", _sigId, "to task", sinks[j]);
+                    }
+                }
+                doneIterInner(err);
+            });
+        }, function doneAllInner(err) {
+            doneIter(err);
+        });
+
+    }, function doneAll(err) {
+        if (cb) { cb(err); }
+    });
 }
 
 
@@ -202,6 +280,7 @@ Engine.prototype.workflowFinished = function() {
 //                        ]
 // FIXME: protect against firing signals more than once (currently some task 
 // implementations will break in such a case). 
+// Will be DEPRECATED by emitSignals
 Engine.prototype.fireSignals = function(sigs, cb) {
 	var spec = {}, ids = [];
 	for (var i in sigs) { 
@@ -221,9 +300,9 @@ Engine.prototype.fireSignals = function(sigs, cb) {
 
 	// notify sinks of all fired signals
 	(function(engine) {
-		//console.log(spec);
+		//onsole.log(spec);
 		engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
-			//console.log("Will notify: "+JSON.stringify(sigs));
+			//onsole.log("Will notify: "+JSON.stringify(sigs));
 			async.each(ids, function iterator(sigId, doneIter) {
 				notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
 					doneIter(null);
@@ -242,8 +321,8 @@ module.exports = Engine;
     //////////////////////////////////////////////////////////////////////////
     
 function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
-    wflib.getDataSinks(wfId, sigId, function(err, sinks) {
-        //console.log(sigId, sinks);
+    wflib.getDataSinks(wfId, sigId, true, function(err, sinks) {
+        //onsole.log(sigId, sinks);
         if (err) { throw(err); }
         for (var j=0; j<sinks.length; j+=2) {
             // send event that an input is ready
@@ -263,10 +342,10 @@ function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
 // TODO: refactor engine to use fireSignals instead
 function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
 	var obj = {};
-	obj[dataId] = {"status": "ready" };
+	obj[dataId] = { "status": "ready" };
 	wflib.setDataState(wfId, obj, function(err, rep) {
 		if (err) { throw(err); }
-		wflib.getDataSinks(wfId, dataId, function(err, sinks) {
+		wflib.getDataSinks(wfId, dataId, true, function(err, sinks) {
 			if (err) { throw(err); }
 			for (var j=0; j<sinks.length; j+=2) {
 				// send event that an input is ready

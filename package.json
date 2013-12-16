@@ -1,27 +1,35 @@
 {
-  "name": "beboj-test",
-  "version": "0.0.1",
+  "name": "hyperflow",
+  "version": "1.0.0-beta-2",
    "engines": {
-     "node": "0.6.x"
+     "node": "0.10.x"
    },
    "env": {
      "PYTHON": "c:/programs/python27"
    },
    "dependencies": {
-    "express": "3.x",
+    "express":"3.x",
     "consolidate":"",
-    "cradle": "",
-    "ejs": "",
+    "cradle":"",
+    "ejs":"",
     "eyes":"",
     "async":"",
-    "redis":"0.8.x",
+    "redis":"0.9.x",
     "xml2js":"0.2.7",
     "automata":"",
-    "underscore":"1.3.x",
+    "underscore":"1.x",
     "optimist":"",
     "walkdir":"",
     "path":"",
     "uuid":"",
-    "amqp":""
+    "amqp":"",
+    "z-schema": "2.x",
+    "walk": "2.x",
+    "mtwitter": "",
+    "crc": "",
+    "log4js": "",
+    "nconf": "",
+    "file": "",
+    "value": ""
    }
 }

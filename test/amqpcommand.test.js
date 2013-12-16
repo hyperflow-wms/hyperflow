@@ -28,9 +28,19 @@ if (!argv._[0]) {
 init(function(err, wfId) {
     if (err) { throw err; }
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
+        engine.syncCb = function() {
+            console.log("finished!");
+            process.exit();
+        };
         engine.runInstance(function(err) {
-            var spec = [{'id': '1', 'value': argv._[0]}];
-	    engine.fireSignals(spec);
+            console.log("Wf id="+wfId);
+            // Flag -s is present: send all input signals to the workflow -> start execution
+            wflib.getWfIns(wfId, false, function(err, wfIns) {
+                engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) {
+                    engine.emitSignals(sigs);
+                    console.log(sigs);
+                });
+            });
         });
     });
 });

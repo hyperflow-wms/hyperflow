@@ -1,0 +1,59 @@
+{
+    "name": "Wf_grepfile_simple",
+    "functions": [ {
+        "name": "fileSplitter",
+        "module": "functions"
+    }, {
+        "name": "match",
+        "module": "functions"
+    }, {
+        "name": "print",
+        "module": "functions"
+    } ],
+    "processes": [ {
+        "name": "FileSplitter",
+	"type": "splitter",
+        "function": "fileSplitter",
+        "ins": [ "fileName", "next2" ],
+        "outs": [ "line", "next1", "done1" ]
+    }, {
+        "name": "Grep",
+	"type": "choice",
+        "function": "match",
+        "ins": [ "regex", "line", "next1", "done1" ],
+        "sticky": [ "regex" ],
+        "outs": [ "matchingLine", "next2", "done2" ]
+    }, {
+        "name": "Print",
+	"type": "dataflow",
+        "function": "print",
+        "ins": [ "matchingLine" ],
+        "outs": [ ]
+    } ],
+    "signals": [ {
+        "name": "fileName",
+        "data": [ { "value": "workflows/grepfiles.hwf" } ]
+    }, {
+        "name": "line"
+    }, {
+        "name": "regex",
+        "data": [ { "value": "/outs/" } ]
+    }, {
+        "name": "matchingLine"
+    }, {
+        "name": "next1", 
+        "control": "next"
+    }, {
+        "name": "next2", 
+        "control": "next",
+        "data": [ { } ]
+    }, {
+        "name": "done1",
+        "control": "done"
+    }, {
+        "name": "done2",
+        "control": "done"
+    } ],
+    "ins": [ "fileName", "regex" ],
+    "outs": [ "matchingLine" ]
+}

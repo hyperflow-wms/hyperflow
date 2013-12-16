@@ -2,7 +2,7 @@
  * Bartosz Balis, 2013
  * runwf: 
  *   - creates a Hyperflow engine instance for workflow identified by Redis id
- *   - runs this workflow: at this point the engine is awaiting signals
+ *   - runs this workflow: at this point the engine is awaiting signals (unless -s flag is given)
 **/
 
 var redis = require('redis'),
@@ -12,13 +12,12 @@ var redis = require('redis'),
     async = require('async'),
     argv = require('optimist').argv,
     dbId = 0, 
-    wfId,
     engine;
 
-function init(cb) {
+function createWf(cb) {
     rcl.select(dbId, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
-            wflib.createInstanceFromFile(argv._[0], '', 
+            wflib.createInstanceFromFile(argv.f, '', 
                 function(err, id) {
                     cb(err, id); 
 		}
@@ -28,32 +27,43 @@ function init(cb) {
 }
 
 
-if (!argv._[0]) {
+if (!argv.id && !argv.f) {
     console.log("runwf: runs a workflow instance\n");
-    console.log("Usage: node runwf.js WFID [--db=DBID]");
-    console.log("  WFID: Redis wfId of the workflow instance");
-    console.log("  --db: Redis db number where the wf state is stored (default=0)");
+    console.log("Usage: node runwf.js [--f </path/to/wf.json>] [-i WFID] [--db=DBID]");
+    console.log("   -f <file> : create a new wf instance from a file and run it");
+    console.log("   -i WFID   : use already created wf instance with WFID as its Redis id");
+    console.log("   -s        : send input signals to the workflow (starts execution)");
+    console.log("   -d DBID   : Redis db number to be used (default=0)");
     process.exit();
 }
 
-wfId = argv._[0];
-
-if (argv.db) {
-    dbId = argv.db;
+if (argv.d) {
+    dbId = argv.d;
+    console.log("DBID", dbId);
 }
 
-console.log('wfId='+wfId, 'dbId='+dbId);
-
-engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
-    engine.runInstance(function(err) {
-         console.log("Wf id="+wfId);
-
-	 // when the below is uncommented, all input signals will be sent to 
-	 // the workflow (without setting any attributes (e.g. 'value'), 
-	 // which may cause an error, depending on the workflow)
-	 /*wflib.getWfIns(wfId, false, function(err, wfIns) {
-             engine.markDataReady(wfIns, function(err) { });
-         });*/
-
+var runWf = function(wfId) { 
+    engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
+        engine.runInstance(function(err) {
+            console.log("Wf id="+wfId);
+            if (argv.s) {
+                // Flag -s is present: send all input signals to the workflow -> start execution
+                wflib.getWfIns(wfId, false, function(err, wfIns) {
+                    engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) { 
+                        engine.emitSignals(sigs);
+                        console.log(sigs);
+                    });
+                });
+            }
+        });
     });
-});
+};
+
+if (argv.f) {
+    createWf(function(err, wfId) {
+        runWf(wfId);
+    });
+} else if (argv.i) {
+    runWf(argv.i);
+}
+    

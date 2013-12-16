@@ -4,28 +4,49 @@ var fsp = require('./fileSplitter.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, executor, config, cb) {
-	console.log("INS:", ins);
-	console.log("OUTS:", outs);
+	console.log(ins[0].data[0])
 	cb(null, outs);
+}
+
+function echo(ins, outs, executor, config, cb) {
+    var data = JSON.stringify(ins[0].data);
+    //console.log(data);
+    outs[0].data = ins[0].data;
+    //console.log(JSON.stringify(ins, null, 2));
+
+    //if (typeof data == "object" || typeof data == "array")
+     //   data = JSON.stringify(data);
+
+    process.stdout.write(data[2]);
+    //console.log(data);
+    cb(null, outs);
+}
+
+function echoWithDelay(ins, outs, executor, config, cb) {
+    //console.log(ins, outs);
+    outs[0] = ins[0];
+    setTimeout(function() {
+        cb(null, outs);
+    }, Math.floor(Math.random()*1000+1));
 }
 
 function add(ins, outs, executor, config, cb) {
     var sum=0.0;
     for (var i=0; i<ins.length; ++i) {
-        if ("value" in ins[i]) {
-            sum += parseFloat(ins[i].value);
+        if ("value" in ins[i].data[0]) {
+            sum += parseFloat(ins[i].data[0].value);
         }
     }
-    outs[0].value = sum;
+    outs[0].data = { "value": sum };
     cb(null, outs);
 }
 
 function sqr(ins, outs, executor, config, cb) {
-    if (!("value" in ins[0])) {
-        outs[0].value = new Error("functions:sqr : no input value provided");
+    if (!("value" in ins[0].data[0])) {
+        outs[0].data = [ new Error("functions:sqr : no input value provided") ];
     } else {
-        var v = parseFloat(ins[0].value);
-        outs[0].value =  v * v;
+        var v = parseFloat(ins[0].data[0].value);
+        outs[0].data[0] = { "value": v * v };
     }
     cb(null, outs);
 }
@@ -35,6 +56,21 @@ function length(ins, outs, executor, config, cb) {
         outs[0].value = new Error("functions:sqr : no input value provided");
     } else {
         outs[0].value = ins[0].value.length;
+    }
+    setTimeout(function() {
+        cb(null, outs);
+    }, 1000);
+}
+
+function match(ins, outs, executor, config, cb) {
+    var tmp = ins[0].data[0].value.match(new RegExp('^/(.*?)/(g?i?m?y?)$'));
+    var regex = new RegExp(tmp[1], tmp[2]);
+    var str = ins[1].data[0].value;
+    var s = str.search(regex);
+    //console.log(regex, str, s);
+    if (str.search(regex) != -1) {
+        outs[0].condition = "true";
+        outs[0].data = [ str ];
     }
     cb(null, outs);
 }
@@ -85,6 +121,21 @@ function grepFile(ins, outs, executor, config, cb) {
     cb(null, outs); 
 }
 
+
+var cnt = 0;
+function count(ins, outs, executor, config, cb) {
+    //console.log(ins);
+    cnt++;
+    outs[0].data = [];
+    outs[0].data[0] = cnt;
+    if (cnt % 1000 == 0) { 
+        console.log("count:", cnt)
+    }
+    if (cnt == 10000)
+        process.exit();
+    cb(null, outs);
+}
+
 /*
 function montage_mProjectPP(ins, outs, executor, config, cb) {
     var execName = "mProjectPP";
@@ -103,3 +154,7 @@ exports.amqpCommand = amqpCmd.amqpCommand;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
+exports.echo = echo;
+exports.echoWithDelay = echoWithDelay;
+exports.count = count;
+exports.match = match;

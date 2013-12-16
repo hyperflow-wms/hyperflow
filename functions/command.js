@@ -5,7 +5,9 @@ function command(ins, outs, executor, config, cb) {
         });
     } else {
         console.log(config.executor.executable, config.executor.args);
-        cb(null, outs);
+	setTimeout(function() {
+		cb(null, outs);
+	}, Math.floor((Math.random()*0)+0));
     }
 }
 
