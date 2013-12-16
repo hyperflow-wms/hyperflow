@@ -45,7 +45,7 @@ function amqpCommand(ins, outs, executor, config, cb) {
     //publish job
     var exchange = connection.exchange('', {}, function(exchange) {
       console.log("[AMQP Command] job published");
-      exchange.publish('hyperflow.jobs', {
+      var message = {
         "executable": executable,
         "args": args,
         "inputs": ins,
@@ -55,8 +55,11 @@ function amqpCommand(ins, outs, executor, config, cb) {
           "in_prefix": S3_PATH,
           "out_bucket": S3_BUCKET,
           "out_prefix": S3_PATH
-        }        
-      }, {
+        }
+      };        
+      console.log(message);
+      exchange.publish('hyperflow.jobs', message
+      , {
         replyTo: queue.name,
         contentType: 'application/json',
         correlationId: corrId
