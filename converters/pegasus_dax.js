@@ -81,6 +81,7 @@ function createWorkflow(dax, functionName, cb) {
         wfOut.tasks.push({
             "name": job['$'].name,
             "function": functionName,
+            "type": "dataflow",
             "executor": "syscommand",
             "config": {
                 "executor": {
