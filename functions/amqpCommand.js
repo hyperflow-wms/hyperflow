@@ -22,21 +22,20 @@ function amqpCommand(ins, outs, executor, config, cb) {
       exclusive: true,
       ack: true
     }, function(message, headers, deliveryInfo) {
-      console.log("[AMQP Command] message recieved");
+      console.log("[AMQP Command][" + corrId + "] message recieved");
       if (deliveryInfo.correlationId == corrId) {
-        console.log("[AMQP Command] result: output:", message.stdout, "stderr:", message.stderr, "ret code:", message.return_code);
-
-        //unsubscribe and close connection
+        console.log("[AMQP Command][" + corrId + "] result: output:", message.stdout, "stderr:", message.stderr, "ret code:", message.exit_code);
+        console.log(message);
         queue.unsubscribe(consumerTag);
 
-        if (message.return_code != "0") {
+        if (message.exit_code != "0") {
           cb(null, outs);
         } else {
-          cb("[AMQP Command] Error during job execution!", outs);
+          cb("[AMQP Command][" + corrId + "] Error during job execution!", outs);
         }
       } else {
-        console.log("[AMQP Command] unexpected message, got: ", deliveryInfo.correlationId, "expected:", corrId);
-        throw new Error("Unexpected message received!");
+        console.log("[AMQP Command][" + corrId + "] unexpected message, got: ", deliveryInfo.correlationId, "expected:", corrId);
+        cb("[AMQP Command][" + corrId + "] Unexpected message")
       }
     }).addCallback(function(ok) {
       consumerTag = ok.consumerTag;
@@ -56,8 +55,7 @@ function amqpCommand(ins, outs, executor, config, cb) {
         }
       };        
       console.log(message);
-      exchange.publish('hyperflow.jobs', message
-      , {
+      exchange.publish('hyperflow.jobs', message, {
         replyTo: queue.name,
         contentType: 'application/json',
         correlationId: corrId
