@@ -51,10 +51,8 @@ function amqpCommand(ins, outs, executor, config, cb) {
         "inputs": ins,
         "outputs": outs,
         "options": {
-          "in_bucket": S3_BUCKET,
-          "in_prefix": S3_PATH,
-          "out_bucket": S3_BUCKET,
-          "out_prefix": S3_PATH
+          "bucket": S3_BUCKET,
+          "prefix": S3_PATH,
         }
       };        
       console.log(message);
