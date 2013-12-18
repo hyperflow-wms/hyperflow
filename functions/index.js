@@ -136,6 +136,11 @@ function count(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
+function exit(ins, outs, executor, config, cb) {
+  console.log("Exiting\n\n");
+  process.exit(0);
+}
+
 /*
 function montage_mProjectPP(ins, outs, executor, config, cb) {
     var execName = "mProjectPP";
@@ -151,6 +156,7 @@ exports.length = length;
 exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
+exports.exit = exit;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
