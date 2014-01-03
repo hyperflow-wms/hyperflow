@@ -102,7 +102,7 @@ var Engine = function(config, wflib, wfId, cb) {
 
         engine.wflib.getWfOuts(engine.wfId, false, function(err, wfOuts) {
             engine.wfOuts = wfOuts;
-            engine.nWfOutsLeft = wfOuts.length;
+            engine.nWfOutsLeft = wfOuts.length ? wfOuts.length: -1;
             cb(null);
         });
     });
@@ -178,7 +178,7 @@ Engine.prototype.taskFinished = function(taskId) {
     this.trace += taskId;
     this.nTasksLeft--;
     //onsole.log("OUTS LEFT:", this.nWfOutsLeft);
-    if (this.nWfOutsLeft == 0) {
+    if (this.nWfOutsLeft == 0 || this.nTasksLeft == 0) {
         this.workflowFinished(); // all wf outputs produced ==> wf is finished (always?)
     } else {
         this.trace += ",";
@@ -186,7 +186,7 @@ Engine.prototype.taskFinished = function(taskId) {
 }
 
 Engine.prototype.workflowFinished = function() {
-    console.log(this.trace+'. ['+this.wfId+']');
+    console.log("Workflow ["+this.wfId+"] finished. Exec trace:", this.trace+"." );
     //onsole.log(this.syncCb);
     if (this.syncCb) {
         this.syncCb();
