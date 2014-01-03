@@ -3,8 +3,16 @@ var fsp = require('./fileSplitter.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, executor, config, cb) {
-	console.log(ins[0].data[0])
-	cb(null, outs);
+        ins.forEach(function(input) {
+                //console.log("sigId=", input.sigId + ":", input.data[0])
+		//console.log(JSON.stringify(input, null, 2));
+		if (input.data && input.data[0].value) {
+                    console.log(input.data[0].value);
+		} else {
+                    console.log(JSON.stringify(input, null, 2));
+                }
+        });
+        cb(null, outs);
 }
 
 function echo(ins, outs, executor, config, cb) {
@@ -149,6 +157,7 @@ exports.sqr = sqr;
 exports.length = length;
 exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
+exports.command_print = cmd.command_print;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
