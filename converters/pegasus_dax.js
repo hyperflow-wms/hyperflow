@@ -33,7 +33,7 @@ PegasusConverter.prototype.convertFromFile = function(filename, cb) {
 
 
 var wfOut = { 
-    functions: [ {"name": "command", "module": "functions"} ],
+    functions: [ {"name": "command_print", "module": "functions"} ],
     tasks: [],
     data: [],
     ins: [],
@@ -71,8 +71,9 @@ function createWorkflow(dax, cb) {
 	var args = job.argument[0];
         wfOut.tasks.push({ 
             "name": job['$'].name, 
-            "function": "command", 
+            "function": "command_print", 
 	    "type": "dataflow",
+            "firingLimit": 1,
             "config": {
                 "executor": {
                     "executable": job['$'].name, 
