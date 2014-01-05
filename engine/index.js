@@ -14,7 +14,7 @@
 
 var fs = require('fs'),
     xml2js = require('xml2js'),
-    fsm = require('automata'),
+    fsm = require('./automata.js'),
     async = require('async');
 
 var TaskDataflowFSM = require('./taskDataflowFSM.js');

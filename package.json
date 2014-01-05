@@ -16,7 +16,6 @@
     "async":"0.2.x",
     "redis":"0.9.1",
     "xml2js":"0.2.7",
-    "automata":"1.0.7",
     "underscore":"1.x",
     "optimist":"0.6.0",
     "walkdir":"0.0.7",
