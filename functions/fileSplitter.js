@@ -2,7 +2,7 @@ var flr = require('./FileLineReader.js');
 
 var readers = {};
 
-function fileSplitter(ins, outs, executor, config, cb) {
+function fileSplitter(ins, outs, config, cb) {
     var fname = ins[0].data[0].value;
     if (ins[0].data[0].path) {
         fname = ins[0].data[0].path;

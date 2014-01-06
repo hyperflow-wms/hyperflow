@@ -1358,11 +1358,11 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 //onsole.log("OUTS:", outs);
                 //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
                 var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
-                var executor = taskInfo.executor ? taskInfo.executor: null;
+                //var executor = taskInfo.executor ? taskInfo.executor: null;
 
                 //onsole.log("INS VALUES", insValues);
 
-                f(ins, outs, executor, conf, function(err, outs) {
+                f(ins, outs, conf, function(err, outs) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
                     cb(null, outs);
                 });

@@ -1,6 +1,6 @@
 var spawn = require('child_process').spawn;
 
-function command(ins, outs, executor, config, cb) {
+function command(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 
@@ -26,7 +26,7 @@ function command(ins, outs, executor, config, cb) {
     });
 }
 
-function command_print(ins, outs, executor, config, cb) {
+function command_print(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 

@@ -8,7 +8,7 @@ var flr = require('./FileLineReader.js');
  *     - First line: original file path
  *     - Next lines: <line_number>:<line content>
  */
-function grepFile(ins, outs, executor, config, cb) {
+function grepFile(ins, outs, config, cb) {
     var fname = ins[0].value;
     if (!(fname in readers)) {
         readers[fname] = new flr.FileLineReader(fname);
