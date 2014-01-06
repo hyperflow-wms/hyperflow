@@ -84,7 +84,7 @@ var Engine = function(config, wflib, wfId, cb) {
         engine.sinks = sinks;
         engine.cPorts = cPortsInfo;
 
-        // create tasks of types other than default "task" (e.g. "foreach", "splitter", etc.)
+        // create processes of types other than default "dataflow" (e.g. "foreach", "splitter", etc.)
         for (var type in types) {
             //onsole.log("type: "+type+", "+types[type]); // DEBUG
             types[type].forEach(function(taskId) {
@@ -92,10 +92,10 @@ var Engine = function(config, wflib, wfId, cb) {
                 engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
             });
         }
-        // create all other tasks (assuming the default type "task")
+        // create all other processes (assuming the default type "dataflow")
         for (var taskId=1; taskId<=nTasks; ++taskId) {
             if (!engine.tasks[taskId]) {
-                engine.tasks[taskId] = fsm.createSession("task");
+                engine.tasks[taskId] = fsm.createSession("dataflow");
                 engine.tasks[taskId].logic.init(engine, wfId, taskId, engine.tasks[taskId], fullInfo[taskId]);
             }
         }
