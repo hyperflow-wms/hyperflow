@@ -14,7 +14,7 @@ var walk = require('walk'),
     twit;
 
 
-function twitterSource(ins, outs, executor, config, cb) {
+function twitterSource(ins, outs, config, cb) {
     if (!twit) {
        nconf.file({
           file: 'twitter.conf.json',
@@ -57,7 +57,7 @@ function twitterSource(ins, outs, executor, config, cb) {
 }
 
 
-function partitionTweets(ins, outs, executor, config, cb) {
+function partitionTweets(ins, outs, config, cb) {
     if (ins[0].data.length == 0)
         return cb(null, outs); 
     console.log("Partitioning tweets:", ins[0].data.length);
@@ -70,7 +70,7 @@ function partitionTweets(ins, outs, executor, config, cb) {
 }
 
 
-function generateTweetStats(ins, outs, executor, config, cb) {
+function generateTweetStats(ins, outs, config, cb) {
     var tweet = ins[0].data[0];
     var parsedTweet = {};
     var text = tweet.text;
@@ -95,7 +95,7 @@ function generateTweetStats(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
-function aggregateTweetStats(ins, outs, executor, config, cb) {
+function aggregateTweetStats(ins, outs, config, cb) {
     //console.log(JSON.stringify(ins, null, 2));
     var tweet = ins[0].data[0];
     console.log("Aggregating:", tweet);
@@ -104,7 +104,7 @@ function aggregateTweetStats(ins, outs, executor, config, cb) {
 }
 
 /*
-function partitionFiles(ins, outs, executor, config, cb) {
+function partitionFiles(ins, outs, config, cb) {
     var dir = ins[0].dir;
     var files = [];
 
@@ -131,7 +131,7 @@ function partitionFiles(ins, outs, executor, config, cb) {
 }
 
 
-function wordCounter(ins, outs, executor, config, cb) {
+function wordCounter(ins, outs, config, cb) {
     var words = ins[0].value.match(/\w+/g);
     words = _.countBy(words, function(x) { return x; });
     console.log(words);

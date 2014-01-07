@@ -117,6 +117,10 @@ function fetchInputs(task, cb) {
 
 
 function tryTransition(task, session) {
+    /*if (task.firingLimit == 0) {
+        task.done = true;
+    }*/
+
     if (task.ready && task.done) {
         task.ready = false;
         session.dispatch({ msgId: "ReFi"});
@@ -165,6 +169,7 @@ function TaskLogic() {
     this.firingInterval = -1; // a task can have 0 data inputs and a firing interval ==> its 
                               // function will be invoked regularly according to this interval
     this.firingSigs = [];
+    this.firingLimit = -1;   // max number of times the process can fire (-1 = unlimited)
     this.sigValues = null;
 
     this.ready = false;
@@ -183,6 +188,10 @@ function TaskLogic() {
         this.firstInvocation = true;
         this.fullInfo = fullInfo;
 	this.name = fullInfo.name;
+	this.parlevel = fullInfo.parlevel ? fullInfo.parlevel : 1; // maximum level of parallelism
+        this.firingId = 0;  // which firing of the process is this?
+	this.runningCount = 0; // how many firings are running at the moment (max = parlevel)
+	this.firingLimit = this.fullInfo.firingLimit ? this.fullInfo.firingLimit : -1;
 
         if (this.nDataIns == 0) { // special case with no data inputs (a 'source' task)
             // FIXME: add assertion/validation that firing interval is defined!
@@ -239,15 +248,27 @@ function TaskLogic() {
         //onsole.log("Enter state running: "+this.id+" ("+this.name+")");
         var task = this;
         var funcIns = [], funcOuts = [], emul = task.engine.emulate;
+
+        task.firingId += 1;
+        var firingId = task.firingId;
         async.waterfall([
                 // 1. set task state to running
                 function(cb) {
+                    task.runningCount += 1;
+                    if (task.firingLimit != -1) {
+                        task.firingLimit -= 1;
+                        if (task.firingLimit == 0) {
+                            task.done = true;
+                        }
+                    }
+                    //onsole.log("runningCount (" + task.fullInfo.name + "):", task.runningCount);
                     task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
                         err ? cb(err): cb(null); 
                     });
                 },
                 // 2. invoke the function
                 function(cb) {
+                    var returned2Ready = false;
                     // create arrays of data ins and outs ids
                     for (var i=0; i<task.firingSigs.length; ++i) {
                         var sigId = task.firingSigs[i][0];
@@ -263,6 +284,13 @@ function TaskLogic() {
                     }
 
                     //logger.debug(funcIns, funcOuts);
+                    
+                    if (!task.done && (task.runningCount < task.parlevel || task.parlevel == 0)) {
+                        returned2Ready = true;
+                        // we return to the ready state BEFORE invoking the function, i.e. the firing
+                        // is ASYCHRONOUS; as a result, another firing can happen in parallel
+                        session.dispatch( {msgId: "RuRe"} ); 
+                    }
                     task.wflib.invokeTaskFunction2(
                             task.wfId, 
                             task.id, 
@@ -270,7 +298,7 @@ function TaskLogic() {
                             task.sigValues, 
                             funcOuts, emul, 
                             function(err, outs) {
-                                err ? cb(err): cb(null, outs);
+                                err ? cb(err): cb(null, outs, returned2Ready);
                             }
                     );
                 },
@@ -286,7 +314,7 @@ function TaskLogic() {
                     }
                 },*/
                 // 3. emit output signals
-                function(outs, cb) {
+                function(outs, returned2Ready, cb) {
                     task.cnt -= task.firingSigs.length; // subtract cnt by the number of consumed signals
                     if (task.fullInfo.sticky) 
                         task.cnt += task.fullInfo.sticky; // sticky signals weren't actually consumed!
@@ -294,12 +322,18 @@ function TaskLogic() {
                     var outValues = outs;
                     for (var i=0; i<funcOuts.length; ++i) {
                         outValues[i]["_id"] = funcOuts[i];
+                        outValues[i]["source"] = task.id;
+                        outValues[i]["firingId"] = firingId;
                     }
                     if (task.nextOutId) { // emit next signal if there is such an output port
                         outValues.push({"_id": session.logic.nextOutId });
                     }
                     task.engine.emitSignals(outValues, function(err) {
-                        session.dispatch( {msgId: "RuRe"} ); // task goes back to ready state
+                        task.runningCount -= 1;
+                        //onsole.log("runningCount (" + task.fullInfo.name + ")/2:", task.runningCount);
+                        if (!returned2Ready) {
+                            session.dispatch( {msgId: "RuRe"} ); // task goes back to ready state
+                        }
                         err ? cb(err): cb(null);
                     });
                 }
@@ -311,13 +345,12 @@ function TaskLogic() {
     };
 
     this.finished_onEnter = function(session, state, transition, msg) {
-	(function(task) {
-	    task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
-		if (err) { throw err; }
-		//onsole.log("Enter state finished: "+task.id);
-		task.engine.taskFinished(task.id);
-	    });
-	})(this);
+        var task = this;
+        task.wflib.setTaskState(task.wfId, task.id, { "status": "finished" }, function(err, rep) {
+            if (err) { throw err; }
+            //onsole.log("Enter state finished: "+task.id);
+            task.engine.taskFinished(task.id);
+        });
     };
 
     this.trReRu = function(session, state, transition, msg) {
@@ -327,7 +360,7 @@ function TaskLogic() {
     this.trReFi = function(session, state, transition, msg) {
       // emit "done" signal if such a port exists
       if (session.logic.doneOutId) {
-            session.logic.engine.emitSignals([{"id": session.logic.doneOutId }]);
+          session.logic.engine.emitSignals([{"id": session.logic.doneOutId }]);
       }
     };
 

@@ -83,6 +83,7 @@ function createWorkflow(dax, functionName, cb) {
             "function": functionName,
             "type": "dataflow",
             "executor": "syscommand",
+            "firingLimit": 1,
             "config": {
                 "executor": {
                     "executable": job['$'].name,

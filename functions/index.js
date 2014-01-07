@@ -3,12 +3,20 @@ var fsp = require('./fileSplitter.js'),
     amqpCmd = require('./amqpCommand.js'),
     scanDir = require('./DirScanner').scanDir;
 
-function print(ins, outs, executor, config, cb) {
-	console.log(ins[0].data[0])
-	cb(null, outs);
+function print(ins, outs, config, cb) {
+        ins.forEach(function(input) {
+                //console.log("sigId=", input.sigId + ":", input.data[0])
+		//console.log(JSON.stringify(input, null, 2));
+		if (input.data && input.data[0].value) {
+                    console.log(input.data[0].value);
+		} else {
+                    console.log(JSON.stringify(input, null, 2));
+                }
+        });
+        cb(null, outs);
 }
 
-function echo(ins, outs, executor, config, cb) {
+function echo(ins, outs, config, cb) {
     var data = JSON.stringify(ins[0].data);
     //console.log(data);
     outs[0].data = ins[0].data;
@@ -22,7 +30,7 @@ function echo(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
-function echoWithDelay(ins, outs, executor, config, cb) {
+function echoWithDelay(ins, outs, config, cb) {
     //console.log(ins, outs);
     outs[0] = ins[0];
     setTimeout(function() {
@@ -30,7 +38,7 @@ function echoWithDelay(ins, outs, executor, config, cb) {
     }, Math.floor(Math.random()*1000+1));
 }
 
-function add(ins, outs, executor, config, cb) {
+function add(ins, outs, config, cb) {
     var sum=0.0;
     for (var i=0; i<ins.length; ++i) {
         if ("value" in ins[i].data[0]) {
@@ -41,7 +49,7 @@ function add(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
-function sqr(ins, outs, executor, config, cb) {
+function sqr(ins, outs, config, cb) {
     if (!("value" in ins[0].data[0])) {
         outs[0].data = [ new Error("functions:sqr : no input value provided") ];
     } else {
@@ -51,7 +59,7 @@ function sqr(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
-function length(ins, outs, executor, config, cb) {
+function length(ins, outs, config, cb) {
     if (!("value" in ins[0])) {
         outs[0].value = new Error("functions:sqr : no input value provided");
     } else {
@@ -62,7 +70,7 @@ function length(ins, outs, executor, config, cb) {
     }, 1000);
 }
 
-function match(ins, outs, executor, config, cb) {
+function match(ins, outs, config, cb) {
     var tmp = ins[0].data[0].value.match(new RegExp('^/(.*?)/(g?i?m?y?)$'));
     var regex = new RegExp(tmp[1], tmp[2]);
     var str = ins[1].data[0].value;
@@ -75,25 +83,25 @@ function match(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
-function chooseEvenOdd(ins, outs, executor, config, cb) {
+function chooseEvenOdd(ins, outs, config, cb) {
     var sum=0;
-    console.log("choose INS=", ins);
+    //console.log("choose INS=", ins);
     for (var i=0; i<ins.length; ++i) {
-        if ("value" in ins[i]) {
-            sum += parseInt(ins[i].value);
+        if ("data" in ins[i] && "value" in ins[i].data[0]) {
+            sum += parseInt(ins[i].data[0].value);
         }
     }
 	if (sum % 2 == 0) {
-		outs[0].value = sum;
+		outs[0].data = [ { "value": sum } ];
 		outs[0].condition = "true";
 	} else {
-		outs[1].value = sum;
+		outs[1].data = [ { "value": sum } ];
 		outs[1].condition = "true";
 	}
     cb(null, outs);
 }
 
-function scanDirForJs(ins, outs, executor, config, cb) {
+function scanDirForJs(ins, outs, config, cb) {
     var inPath = ins[0].value, outPath;
     if (outs[0].path) {
         outPath = outs[0].path;
@@ -108,7 +116,7 @@ function scanDirForJs(ins, outs, executor, config, cb) {
 }
 
 // TODO. (Currently only returns the input file path)
-function grepFile(ins, outs, executor, config, cb) {
+function grepFile(ins, outs, config, cb) {
     if (ins[0].path) {
         outs[0].value = ins[0].path;
     } else if (ins[0].value) {
@@ -123,7 +131,7 @@ function grepFile(ins, outs, executor, config, cb) {
 
 
 var cnt = 0;
-function count(ins, outs, executor, config, cb) {
+function count(ins, outs, config, cb) {
     //console.log(ins);
     cnt++;
     outs[0].data = [];
@@ -136,13 +144,13 @@ function count(ins, outs, executor, config, cb) {
     cb(null, outs);
 }
 
-function exit(ins, outs, executor, config, cb) {
+function exit(ins, outs, config, cb) {
   console.log("Exiting\n\n");
   process.exit(0);
 }
 
 /*
-function montage_mProjectPP(ins, outs, executor, config, cb) {
+function montage_mProjectPP(ins, outs, config, cb) {
     var execName = "mProjectPP";
     var execArgs = "-X -x "+config.f.scale+" "+ins[0].name+" "+outs[0].name+" "+ins[1].name;
     // invoke executor(execName, exsecArgs)
@@ -157,6 +165,7 @@ exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
 exports.exit = exit;
+exports.command_print = cmd.command_print;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;

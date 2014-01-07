@@ -7,7 +7,7 @@ var S3_PATH = process.env.S3_PATH;
 var connection = null;
 var connectionReady = false;
 
-function amqpCommand(ins, outs, executor, config, cb) {
+function amqpCommand(ins, outs, config, cb) {
   getConnection(function(connection) {
     var executable = config.executor.executable;
     var args = config.executor.args;
