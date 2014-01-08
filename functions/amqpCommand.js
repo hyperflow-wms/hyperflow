@@ -28,7 +28,7 @@ function amqpCommand(ins, outs, config, cb) {
           console.log("[AMQP][" + corrId + "] Job finished: " + JSON.stringify(message, null, "  "));
           queue.unsubscribe(consumerTag);
 
-          if (message.exit_code != "0") {
+          if (message.exit_status != "0") {
             cb(null, outs);
           } else {
             cb("[AMQP][" + corrId + "] Error during job execution!", outs);
