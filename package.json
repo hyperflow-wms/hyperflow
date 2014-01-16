@@ -19,6 +19,7 @@
     "underscore":"1.x",
     "uuid":"",
     "amqplib":"",
+    "amqp":"",
     "when":"",
     "optimist":"0.6.0",
     "walkdir":"0.0.7",
