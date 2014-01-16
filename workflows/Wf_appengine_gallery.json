@@ -65,16 +65,16 @@
     } ],
     "signals": [ {
         "name": "path",
-        "data": [ { "value": "/home/asia/Pictures" } ]
+        "data": [ { "value": "c:\\Media\\Zdjecia" } ]
     }, {
         "name": "path_2",
-        "data": [ { "value": "/home/asia/Pictures/thumbs" } ]
+        "data": [ { "value": "c:\\Media\\Zdjecia\\thumbs" } ]
     }, {
         "name": "path_html",
-        "data": [ { "value": "/home/asia/Pictures/index.html" } ]
+        "data": [ { "value": "c:\\Media\\Zdjecia\\gallery\\index.html" } ]
     }, {
         "name": "regex",
-        "data": [ { "value": ".*(jpe?g|png)$" } ]
+        "data": [ { "value": ".*(jpe?g|png|JPE?G|PNG)$" } ]
     }, {
         "name": "resizeParams",
         "data": [ { "width" : 60, "height" : 60 } ]
