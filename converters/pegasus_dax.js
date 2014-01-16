@@ -18,7 +18,7 @@ var fs = require('fs'),
 // Pegasus DAX converter constructor, accepts optional name of function, used to execute tasks
 var PegasusConverter = function(functionName) {
     if(typeof(functionName) === 'undefined') {
-        this.functionName = "command";
+        this.functionName = "command_print";
     } else {
         this.functionName = functionName;
     }
