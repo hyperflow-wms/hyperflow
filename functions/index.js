@@ -1,5 +1,6 @@
 var fsp = require('./fileSplitter.js'), 
     cmd = require('./command.js'),
+    amqpCmd = require('./amqpCommand.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, config, cb) {
@@ -143,6 +144,11 @@ function count(ins, outs, config, cb) {
     cb(null, outs);
 }
 
+function exit(ins, outs, config, cb) {
+  console.log("Exiting\n\n");
+  process.exit(0);
+}
+
 /*
 function montage_mProjectPP(ins, outs, config, cb) {
     var execName = "mProjectPP";
@@ -157,6 +163,8 @@ exports.sqr = sqr;
 exports.length = length;
 exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
+exports.amqpCommand = amqpCmd.amqpCommand;
+exports.exit = exit;
 exports.command_print = cmd.command_print;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
