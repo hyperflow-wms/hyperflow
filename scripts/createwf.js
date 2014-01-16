@@ -22,7 +22,6 @@ function init(cb) {
     });
 }
 
-
 if (!argv._[0]) {
     console.log();
     console.log("createwf: create workflow instance from a json file\n");

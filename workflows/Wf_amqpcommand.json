@@ -1,0 +1,28 @@
+{
+    "name": "Wf_executor",
+    "functions": [ {
+        "name": "amqpCommand",
+        "module": "functions"
+    } ],
+    "tasks": [ {
+        "name": "execution",
+        "type": "dataflow",
+        "function": "amqpCommand",
+        "executor": "syscommand",
+        "config": {
+        	"executor": {
+        		"executable": "echo",
+        		"args": "-n wafle"
+        	}
+        },
+        "ins": [ 0 ],
+        "outs": [ 1 ]
+    } ],
+    "data": [ {
+        "name": "num"
+    }, {
+        "name": "result"
+    } ],
+    "ins": [ 0 ],
+    "outs": [ 1 ]
+}

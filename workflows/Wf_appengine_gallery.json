@@ -1,0 +1,96 @@
+{
+    "name": "Wf_appengine_gallery",
+    "functions": [ {
+        "name": "scanDir",
+        "module":"functions/appengine"
+    }, {
+        "name": "uploadImage",
+        "module":"functions/appengine"
+    }, {
+        "name": "resizeImage",
+        "module":"functions/appengine"
+    }, {
+        "name": "downloadImage",
+        "module":"functions/appengine"
+    }, {
+        "name": "aggregatePaths",
+        "module":"functions/appengine"
+    }, {
+        "name": "genHtmlGallery",
+        "module":"functions/appengine"
+    } ],
+    "processes": [ {
+        "name": "GetImageList",
+		"type": "dataflow",
+        "function": "scanDir",
+        "ins": [ "path", "regex" ],
+        "outs": [ "path_list", "path_buffer" ]
+    }, {
+        "name": "UploadImage",
+		"type": "dataflow",
+        "function": "uploadImage",
+		"parlevel": 0,
+        "firingLimit": 10,
+        "ins": [ "path_list" ],
+        "outs": [ "imageId_list" ]
+    }, {
+        "name": "ResizeImage",
+		"type": "dataflow",
+        "function": "resizeImage",
+		"parlevel": 0,
+        "firingLimit": 10,
+		"ins": [ "resizeParams", "imageId_list" ],
+		"sticky": [ "resizeParams" ],
+        "outs": [ "imageId_list_2" ]
+    }, {
+		"name": "DownloadImage",
+		"type": "dataflow",
+        "function": "downloadImage",
+        "ins": [ "path_2", "imageId_list_2" ],
+		"sticky": [ "path_2" ],
+        "outs": [ "path_list_2" ]
+    }, {
+        "name": "Aggregator",
+		"type": "dataflow",
+        "function": "aggregatePaths",
+        "ins": [ "path_buffer", "path_list_2" ],
+        "outs": [ "path_buffer", "aggregated_paths" ]
+    }, {
+        "name": "HtmlGenerator",
+		"type": "dataflow",
+        "function": "genHtmlGallery",
+        "ins": [ "path_html", "aggregated_paths" ],
+		"sticky": [ "path_html" ],
+        "outs": [ ]
+    } ],
+    "signals": [ {
+        "name": "path",
+        "data": [ { "value": "c:\\Media\\Zdjecia" } ]
+    }, {
+        "name": "path_2",
+        "data": [ { "value": "c:\\Media\\Zdjecia\\thumbs" } ]
+    }, {
+        "name": "path_html",
+        "data": [ { "value": "c:\\Media\\Zdjecia\\gallery\\index.html" } ]
+    }, {
+        "name": "regex",
+        "data": [ { "value": ".*(jpe?g|png|JPE?G|PNG)$" } ]
+    }, {
+        "name": "resizeParams",
+        "data": [ { "width" : 60, "height" : 60 } ]
+    }, {
+        "name": "path_list"
+    }, {
+        "name": "path_list_2"
+    }, {
+        "name": "path_buffer"
+    }, {
+        "name": "imageId_list"
+    }, {
+        "name": "imageId_list_2"
+    }, {
+        "name": "aggregated_paths"
+    } ],
+    "ins": [ "path", "path_2", "path_html", "regex", "resizeParams" ],
+    "outs": [ ]
+}

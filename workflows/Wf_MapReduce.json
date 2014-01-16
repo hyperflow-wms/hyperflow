@@ -1,0 +1,95 @@
+{
+    "name": "Wf_MapReduce",
+    "functions": [ {
+        "name": "twitterSource",
+        "module":"functions/mapreduce"
+    }, {
+        "name": "partitionTweets",
+        "module":"functions/mapreduce"
+    }, {
+        "name": "generateTweetStats",
+        "module":"functions/mapreduce"
+    }, {
+        "name": "aggregateTweetStats",
+        "module":"functions/mapreduce"
+    } ],
+    "processes": [ {
+        "name": "TwitterSource",
+	"type": "dataflow",
+        "function": "twitterSource",
+        "firingInterval": 15000,
+        "ins": [ ],
+        "outs": [ 0 ]
+    }, {
+        "name": "TweetPartitioner",
+	"type": "choice",
+        "function": "partitionTweets",
+        "ins": [ 0 ],
+        "outs": [ 1, 2, 3, 4 ]
+    }, {
+        "name": "Mapper1",
+	"type": "choice",
+        "function": "generateTweetStats",
+        "ins": [ 1 ],
+        "outs": [ 5, 6, 7 ]
+    }, {
+        "name": "Mapper2",
+	"type": "choice",
+        "function": "generateTweetStats",
+        "ins": [ 2 ],
+        "outs": [ 5, 6, 7 ]
+    }, {
+        "name": "Mapper3",
+	"type": "choice",
+        "function": "generateTweetStats",
+        "ins": [ 3 ],
+        "outs": [ 5, 6, 7 ]
+    }, {
+        "name": "Mapper4",
+	"type": "choice",
+        "function": "generateTweetStats",
+        "ins": [ 4 ],
+        "outs": [ 5, 6, 7 ]
+    }, {
+        "name": "Reducer1",
+	"type": "dataflow",
+        "function": "aggregateTweetStats",
+        "ins": [ 5 ],
+        "outs": [ 8  ]
+    }, {
+        "name": "Reducer2",
+	"type": "dataflow",
+        "function": "aggregateTweetStats",
+        "ins": [ 6 ],
+        "outs": [ 8  ]
+    }, {
+        "name": "Reducer3",
+	"type": "dataflow",
+        "function": "aggregateTweetStats",
+        "ins": [ 7 ],
+        "outs": [ 8  ]
+    } ],
+    "signals": [ {
+        "name": "tweet"
+    }, {
+        "name": "partitionedTweet"
+    }, {
+        "name": "partitionedTweet"
+    }, {
+        "name": "partitionedTweet"
+    }, {
+        "name": "partitionedTweet"
+    }, {
+        "name": "tweetStats"
+    }, {
+        "name": "tweetStats"
+    }, {
+        "name": "tweetStats"
+    }, {
+        "name": "tweetStats"
+    }, {
+        "name": "aggregatedStats"
+    } ],
+    "ins": [ 0 ],
+    "outs": [ 8 ]
+}

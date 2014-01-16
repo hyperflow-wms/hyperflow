@@ -25,7 +25,7 @@ function init2(cb) {
     });
 }
 
-init2(function(err, wfId1, wfId2) {
+/*init2(function(err, wfId1, wfId2) {
     var engine1 = new Engine({"emulate": "true"}, wflib, wfId1, function(err) {
         var engine2 = new Engine({"emulate": "true"}, wflib, wfId2, function(err) {
             engine1.runInstance(function(err) {
@@ -36,6 +36,7 @@ init2(function(err, wfId1, wfId2) {
     })
 
 });
+*/
 
 /*    wflib.getTaskInfoFull(1, 1, function(err, task, ins, outs) {
 	    console.log(task, ins, outs);
@@ -60,10 +61,28 @@ init2(function(err, wfId1, wfId2) {
     console.log(sinks);
 });*/
 
-/*wflib.getDataSinks(21, 4, function(err, rep) {
+/*wflib.getDataSinks(21, 4, true, function(err, rep) {
 
 });*/
 
 /*wflib.getDataInfo(21, 4, function(err, rep) {
 	console.log(rep);
 });*/
+
+function init(cb) {
+    rcl.select(1, function(err, rep) {
+	rcl.flushdb(function(err, rep) {
+	    wflib.createInstanceFromFile('../workflows/Wf_choice_test.json', '', 
+                function(err, id) {
+                    cb(err, id);
+                }
+	    );
+	});
+    });
+}
+
+init(function(err, wfId) {
+    wflib.sendSignalLua(1, { "_id": wfId, data: [ { "value": 1 } ] }, 
+	    function(err) { });
+    });
+
