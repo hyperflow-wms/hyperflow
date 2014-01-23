@@ -21,46 +21,44 @@
     } ],
     "processes": [ {
         "name": "GetImageList",
-		"type": "dataflow",
+	"type": "dataflow",
         "function": "scanDir",
         "ins": [ "path", "regex" ],
         "outs": [ "path_list", "path_buffer" ]
     }, {
         "name": "UploadImage",
-		"type": "dataflow",
+	"type": "dataflow",
         "function": "uploadImage",
-		"parlevel": 0,
-        "firingLimit": 10,
+	"parlevel": 10,
         "ins": [ "path_list" ],
         "outs": [ "imageId_list" ]
     }, {
         "name": "ResizeImage",
-		"type": "dataflow",
+	"type": "dataflow",
         "function": "resizeImage",
-		"parlevel": 0,
-        "firingLimit": 10,
-		"ins": [ "resizeParams", "imageId_list" ],
-		"sticky": [ "resizeParams" ],
+	"parlevel": 0,
+	"ins": [ "resizeParams", "imageId_list" ],
+	"sticky": [ "resizeParams" ],
         "outs": [ "imageId_list_2" ]
     }, {
-		"name": "DownloadImage",
-		"type": "dataflow",
+	"name": "DownloadImage",
+	"type": "dataflow",
         "function": "downloadImage",
         "ins": [ "path_2", "imageId_list_2" ],
-		"sticky": [ "path_2" ],
+	"sticky": [ "path_2" ],
         "outs": [ "path_list_2" ]
     }, {
         "name": "Aggregator",
-		"type": "dataflow",
+	"type": "dataflow",
         "function": "aggregatePaths",
         "ins": [ "path_buffer", "path_list_2" ],
         "outs": [ "path_buffer", "aggregated_paths" ]
     }, {
         "name": "HtmlGenerator",
-		"type": "dataflow",
+	"type": "dataflow",
         "function": "genHtmlGallery",
         "ins": [ "path_html", "aggregated_paths" ],
-		"sticky": [ "path_html" ],
+	"sticky": [ "path_html" ],
         "outs": [ ]
     } ],
     "signals": [ {
