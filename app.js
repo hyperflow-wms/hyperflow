@@ -19,27 +19,6 @@ var redis = require('redis'),
     rcl = redis.createClient();
 
 var server = http.createServer(app);
-
-// for couch
-var cradle = require('cradle');
-var host = 'http://beboj.iriscouch.com';
-var port = 5984;
-var credentials = {
-	username: 'balis',
-	password: 'ala123'
-};
-var local = false;
-var db;
-if (local === true) {
-	db = new(cradle.Connection)().database('hyperwf');
-}
-else {
-	db = new(cradle.Connection)(host, port, {
-		auth: credentials
-	}).database('hyperwf');
-}
-
-var executor = require('./executor_simple').init();
 var wflib = require('./wflib').init(rcl);
 var Engine = require('./engine');
 var engine = {}; // engine.i contains the engine object for workflow instance 'i'

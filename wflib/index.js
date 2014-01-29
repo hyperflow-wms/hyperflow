@@ -860,9 +860,9 @@ exports.init = function(redisClient) {
     //   result: true if 'count' instances of each signal 'sigId' are present in the queues
     //   sigValues (optional) format: [ [ spec[0] signal values ], [ spec[1] signal values ], ... ]
     //                       example: [ [ { name: 'filename',
-    //                                      uri: '/workflow/Wf_continuous_file_splitter/instances/1/data-1',
+    //                                      uri: '/apps/1/sigs/1',
     //                                      _id: '1',
-    //                                      _ts: 8 
+    //                                      _ts: 415334,
     //                                      data: [ { path: 'tmp1/asynctest.js' } ]
     //                                } ] ]
     //   
