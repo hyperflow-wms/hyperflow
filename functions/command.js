@@ -35,5 +35,16 @@ function command_print(ins, outs, config, cb) {
     cb(null, outs);
 }
 
+function command_notifyevents(ins, outs, config, cb) {
+    var exec = config.executor.executable,
+        args = config.executor.args;
+
+    console.log(exec, args);
+
+    cb(null, outs);
+}
+
+
 exports.command = command;
 exports.command_print = command_print;
+exports.command_notifyevents = command_notifyevents;

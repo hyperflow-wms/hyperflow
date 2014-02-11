@@ -20,6 +20,7 @@
     "uuid":"",
     "amqplib":"",
     "when":"",
+    "eventemitter2":"",
     "optimist":"0.6.0",
     "walkdir":"0.0.7",
     "path":"0.4.9",

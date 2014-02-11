@@ -15,7 +15,8 @@
 var fs = require('fs'),
     xml2js = require('xml2js'),
     fsm = require('./automata.js'),
-    async = require('async');
+    async = require('async'),
+    EventEmitter2 = require('eventemitter2').EventEmitter2;
 
 var TaskDataflowFSM = require('./taskDataflowFSM.js');
 var TaskForeachFSM = require('./taskForeachFSM.js');
@@ -58,6 +59,7 @@ fsm.registerFSM(TaskChoiceFSM);
 // - config.emulate (true/false) = should engine work in the emulation mode?
 var Engine = function(config, wflib, wfId, cb) {
     this.wflib = wflib;
+    this.eventServer = new EventEmitter2({wildcard:true});
     this.wfId = wfId;
     this.tasks = [];      // array of task FSMs
     this.ins = [];
