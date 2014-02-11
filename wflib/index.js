@@ -1287,7 +1287,7 @@ function public_invokeTaskFunction1(wfId, taskId, insIds_, outsIds_, emulate, cb
 /*
  * @insValues - array of input signal values as returned by fetchInputs
  */
-function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, emulate, cb) {
+function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, emulate, eventServer, cb) {
     function isArray(what) {
         return Object.prototype.toString.call(what) === '[object Array]';
     }
@@ -1361,6 +1361,9 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 //var executor = taskInfo.executor ? taskInfo.executor: null;
 
                 //onsole.log("INS VALUES", insValues);
+                if (eventServer !== 'undefined') {
+                    conf['eventserver'] = eventServer;
+                }
 
                 f(ins, outs, conf, function(err, outs) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 

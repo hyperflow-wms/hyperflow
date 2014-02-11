@@ -39,8 +39,12 @@ function command_notifyevents(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 
-    console.log(exec, args);
+//    console.log(exec, args);
 
+    var eventserver = config['eventserver'];
+    if(eventserver !== 'undefined') {
+        eventserver.emit("job.done", exec, args);
+    }
     cb(null, outs);
 }
 
