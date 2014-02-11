@@ -1,7 +1,7 @@
-var amqp  = require('amqp');
 var uuid  = require('uuid');
 var when  = require('when');
 var defer = when.defer;
+var amqplib = require('amqplib');
 var util  = require('util');
 
 var AMQP_URL  = process.env.AMQP_URL ? process.env.AMQP_URL : "amqp://localhost:5672";
@@ -9,7 +9,7 @@ var S3_BUCKET = process.env.S3_BUCKET;
 var S3_PATH   = process.env.S3_PATH;
 
 console.log("[AMQP] Starting connection!");
-var connection      = require('amqplib').connect(AMQP_URL);
+var connection      = amqplib.connect(AMQP_URL);
 var connectionReady = false;
 
 connection.then(function(conn) {
