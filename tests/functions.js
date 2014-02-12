@@ -16,7 +16,7 @@ exports.test_function_notifyevents_with_eventserver = function(test) {
         outs = [];
 
     this.config.eventserver = {
-        emit: function(type, arg1, arg2) {
+        emit: function() {
             notified = true;
         }
     };
