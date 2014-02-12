@@ -31,3 +31,16 @@ exports.test_function_notifyevents_with_eventserver = function(test) {
 
     test.done()
 }
+
+exports.test_function_notifyevents_without_eventserver = function(test) {
+    var ins = [],
+        outs = [];
+
+    var cb = function(exceptions, outs) {
+        test.equal(exceptions, null);
+    };
+
+    functions.command_notifyevents(ins, outs, this.config, cb);
+
+    test.done()
+}
