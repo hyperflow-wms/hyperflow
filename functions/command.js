@@ -40,10 +40,10 @@ function command_notifyevents(ins, outs, config, cb) {
         args = config.executor.args;
 
     var eventserver = config['eventserver'];
-    if(eventserver !== 'undefined') {
+    if(typeof eventserver !== 'undefined' && eventserver) {
         eventserver.emit("job.done", exec, args);
     } else {
-        console.log("log: " + exec, args);
+        console.log("loged: " + exec, args);
     }
     cb(null, outs);
 }
