@@ -8,6 +8,7 @@ var AMQP_URL  = process.env.AMQP_URL ? process.env.AMQP_URL : "amqp://localhost:
 var S3_BUCKET = process.env.S3_BUCKET;
 var S3_PATH   = process.env.S3_PATH;
 
+//TODO: initialize @ first use, or module.init()
 console.log("[AMQP] Starting connection!");
 var connection      = amqplib.connect(AMQP_URL);
 var connectionReady = false;
