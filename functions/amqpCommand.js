@@ -2,12 +2,10 @@ var uuid  = require('uuid');
 var when  = require('when');
 var defer = when.defer;
 var amqplib = require('amqplib');
-var util  = require('util');
 var executor_config = require('./amqpCommand.config.js');
 
 console.log("[AMQP] Starting connection!");
-var connection      = require('amqplib').connect(executor_config.amqp_url);
-var connectionReady = false;
+var connection      = amqplib.connect(executor_config.amqp_url);
 
 connection.then(function(conn) {
   connection.once('SIGINT', function() { connection.close(); });
