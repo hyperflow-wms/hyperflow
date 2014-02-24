@@ -25,7 +25,7 @@ function createEventServer() {
     var eventlog = {
         emit: eventServer.emit,
         on: eventServer.on
-    }
+    };
 // Here's how to subscribe to events:
     eventlog.on('trace.*', function (data) {
         console.log(arguments);
