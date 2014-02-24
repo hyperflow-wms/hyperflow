@@ -39,8 +39,10 @@ function createEventServer() {
 exports.createEventlog = createEventServer();
 
 // Example use of the event logger from another module:
-// eventlog = require('../eventlog').eventlog,
-// ...
+// eventlog = require('../eventlog').createEventLog
+//
+// //embedd eventlog in well known place, then call
+//
 // eventlog.emit('trace.invokingFunction', {"appId": wfId, "procId": procId });
 //
 // We should agree on a set of standard fields that allow one to "correlate" the event, such as:
