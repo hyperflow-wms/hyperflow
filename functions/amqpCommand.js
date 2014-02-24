@@ -2,16 +2,11 @@ var uuid  = require('uuid');
 var when  = require('when');
 var defer = when.defer;
 var amqplib = require('amqplib');
-var util  = require('util');
-
-var AMQP_URL  = process.env.AMQP_URL ? process.env.AMQP_URL : "amqp://localhost:5672";
-var S3_BUCKET = process.env.S3_BUCKET;
-var S3_PATH   = process.env.S3_PATH;
+var executor_config = require('./amqpCommand.config.js');
 
 //TODO: initialize @ first use, or module.init()
 console.log("[AMQP] Starting connection!");
-var connection      = amqplib.connect(AMQP_URL);
-var connectionReady = false;
+var connection      = amqplib.connect(executor_config.amqp_url);
 
 connection.then(function(conn) {
   connection.once('SIGINT', function() { connection.close(); });
@@ -25,10 +20,7 @@ function amqpCommand(ins, outs, config, cb) {
         "args": config.executor.args,
         "inputs": ins,
         "outputs": outs,
-        "options": {
-          "bucket": S3_BUCKET,
-          "prefix": S3_PATH,
-        }
+        "options": executor_config.options
       };
       var answer = defer();
       var corrId = uuid.v4();
