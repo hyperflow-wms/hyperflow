@@ -23,11 +23,11 @@ function createEventServer() {
 
 // this object is exported as the API of the event logger (hides implementation) is it really needed?
     var eventLog = {
-        emit: function (key, data) {
-            eventServer.emit(key, data)
+        emit: function () {
+            eventServer.emit.apply(eventServer, arguments)
         },
-        on: function (key, cb) {
-            eventServer.on(key, cb);
+        on: function () {
+            eventServer.on.apply(eventServer, arguments)
         }
     };
 
@@ -43,7 +43,7 @@ function createEventServer() {
 exports.createEventServer = createEventServer;
 
 // Example use of the event logger from another module:
-// eventlog = require('../eventlog').createEventLog
+// eventlog = require('../eventlog').createEventLog()
 //
 // //embedd eventlog in well known place, then call
 //
