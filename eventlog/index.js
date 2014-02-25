@@ -43,7 +43,7 @@ function createEventServer() {
 
 exports.createEventServer = createEventServer;
 
-// Example use of the event logger from another module:
+// Example use of the event logger:
 // eventlog = require('../eventlog').createEventLog()
 //
 // //embedd eventlog in well known place, then call
