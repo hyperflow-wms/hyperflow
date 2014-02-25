@@ -15,7 +15,12 @@ EventServer.prototype.emit = function (ev, data) {
 };
 
 EventServer.prototype.on = function (ev, listener) {
-    this.server.on(ev, listener);
+    var dump = function() {
+        console.log(arguments)
+//        listener.apply(arguments);
+    }
+//    this.server.on(ev, listener);
+    this.server.on(ev, dump);
 };
 
 function createEventServer() {
@@ -32,10 +37,10 @@ function createEventServer() {
     };
 
 // Here's how to subscribe to events:
-    eventLog.on('trace.*', function (data) {
-        console.log(arguments);
+    eventLog.on('trace.*', function (data, data2) {
+//        console.log(data);
         // "this.event" contains the full event name
-        console.log("EVENT:", this.event, JSON.stringify(data, null, 2));
+//        console.log("EVENT:", this.event, JSON.stringify(arguments, null, 2));
     });
     return eventLog;
 }

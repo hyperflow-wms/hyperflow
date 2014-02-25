@@ -39,9 +39,9 @@ function command_notifyevents(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 
-    var eventserver = config['eventserver'];
-    if(typeof eventserver !== 'undefined' && eventserver) {
-        eventserver.emit("job.done", exec, args);
+    var eventServer = config['eventServer'];
+    if(typeof eventServer !== 'undefined' && eventServer) {
+        eventServer.emit("trace.job", exec, args);
     } else {
         console.log("loged: " + exec, args);
     }

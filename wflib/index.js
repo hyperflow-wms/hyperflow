@@ -1362,7 +1362,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
                 //onsole.log("INS VALUES", insValues);
                 if (eventServer !== 'undefined') {
-                    conf['eventserver'] = eventServer;
+                    conf['eventServer'] = eventServer;
                 }
 
                 f(ins, outs, conf, function(err, outs) {

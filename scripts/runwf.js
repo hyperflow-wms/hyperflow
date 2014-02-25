@@ -45,9 +45,9 @@ if (argv.d) {
 var runWf = function(wfId) { 
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
         //This represent custom plugin listening on event from available eventServer
-        engine.eventServer.on('job.done', function(exec, args) {
-            console.log('Event captured: ' + exec + ' ' + args + ' job done');
-        });
+//        engine.eventServer.on('trace.*', function(exec, args) {
+//            console.log('Event captured: ' + exec + ' ' + args + ' job done');
+//        });
         engine.runInstance(function(err) {
             console.log("Wf id="+wfId);
             if (argv.s) {
