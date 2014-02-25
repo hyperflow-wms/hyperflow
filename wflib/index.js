@@ -45,10 +45,10 @@ exports.init = function(redisClient) {
             var wfname = filename.split('.')[0];
             rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
                 var start = (new Date()).getTime(), finish;
-                public_createInstance(JSON.parse(data), baseUrl, function(err, ret) {
+                public_createInstance(JSON.parse(data), baseUrl, function(err, wfId) {
                     finish = (new Date()).getTime();
                     console.log("createInstance time: "+(finish-start)+"ms");
-                    err ? cb(err): cb(null, ret);
+                    err ? cb(err): cb(null, wfId);
                 });
             });
         });
@@ -120,7 +120,7 @@ exports.init = function(redisClient) {
             var addSigInfo = function(sigId) {
                 var score = -1;
                 var sigObj = sigs[sigId-1];
-                sigObj.status = "not_ready";
+                sigObj.status = "not_ready"; // FIXME: remove (deprecated)
                 sigKey = wfKey+":data:"+sigId;
                 if (sigObj.control) { // this is a control signal
                     sigObj.type = "control";
@@ -129,7 +129,7 @@ exports.init = function(redisClient) {
                 } else {              // this is a data signal
                     score = 0;
                 }
-                sigObj.uri = baseUri + '/signals/' + sigId; 
+                sigObj.uri = baseUri + '/sigs/' + sigId; 
 
                 if (sigObj.schema && value(sigObj.schema).typeOf(Object)) { // this is an inline schema 
                     //onsole.log("INLINE SCHEMA", sigObj.schema);
@@ -146,15 +146,18 @@ exports.init = function(redisClient) {
                     delete sigObj.data; // don't store instances in signal info
                 }
 
+                // create a reverse index to look up sig Id by its name (assumes unique names!)
+                multi.hset(wfKey+":siglookup:name", sigObj.name, sigId, function(err, ret) { });
+
                 multi.hmset(sigKey, sigObj, function(err, ret) { });
 
-                // add this data id to the sorted set of all workflow signals
+                // add this signal id to the sorted set of all workflow signals
                 // score determines the type/status of the signal:
                 // 0: data signal/not ready, 1: data signal/ready, 2: control signal
                 multi.zadd(wfKey+":data", score, sigId, function(err, ret) { });
             }
 
-            // add workflow tasks
+            // add workflow processes
             var taskKey;
             for (var i=0; i<procs.length; ++i) {
                 var taskId = i+1, uri;
@@ -207,7 +210,7 @@ exports.init = function(redisClient) {
         }
 
         var processProc = function(task, wfname, baseUri, wfKey, taskKey, taskId, cb) {
-            // TODO: here there could be a validation of the task, e.g. Foreach task 
+            // TODO: here there could be a validation of the process, e.g. Foreach process 
             // should have the same number of ins and outs, etc.
             var multi=rcl.multi();
 
@@ -247,7 +250,7 @@ exports.init = function(redisClient) {
                 multi.sadd(wfKey+":tasktype:"+task.type, taskId);
             }
 
-            // add task inputs and outputs + data sources and sinks
+            // add process inputs and outputs + signals sources and sinks
             for (var i=0; i<task.ins.length; ++i) {
                 (function(inId, dataId) {
                     var dataKey = wfKey+":data:"+dataId;
@@ -852,6 +855,15 @@ exports.init = function(redisClient) {
             cb(err, sigInfo);
         });
     }
+
+    // returns sigId of signal with name 'sigName'
+    function getSigByName(wfId, sigName, cb) {
+        var wfKey = "wf:"+wfId;
+        rcl.hget(wfKey+":siglookup:name", sigName, function(err, sigId) { 
+            err ? cb(err): cb(null, sigId);
+        });
+    }
+
 
     // checks if given input signals are ready (in the queues), and returns their values
     // @spec format: [ [ sigId, count], [sigId, count], ... ]
@@ -1843,7 +1855,8 @@ return {
     fetchInputs: fetchInputs,
     getInitialSigs: getInitialSignals,
     sendSignalLua: sendSignalLua,
-    sendSignalSinks: sendSignalSinks
+    sendSignalSinks: sendSignalSinks,
+    getSigByName: getSigByName
 };
 
 };
