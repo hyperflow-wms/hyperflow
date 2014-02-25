@@ -9,18 +9,15 @@ var EventServer = function () {
     });
 };
 
-EventServer.prototype.emit = function (ev, data) {
-    data.time = new Date().toISOString(); // automatically add a timestamp to event data
-    this.server.emit(ev, data);
+EventServer.prototype.emit = function () {
+    var args = Array.prototype.slice.call(arguments);
+    args.splice(1, 0, new Date().toISOString());
+    this.server.emit.apply(this.server, args);
 };
 
 EventServer.prototype.on = function (ev, listener) {
-    var dump = function() {
-        console.log(arguments)
-//        listener.apply(arguments);
-    }
 //    this.server.on(ev, listener);
-    this.server.on(ev, dump);
+    this.server.on(ev, listener);
 };
 
 function createEventServer() {
@@ -37,10 +34,9 @@ function createEventServer() {
     };
 
 // Here's how to subscribe to events:
-    eventLog.on('trace.*', function (data, data2) {
-//        console.log(data);
+    eventLog.on('trace.*', function (data) {
         // "this.event" contains the full event name
-//        console.log("EVENT:", this.event, JSON.stringify(arguments, null, 2));
+        console.log("EVENT:", this.event, JSON.stringify(arguments, null, 2));
     });
     return eventLog;
 }
