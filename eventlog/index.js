@@ -23,16 +23,16 @@ function createEventServer() {
 
 // this object is exported as the API of the event logger (hides implementation) is it really needed?
     var eventLog = {
-        emit: function(key, data) {
+        emit: function (key, data) {
             eventServer.emit(key, data)
         },
-        on: function(key, cb) {
+        on: function (key, cb) {
             eventServer.on(key, cb);
         }
     };
 
 // Here's how to subscribe to events:
-    eventServer.on('trace.*', function (data) {
+    eventLog.on('trace.*', function (data) {
         console.log(arguments);
         // "this.event" contains the full event name
         console.log("EVENT:", this.event, JSON.stringify(data, null, 2));
