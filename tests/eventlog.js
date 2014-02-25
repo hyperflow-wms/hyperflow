@@ -2,7 +2,7 @@ var eventServer = require('../eventlog')
 
 exports.setUp = function(callback) {
     //get one instance of log server
-    this.logServer = eventServer.createEventlog();
+    this.eventServer = eventServer.createEventServer();
 
     callback();
 }
