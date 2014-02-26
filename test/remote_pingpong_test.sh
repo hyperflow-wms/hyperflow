@@ -22,7 +22,7 @@ fi
 # 2) POST {appfactory2} <Wf_RemotePong.json>   ==> create Ponger instance, returns URI {app2}.
 # 3) PUT {app1}/sigs/Ping/remotesinks <{app2}>  ==> connects signal "Ping" from app1 to app2.
 # 4) PUT {app2}/sigs/Pong/remotesinks <{app1}>  ==> connects signal "Pong" from app2 to app1.
-# 5) POST {app1} <signal data>   ==> sends initial signal to Ping to start the Ping-Pong.
+# 5) POST {app1} <signal data>   ==> sends the initial signal to Pinger to start the Ping-Pong.
 
 appfact1="http://localhost:$1/apps"
 appfact2="http://localhost:$2/apps"
