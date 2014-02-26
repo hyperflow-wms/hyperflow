@@ -14,15 +14,15 @@ fi
 
 uri="http://localhost:$1/apps"
 
-# POST {host}/apps - creates a workflow instance
+# 1) POST {host}/apps - creates a workflow instance
 # Body: valid workflow description in JSON
-# returns 201, Location: {appuri}
-# reads "location" from the HTTP header of the response
+# on success returns: 201, Location: {appuri}
+# "location" - wf instance URI extracted from the HTTP header 
 location=`curl -v -X POST -d @workflows/Wf_Rest_test.json $uri --header "Content-Type:application/json" 2>&1 | grep Location | cut -f 3 -d' '`
 
 appuri="http://localhost:$1"$location
 echo $appuri
 
-# POST {appuri} - sends a signal to a workflow
+# 2) POST {appuri} - sends a signal to a workflow
 # Body: valid signal data (JSON with mandatory "name")
 curl -X POST -d '{ "name": "counter1", "data": [0] }' $appuri --header "Content-Type:application/json"

@@ -130,16 +130,15 @@ function grepFile(ins, outs, config, cb) {
 }
 
 
-var cnt = 0;
+//var cnt = 0;
 function count(ins, outs, config, cb) {
-    //console.log(ins);
-    cnt++;
+    var cnt = ins[0].data[0];
     outs[0].data = [];
-    outs[0].data[0] = cnt;
+    outs[0].data[0] = cnt+1;
     if (cnt % 1000 == 0) { 
         console.log("count:", cnt)
     }
-    if (cnt == 10000)
+    if (cnt == 5000)
         process.exit();
     cb(null, outs);
 }

@@ -7,6 +7,8 @@ var fs = require('fs'),
     async = require('async'),
     ZSchema = require('z-schema'),
     value = require('value'),
+    request = require('request'),
+    Q = require('q'),
     //toobusy = require('toobusy'),
     rcl;
 
@@ -144,6 +146,13 @@ exports.init = function(redisClient) {
                     multi.hset(wfKey + ":initialsigs", sigId, JSON.stringify(sigObj), 
                             function(err, ret) { });
                     delete sigObj.data; // don't store instances in signal info
+                }
+
+                if (sigObj.remoteSinks) { // signal info contains URIs to remote sinks
+                    sigObj.remoteSinks.forEach(function(sink) {
+                        multi.sadd(sigKey+":remotesinks", sink.uri, function(err, ret) { });
+                    });
+                    sigObj.remoteSinks = true; // don't store remote sinks URIs in sig info, just a flag
                 }
 
                 // create a reverse index to look up sig Id by its name (assumes unique names!)
@@ -1454,7 +1463,31 @@ function sendSignalLua(wfId, sigValue, cb) {
         /*var delay = 0;
         if (toobusy()) { onsole.log("TOO BUSY !!!!!!!!!!!!!!!!!!!!!!!!!!"); delay = 40; }
         setTimeout(function() { cb(err, res); }, delay);*/
-	cb(err, res);
+        if (err) return cb(err);
+
+        if (sigValue.remoteSinks) {
+            rcl.smembers(sigKey+":remotesinks", function(err, remoteSinks) {
+                delete sigValue.remoteSinks;
+                async.each(remoteSinks, function(sinkUri, doneIterCb) {
+                    request.post({
+                        headers: {'content-type' : 'application/json'},
+                        url:     sinkUri,
+                        json:    sigValue
+                    }, function(error, response, body) {
+                        if (error) console.log("ERROR", error);
+                        doneIterCb();
+                        //console.log(error);
+                        //console.log(response);
+                        //console.log(body);
+                    });
+                    //onsole.log("REMOTE SINKS: ", ret);
+                }, function doneAll(err) {
+                    cb(err, res);
+                });
+            });
+        } else {
+            cb(err, res);
+        }
     });
 }
 
@@ -1493,7 +1526,6 @@ function public_sendSignal(wfId, sig, cb) {
 
     //////////////////////////////////////// SENDING THE SIGNAL: /////////////////////////////////////////
     // create a new instance of this signal (at hash = "wf:{id}:sigs:{sigId}", field = sig instance id) //
-    // (signal with a given id may be emitted multiple times within a workflow execution)               //
     // (hash is better than a list because of easier cleanup of old signals)                            //
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -1554,6 +1586,56 @@ function public_sendSignal(wfId, sig, cb) {
             err ? cb(err): cb(null, sinks);
         }
     );
+}
+
+function getSigRemoteSinks(wfId, sigId, cb) {
+    var rsKey = "wf:"+wfId+":data:"+sigId+":remotesinks";
+    rcl.smembers(rsKey, function(err, ret) {
+        cb(err, ret);
+    });
+}
+
+// sets remote sinks for a signal
+// @remoteSinks = array: [ { "uri": uri1 }, { "uri": uri2 }, ... ]
+// @options = object; possible values:
+//      { "replace": true }: if present, currently defined remote sinks will be replaced 
+//                           if not, new remote sinks will be added to existing ones
+function setSigRemoteSinks(wfId, sigId, remoteSinks, options, cb) {
+    var replace = options && options.replace == true,
+        wfKey = "wf:"+wfId;
+        sigKey = wfKey+":data:"+sigId,
+        rsKey = wfKey+":data:"+sigId+":remotesinks";
+
+    Q.fcall(function() {
+        if (replace) {
+            rcl.del(rsKey, function(err) {
+                if (err) throw(err);
+                return;
+            });
+        } else return;
+    })
+    .then(function() {
+        async.eachSeries(remoteSinks, function(sink, doneIterCb) {
+            rcl.sadd(rsKey, sink.uri, function(err, ret) { 
+                doneIterCb(err);
+            });
+        }, function doneAll(err) {
+            if (err) throw(err);
+            return;
+        });
+    })
+    .then(function() {
+        rcl.hset(sigKey, "remoteSinks", true, function(err, ret) {
+            if (err) throw(err);
+            return;
+        });
+    })
+    .catch(function(error) {
+        cb(error);
+    })
+    .done(function() {
+        cb(null);
+    });
 }
 
 // Part of NEW API for continuous processes with FIFO queues
@@ -1856,7 +1938,9 @@ return {
     getInitialSigs: getInitialSignals,
     sendSignalLua: sendSignalLua,
     sendSignalSinks: sendSignalSinks,
-    getSigByName: getSigByName
+    getSigByName: getSigByName,
+    getSigRemoteSinks: getSigRemoteSinks,
+    setSigRemoteSinks: setSigRemoteSinks
 };
 
 };

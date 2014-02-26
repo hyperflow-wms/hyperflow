@@ -24,7 +24,7 @@ var server = http.createServer(app);
 var wflib = require('./wflib').init(rcl);
 var Engine = require('./engine');
 var engine = {}; // engine.i contains the engine object for workflow instance 'i'
-var urlReq = require('./req_url');
+var request = require('request');
 
 var timers = require('timers');
 
@@ -85,7 +85,7 @@ app.get('/apps', function(req, res) {
     });
 });
 
-// creates a new workflow instance (app)
+// creates a new workflow instance ('app')
 // body must be a valid workflow description in JSON
 app.post('/apps', function(req, res) {
     var wfJson = req.body;
@@ -109,7 +109,7 @@ app.post('/apps', function(req, res) {
     });
 });
 
-// returns workflow instance (app) info
+// returns workflow instance ('app') info
 app.get('/apps/:i', function(req, res) {
     var renderHTML = function() {
         var ctype = acceptsXml(req);
@@ -149,17 +149,17 @@ app.post('/apps/:i', function(req, res) {
     } else if (ctype == "application/x-www-form-urlencoded") {
         sigValue = req.body;
     }
-    console.log(ctype);
-    console.log(sigValue);
-    console.log(sigValue.name);
-    console.log(req.headers);
+    //onsole.log(ctype);
+    //onsole.log(sigValue);
+    //onsole.log(sigValue.name);
+    //onsole.log(req.headers);
     if (!("name" in sigValue)) return badrequest(res);
 
     var sigName = sigValue.name;
     wflib.getSigByName(appId, sigName, function(err, sigId) {
         if (err) return badrequest(res); // FIXME: add detailed error info
         sigValue._id = sigId;
-        console.log(sigValue);
+        //onsole.log(sigValue);
         engine[appId].emitSignals([ sigValue ], function(err) {
             if (err) return badrequest(res); // FIXME: add detailed error info
             res.header('content-type', 'text/plain');
@@ -240,6 +240,52 @@ app.get('/apps/:i/sigs/:j', function(req, res) {
 	    });
 	}
     });
+});
+
+
+// returns a list of remote sinks of a signal
+app.get('/apps/:i/sigs/:name/remotesinks', function(req, res) {
+    var appId = req.params.i;
+    var sigName = req.params.name;
+    var remoteSinks = req.body;
+
+    var renderHTML = function(rsinks) {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.send(200, JSON.stringify(rsinks));
+    }
+    var renderJSON = function(rsinks) {
+        res.send(200, "TODO");
+        // TODO
+    }
+
+    wflib.getSigByName(appId, sigName, function(err, sigId) {
+        wflib.getSigRemoteSinks(appId, sigId, function(err, rsinks) {
+            renderHTML(rsinks);
+            /*res.format({
+                'text/html': renderHTML(rsinks),
+                'application/json': renderJSON(rsinks)
+            });*/
+        });
+    });
+});
+
+
+// sets remote sinks for a given signal
+// body: JSON array of objects: [ { "uri": uri1 }, { "uri": uri2 }, ... ]
+app.put('/apps/:i/sigs/:name/remotesinks', function(req, res) {
+    var appId = req.params.i;
+    var sigName = req.params.name;
+    var remoteSinks = req.body;
+
+    wflib.getSigByName(appId, sigName, function(err, sigId) {
+        if (err) return badrequest(res);
+        wflib.setSigRemoteSinks(appId, sigId, remoteSinks, { "replace": true }, function(err) {
+            if (err) return badrequest(res);
+            res.send(200, "Remote sinks set succesfully");
+        });
+    });
+
 });
 
 
@@ -372,11 +418,11 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
                     spec[id] = { "value": req.body[i] }
                     dataIds.push(id);
                 }
-                //console.log(spec);
+                //onsole.log(spec);
             }
             if (Object.keys(spec).length) { // not empty
                 wflib.setDataState(wfId, spec, function(err, rep) {
-                    //console.log(spec);
+                    //onsole.log(spec);
                     engine[wfId].markDataReady(dataIds, function(err) {
                         res.redirect(req.url, 302); 
                     });
