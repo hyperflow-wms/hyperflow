@@ -21,7 +21,7 @@ function fireInput(obj) {
         sigId = msg.sigId,
         sig = msg.sig;
 
-    //console.log("FIRE INPUT Proc", proc.procId);
+    //onsole.log("FIRE INPUT Proc", proc.procId);
 
     if (sigId == proc.ctrIns.done) { // "done" signal has arrived
         proc.done = true;
@@ -154,7 +154,7 @@ var ProcLogic = function() {
         var sigs = proc.firingSigs;
         proc.wflib.fetchInputs(proc.appId, proc.procId, sigs, true, function(arrived, sigValues) {
             if (arrived) {
-                //console.log("FETCHED", sigs, proc.procId);
+                //onsole.log("FETCHED", sigs, proc.procId);
                 if (sigs[sigs.length-1][0] == proc.ctrIns.next) {
                     sigValues.pop(); // remove 'next' signal (should not be passed to the function)
                 }
@@ -186,17 +186,17 @@ var ProcLogic = function() {
         var asyncInvocation = false;
         var funcIns = [], funcOuts = [];
 
-        //console.log(proc);
+        //onsole.log(proc);
         // create arrays of data ins and outs ids
         for (var i=0; i<proc.firingSigs.length; ++i) {
             var sigId = proc.firingSigs[i][0];
-            if (!(sigId in proc.ctrIns))  {
+            if (!(sigId in proc.fullInfo.cinset)) { 
                 funcIns.push(proc.sigId);
             }
         }
         for (var i=0; i<proc.outs.length; ++i) {
             outId = proc.outs[i];
-            if (!(outId in proc.ctrOuts)) {
+            if (!(outId in proc.fullInfo.coutset)) { 
                 funcOuts.push(outId);
             }
         }

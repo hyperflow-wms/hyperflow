@@ -34,14 +34,13 @@ var DataflowLogic = function() {
         // set firing sigs
         for (var i in this.ins) {
             var sigId = this.ins[i];
-            if (!(sigId in this.ctrIns)) {
+            if (!this.fullInfo.cinset[sigId]) {
                 this.firingSigs.push([sigId, 1]);
             }
         }
         if ("next" in this.ctrIns) {
             this.firingSigs.push([this.ctrIns.next,1]);
         }
-        //console.log(JSON.stringify(this.firingSigs));
     }
 
 

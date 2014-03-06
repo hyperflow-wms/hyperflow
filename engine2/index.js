@@ -227,7 +227,8 @@ Engine.prototype.emitSignals = function(sigs, cb) {
                         engine.tasks[sinks[j]].fireCustomEvent({
                             wfId: engine.wfId, 
                             taskId: sinks[j], 
-                            sigId: _sigId
+                            sigId: _sigId,
+                            sig: s
                         });
                         //onsole.log("sending signal", _sigId, "to task", sinks[j]);
                     }

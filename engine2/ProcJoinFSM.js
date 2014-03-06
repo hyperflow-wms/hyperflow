@@ -6,12 +6,14 @@
  ** determine its behavior:
  ** - Nb (activeBranchesCount): how many branches are active?
  ** - Nj (joinCount): how many branches should we wait for before firing the process?
+ ** where
+ ** Nj <= Nb <= N (total number of branches / input signals)
  **
  ** The process will:
  ** - fire after 'Nj' signals have arrived
  ** - "reset" after 'Nb' signals have arrived (only then it will be ready for next firing).
  ** 
- ** This process type allows to implement the following workflow patterns
+ ** This process type allows one to implement the following workflow patterns
  ** (see http://www.workflowpatterns.com/patterns/control): 
  ** - Structured discriminator
  ** - Blocking discriminator (?)
@@ -20,16 +22,19 @@
  ** - Local synchronizing merge
  **
  ** Inputs:
- ** - ...
+ ** - One or more data signals
+ ** - Optional 'merge' control signal (emitted by the 'choice' process, so that 'join' can
+ **   merge branches activated by 'choice')
+ ** - Optional 'done' and 'next' control signals
  ** Outputs:
- ** - ...
+ ** - Zero or more data outputs
+ ** - Optional 'done' and 'next' control signals
  ** Function:
  ** - The function is passed only Nj signals (ones that arrived first). Consequently, 
  **   the signals should be recognized by name, not by index, as it is not known which 
  **   Nj (out of Nb) signals actually caused the firing.
  **
  */
-
 var async = require('async'),
     ProcLogic = require('./process.js').ProcLogic,
     fireInput = require('./process.js').fireInput,
@@ -38,16 +43,30 @@ var async = require('async'),
 function JoinLogic() {
     ProcLogic.call(this);
 
+    // firingSigsH[0] and paramsH[0] store, respectively, signal ids and Nb/Nj params to be used 
+    // in the next firing. firingSigsH[i] / paramsH[i] store the same for the i-th firing from "now". 
+    // paramsH is used only when there is a 'merge' control input signal. 
+    // The algorithm is quite convoluted; the problem is to compute which signals should be
+    // fired and which discarded in each firing. 
+    // For example, given Nb=2, Nj=1, and the following order of signals ("1"=branch 1, "2"=branch 2): 
+    // [2,2,2,1,1,1,1,2], the process will fire four times as follows (fired/discarded): 
+    // - 2/1
+    // - 2/1
+    // - 2/1
+    // - 1/2
+    // With 'merge' signal, Nb/Nj additionally changes for each firing.
     this.firingSigsH = [];
+    this.paramsH = [];
+
     this.canReset = false;
 
     this.init2 = function(session) {
+        // when there is a 'merge' input signal, Nb/Nj are actually computed based on the signal data
         // Nj: how many branches must arrive before firing? 
         this.Nj = this.fullInfo.joinCount ? this.fullInfo.joinCount: this.nDataIns;
-
         // Nb: how many branches must arrive before resetting the process? 
         this.Nb = this.fullInfo.activeBranchesCount ? this.fullInfo.activeBranchesCount: this.nDataIns;
-
+        
         this.ready = true;
 
         session.sessionListener[0].customEvent = fireInputJoin;
@@ -128,15 +147,23 @@ function JoinLogic() {
             return;
         } 
 
+        // prevent computation of Nb0/Nj0 after reset, when there are 
+        // no more 'merge' signals waiting (paramsH is empty!).
+        if (proc.ctrIns.merge && !proc.paramsH.length)
+            return;
+
+        var Nb0 = proc.ctrIns.merge ? proc.paramsH[0].Nb: proc.Nb,
+            Nj0 = proc.ctrIns.merge ? proc.paramsH[0].Nj: proc.Nj;
+
         if (proc.ready) {
             //onsole.log("TRY TRANSITION", proc.firingSigsH);
-            if (proc.firingSigsH[0] && proc.firingSigsH[0].length == proc.Nb) {
+            if (proc.firingSigsH[0] && proc.firingSigsH[0].length == Nb0) {
                 proc.canReset = true;
             }
-            if (proc.firingSigsH[0] && proc.firingSigsH[0].length >= proc.Nj) {
+            if (proc.firingSigsH[0] && proc.firingSigsH[0].length >= Nj0) {
                 proc.ready = false;
                 proc.firingSigs = [];
-                for (var i=0; i<proc.Nj; ++i) {
+                for (var i=0; i<Nj0; ++i) {
                     var sigId = proc.firingSigsH[0][i]; 
                     proc.firingSigs.push([sigId, 1]);
                 }
@@ -154,20 +181,39 @@ function JoinLogic() {
 
     this.resetProc = function(cb) {
         var proc = this;
+        var sigs = [];
+
         proc.canReset = false;
         var reset = function() {
             proc.ready = true;
             proc.firingSigsH.shift();
+            if (proc.ctrIns.merge) {
+                console.log("RESET Nb="+proc.paramsH[0].Nb+", Nj="+proc.paramsH[0].Nj);
+                proc.paramsH.shift();
+            }
             cb();
         }
-        if (proc.Nb > proc.Nj) {
-            var sigs = proc.firingSigsH[0].slice(proc.Nj);
-            for (var i in sigs) {
+
+        var Nb0 = proc.ctrIns.merge ? proc.paramsH[0].Nb: proc.Nb,
+            Nj0 = proc.ctrIns.merge ? proc.paramsH[0].Nj: proc.Nj;
+
+        if (Nb0 > Nj0) { // remove discarded signals (if any)
+            var sigs = proc.firingSigsH[0].slice(Nj0);
+            for (var i in sigs) { 
                 proc.dataIns[sigs[i]]--;
                 sigs[i] = [ sigs[i], 1 ];
             }
+        }
+        if (proc.ctrIns.merge) { // also remove the 'merge' signal if exists
+            sigs.push([proc.ctrIns.merge, 1]);
+        }
+        if (sigs.length) {
             proc.wflib.fetchInputs(proc.appId, proc.procId, sigs, true, function(arrived, sigValues) {
                 if (arrived) {
+                    // TODO(?): additional signals ("between" Nj and Nb) are simply discarded;
+                    // is this the right semantics? Or should the function be called again,
+                    // but without emitting output signals? Or should we allow to define
+                    // "function2" (optionally) to be called for the additional signals?
                 } else {
                     console.error("Join: should not happen!"); // FIXME: throw error
                 }
@@ -211,7 +257,7 @@ var ProcJoinFSM = {
 	    from        : "ready",
 	    to          : "running"
 	}, { 
-	    event       : "RuRe", // after firing, when 'Nj' == 'Nb'
+	    event       : "RuRe", 
 	    from        : "running",
 	    to          : "ready"
 	}, { 
@@ -235,8 +281,11 @@ function fireInputJoin(obj) {
         sigId = msg.sigId,
         sig = msg.sig;
 
+    //onsole.log("RECV SIG", sig.name);
     if (sigId == proc.ctrIns.done) { // "done" signal has arrived
         proc.done = true;
+    } else if (proc.ctrIns.merge && sigId == proc.ctrIns.merge)  { // there is a 'merge' input port
+        proc.paramsH.push({ "Nj": sig.data[0].Nj, "Nb": sig.data[0].Nb});
     } else {
         if (!proc.dataIns[sigId]) {
             proc.dataIns[sigId] = 1;
@@ -244,9 +293,16 @@ function fireInputJoin(obj) {
         } else {
             proc.dataIns[sigId] += 1;
         }
+
+        var Nb, Nj;
+
+        // algorithm which places a new sig in the appropriate "set" and determines
+        // whether the signal will be fired or discarded, and in which firing
         var qsigs = function(idx) {
+            Nb = proc.ctrIns.merge ? proc.paramsH[idx].Nb: proc.Nb;
+            Nj = proc.ctrIns.merge ? proc.paramsH[idx].Nj: proc.Nj;
             if (proc.firingSigsH[idx]) {
-                if ((proc.firingSigsH[idx].length >= proc.Nb) || 
+                if ((proc.firingSigsH[idx].length >= Nb) || 
                     (proc.firingSigsH[idx].indexOf(sigId) != -1))  {
                     return qsigs(idx+1);
                 }
@@ -254,12 +310,13 @@ function fireInputJoin(obj) {
             } else {
                 proc.firingSigsH[idx] = [ sigId ];
             }
-     
+            //onsole.log("QSIG", idx, proc.firingSigsH);
         }
-        var idx = Math.floor(proc.dataIns[sigId]-1 / proc.Nj);
+        var idx = Math.floor(proc.dataIns[sigId]-1);
         qsigs(idx);
 
-        if (proc.firingSigsH[0] && proc.firingSigsH[0].length == proc.Nb) {
+        var Nb0 = proc.ctrIns.merge ? proc.paramsH[0].Nb: proc.Nb;
+        if (proc.firingSigsH[0] && proc.firingSigsH[0].length == Nb0) {
             proc.canReset = true;
         }
 
