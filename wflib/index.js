@@ -226,8 +226,8 @@ exports.init = function(redisClient) {
                     }
                 }
                 copy.fun = task.function ? task.function: "null"; // FIXME: unify this attr name
-                if (!copy.config)
-                    copy.config = "null";
+                /*if (!copy.config)
+                    copy.config = "null";*/
                 copy.status = "waiting";
                 return copy;
             }
@@ -1357,7 +1357,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
                 //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
-                var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
+                var conf = taskInfo.config ? JSON.parse(taskInfo.config): {}; 
                 //var executor = taskInfo.executor ? taskInfo.executor: null;
 
                 //onsole.log("INS VALUES", insValues);
