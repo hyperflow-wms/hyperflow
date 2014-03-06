@@ -298,8 +298,6 @@ function extend(subc, superc) {
         superc.prototype.constructor = superc;
     }
 
-    // los metodos de superc, que no esten en esta clase, crear un metodo que
-    // llama al metodo de superc.
     for ( method in subcp ) {
         if (subcp.hasOwnProperty(method)) {
             subc.prototype[method] = subcp[method];
