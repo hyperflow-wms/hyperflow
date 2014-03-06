@@ -1,0 +1,65 @@
+{
+    "name": "Wf_join_test",
+    "functions": [ {
+        "name": "chooseEvenOdd",
+        "module": "functions"
+    }, {
+        "name": "print",
+        "module": "functions"
+    }, {
+        "name": "echo",
+        "module": "functions"
+    } ],
+    "processes": [ {
+        "name": "Choice",
+	"type": "choice",
+        "function": "chooseEvenOdd",
+	"parlevel": 0,
+        "ins": [ "num" ],
+        "outs": [ "OutEven", "OutOdd" ]
+    }, {
+        "name": "SumEven",
+	"type": "dataflow",
+        "function": "echo",
+	"parlevel": 0,
+        "ins": [ "OutEven"  ],
+        "outs": [ "ResultEven" ]
+    }, {
+        "name": "SumOdd",
+	"type": "dataflow",
+        "function": "echo",
+	"parlevel": 0,
+        "ins": [ "OutOdd" ],
+        "outs": [ "ResultOdd" ]
+    }, {
+        "name": "Join",
+	"type": "join",
+        "function": "print",
+        "joinCount": 1,
+        "activeBranchesCount": 2,
+        "ins": [ "ResultEven", "ResultOdd" ],
+        "outs": [ ]
+    } ],
+    "signals": [ {
+        "name": "num",
+        "data": [ { "value": "1" },
+	          { "value": "2" },
+	          { "value": "1" },
+	          { "value": "2" },
+	          { "value": "1" },
+	          { "value": "2" },
+	          { "value": "2" },
+	          { "value": "1" }
+		]
+    }, {
+        "name": "OutEven"
+    }, {
+        "name": "OutOdd"
+    }, {
+        "name": "ResultEven"
+    }, {
+        "name": "ResultOdd"
+    } ],
+    "ins": [ "num" ],
+    "outs": [ ]
+}
