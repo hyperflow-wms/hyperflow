@@ -36,8 +36,8 @@
 	"type": "join",
         "function": "print",
         "joinCount": 1,
-        "activeBranchesCount": 2,
-        "ins": [ "ResultEven", "ResultOdd" ],
+        "activeBranchesCount": 1,
+        "ins": [ "ResultEven", "ResultOdd", "mergeControl" ],
         "outs": [ ]
     } ],
     "signals": [ {
@@ -48,8 +48,10 @@
 	          { "value": "2" },
 	          { "value": "1" },
 	          { "value": "2" },
+	          { "value": "1" },
 	          { "value": "2" },
-	          { "value": "1" }
+	          { "value": "1" },
+	          { "value": "2" } 
 		]
     }, {
         "name": "OutEven"
@@ -59,6 +61,16 @@
         "name": "ResultEven"
     }, {
         "name": "ResultOdd"
+    }, {
+        "name": "mergeControl",
+        "control": "merge",
+        "data": [ {"Nb": 2, "Nj": 2},
+                  {"Nb": 1, "Nj": 1},
+                  {"Nb": 2, "Nj": 1},
+                  {"Nb": 2, "Nj": 2},
+                  {"Nb": 2, "Nj": 1},
+                  {"Nb": 1, "Nj": 1}
+                ]
     } ],
     "ins": [ "num" ],
     "outs": [ ]
