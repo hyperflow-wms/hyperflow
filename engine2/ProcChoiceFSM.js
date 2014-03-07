@@ -30,7 +30,6 @@ var ChoiceLogic = function() {
     ProcLogic.call(this);
 
     this.init2 = function() {
-        console.log("MISTERSON");
         // set firing sigs
         for (var i in this.ins) {
             var sigId = this.ins[i];
@@ -131,6 +130,14 @@ var ChoiceLogic = function() {
                 outValues.push(outs[i]);
 
             }
+        }
+        // if there exists "merge" output, emit the 'merge' control signal first. 
+        // see 'join' process for explanation
+        if (proc.ctrOuts.merge) {
+            var Nj = outValues.length, Nb = Nj; 
+            proc.engine.emitSignals([{"_id": proc.ctrOuts.merge, "data": [{"Nb": Nb, "Nj": Nj}]}],
+                    function(err) { });
+            //onsole.log("CHOICE EMIT MERGE", proc.ctrOuts.merge);
         }
         if (proc.ctrOuts.next) { // emit "next" signal if there is such an output port
             outValues.push({"_id": proc.ctrOuts.next });
