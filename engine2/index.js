@@ -129,30 +129,6 @@ Engine.prototype.runInstanceSync = function(callback) {
 }
 
 
-// Marks data elements as 'ready' and notify their sinks
-// dataIds - single data Id or an array of dataIds
-// FIXME: check what happens if data is marked more than once
-// quasi-deprecated (should refactor remaining places which still us this old API)
-// now fireSignals should be used
-Engine.prototype.markDataReady = function(dataIds, cb) {
-    function isArray(what) {
-        return Object.prototype.toString.call(what) === '[object Array]';
-    }
-
-    var Ids = [];
-    isArray(dataIds) ? Ids = dataIds: Ids.push(dataIds);
-    //var start = (new Date()).getTime(), finish;
-    (function(engine) {
-        Ids.forEach(function(dataId) {
-            markDataReadyAndNotifySinks(engine.wfId, dataId, engine.tasks, engine.wflib, function() {
-                //finish = (new Date()).getTime();
-                //onsole.log("markDataReady exec time: "+(finish-start));
-            });
-        });
-    })(this);
-    cb(null);
-}
-
 Engine.prototype.taskFinished = function(taskId) {
     this.trace += taskId;
     this.nTasksLeft--;
@@ -172,8 +148,7 @@ Engine.prototype.workflowFinished = function() {
     }
 }
 
-// NEW API for sending signals for continuous processes with FIFO queues
-// WILL DEPRECATE fireSignals
+// Function used by processes to emit signals
 // @sigs (array): ids of signals (data and control ones) to be emitted
 //                format: [ { attr: value, 
 //                            ... 
@@ -244,98 +219,4 @@ Engine.prototype.emitSignals = function(sigs, cb) {
     });
 }
 
-
-// Fires a set of signals notifying all tasks which are their sinks.
-// For data signals also updates their state (e.g. marks data elements as ready)
-// @sigs (array): ids of signals (data and control ones) to be fired
-//                format: [ { attr: value, 
-//                            ... 
-//                            "id": sigId
-//                           },
-//                           { attr: value,
-//                                ...
-//                            "id": sigId
-//                           }
-//                        ]
-// FIXME: protect against firing signals more than once (currently some task 
-// implementations will break in such a case). 
-// Will be DEPRECATED by emitSignals
-Engine.prototype.fireSignals = function(sigs, cb) {
-	var spec = {}, ids = [];
-	for (var i in sigs) { 
-		var sigId = sigs[i].id;
-		ids.push(sigId);
-		if (sigs[i].type  == "control") { // this is a control signal
-			spec[sigId] = {}; // TODO: should we also mark this signal as ready?
-		} else { // this is a data signal
-			spec[sigId] = sigs[i]; // copy all attributes...
-			delete spec[sigId].id; // ... except 'id'
-			spec[sigId].status = "ready"; // mark data element as "ready" (produced)
-			if (this.wfOuts.indexOf(sigId) != -1) { // a workflow output has been produced
-				this.nWfOutsLeft--;
-			}
-		}
-	}
-
-	// notify sinks of all fired signals
-	(function(engine) {
-		//onsole.log(spec);
-		engine.wflib.setDataState(engine.wfId, spec, function(err, reps) {
-			//onsole.log("Will notify: "+JSON.stringify(sigs));
-			async.each(ids, function iterator(sigId, doneIter) {
-				notifySinks(engine.wfId, sigId, engine.tasks, engine.wflib, function() { 
-					doneIter(null);
-				});
-			}, function doneAll(err) {
-				if (cb) { cb(err); }
-			});
-		});
-	})(this);
-}
-
 module.exports = Engine;
-
-    //////////////////////////////////////////////////////////////////////////
-    ///////////////////////// private functions //////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-    
-function notifySinks(wfId, sigId, taskFSMs, wflib, cb) {
-    wflib.getDataSinks(wfId, sigId, true, function(err, sinks) {
-        //onsole.log(sigId, sinks);
-        if (err) { throw(err); }
-        for (var j=0; j<sinks.length; j+=2) {
-            // send event that an input is ready
-            taskFSMs[sinks[j]].fireCustomEvent({
-                wfId: wfId, 
-                taskId: sinks[j], 
-                inId: sinks[j+1] 
-            });
-            console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
-        }
-        cb(null);
-    });
-}
-
-
-// quasi-deprecated (only used by the engine when emulating the execution to fire wf ins)
-// TODO: refactor engine to use fireSignals instead
-function markDataReadyAndNotifySinks(wfId, dataId, taskFSMs, wflib, cb) {
-	var obj = {};
-	obj[dataId] = { "status": "ready" };
-	wflib.setDataState(wfId, obj, function(err, rep) {
-		if (err) { throw(err); }
-		wflib.getDataSinks(wfId, dataId, true, function(err, sinks) {
-			if (err) { throw(err); }
-			for (var j=0; j<sinks.length; j+=2) {
-				// send event that an input is ready
-				taskFSMs[sinks[j]].fireCustomEvent({
-					wfId: wfId, 
-					taskId: sinks[j], 
-					inId: sinks[j+1] 
-				});
-				console.log("sending to task "+sinks[j]+", port "+sinks[j+1]);
-			}
-			if (cb) { cb(); } 
-		});
-	});
-}
