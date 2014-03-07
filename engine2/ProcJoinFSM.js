@@ -281,10 +281,11 @@ function fireInputJoin(obj) {
         sigId = msg.sigId,
         sig = msg.sig;
 
-    //onsole.log("RECV SIG", sig.name);
+    console.log("RECV SIG", sig.name, proc.ctrIns.merge);
     if (sigId == proc.ctrIns.done) { // "done" signal has arrived
         proc.done = true;
     } else if (proc.ctrIns.merge && sigId == proc.ctrIns.merge)  { // there is a 'merge' input port
+        //onsole.log("JOIN RECV MERGE");
         proc.paramsH.push({ "Nj": sig.data[0].Nj, "Nb": sig.data[0].Nb});
     } else {
         if (!proc.dataIns[sigId]) {
@@ -299,6 +300,7 @@ function fireInputJoin(obj) {
         // algorithm which places a new sig in the appropriate "set" and determines
         // whether the signal will be fired or discarded, and in which firing
         var qsigs = function(idx) {
+            //console.log("QSIG", idx, proc.firingSigsH);
             Nb = proc.ctrIns.merge ? proc.paramsH[idx].Nb: proc.Nb;
             Nj = proc.ctrIns.merge ? proc.paramsH[idx].Nj: proc.Nj;
             if (proc.firingSigsH[idx]) {
@@ -310,9 +312,8 @@ function fireInputJoin(obj) {
             } else {
                 proc.firingSigsH[idx] = [ sigId ];
             }
-            //onsole.log("QSIG", idx, proc.firingSigsH);
         }
-        var idx = Math.floor(proc.dataIns[sigId]-1);
+        var idx = proc.dataIns[sigId]-1;
         qsigs(idx);
 
         var Nb0 = proc.ctrIns.merge ? proc.paramsH[0].Nb: proc.Nb;
