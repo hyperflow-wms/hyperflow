@@ -17,11 +17,11 @@ fi
 # {app1}        http://localhost:{port1}/apps/{appId1}
 # {app2}        http://localhost:{port2}/apps/{appId2}
 
-# REST-based protocol is as follows (<...> denotes the content of message body):
+# REST-based protocol is as follows ('<...>' denotes the content of a message body):
 # 1) POST {appfactory1} <Wf_RemotePing.json>   ==> create Pinger instance, returns URI {app1}.
 # 2) POST {appfactory2} <Wf_RemotePong.json>   ==> create Ponger instance, returns URI {app2}.
-# 3) PUT {app1}/sigs/Ping/remotesinks <{app2}>  ==> connects signal "Ping" from app1 to app2.
-# 4) PUT {app2}/sigs/Pong/remotesinks <{app1}>  ==> connects signal "Pong" from app2 to app1.
+# 3) PUT {app1}/sigs/Pong/remotesinks <{app2}>  ==> connects signal "Pong" from app1 to app2.
+# 4) PUT {app2}/sigs/Ping/remotesinks <{app1}>  ==> connects signal "Ping" from app2 to app1.
 # 5) POST {app1} <signal data>   ==> sends the initial signal to Pinger to start the Ping-Pong.
 
 appfact1="http://localhost:$1/apps"
