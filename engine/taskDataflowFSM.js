@@ -296,7 +296,8 @@ function TaskLogic() {
                             task.id, 
                             funcIns, 
                             task.sigValues, 
-                            funcOuts, emul, 
+                            funcOuts, emul,
+                            task.engine.eventServer,
                             function(err, outs) {
                                 err ? cb(err): cb(null, outs, returned2Ready);
                             }
