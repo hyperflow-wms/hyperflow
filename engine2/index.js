@@ -20,7 +20,7 @@ var fs = require('fs'),
 var ProcDataflowFSM = require('./ProcDataflowFSM.js');
 var ProcChoiceFSM = require('./ProcChoiceFSM.js');
 var ProcForeachFSM = require('./ProcForeachFSM.js');
-var ProcJoinFSM = require('./procJoinFSM.js');
+var ProcJoinFSM = require('./ProcJoinFSM.js');
 var ProcSplitterFSM = require('./ProcSplitterFSM.js');
 
 

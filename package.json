@@ -33,6 +33,8 @@
     "file": "0.2.x",
     "value": "0.3.0",
     "form-data": "",
-    "nodeunit": ""
+    "nodeunit": "",
+    "request": "",
+    "q": ""
    }
 }
