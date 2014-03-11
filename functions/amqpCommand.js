@@ -4,6 +4,7 @@ var defer = when.defer;
 var amqplib = require('amqplib');
 var executor_config = require('./amqpCommand.config.js');
 
+//TODO: initialize @ first use, or module.init()
 console.log("[AMQP] Starting connection!");
 var connection      = amqplib.connect(executor_config.amqp_url);
 

@@ -15,12 +15,14 @@
 var fs = require('fs'),
     xml2js = require('xml2js'),
     fsm = require('./automata.js'),
-    async = require('async');
+    async = require('async'),
+    eventServerFactory = require('../eventlog');
+
 
 var ProcDataflowFSM = require('./ProcDataflowFSM.js');
 var ProcChoiceFSM = require('./ProcChoiceFSM.js');
 var ProcForeachFSM = require('./ProcForeachFSM.js');
-var ProcJoinFSM = require('./procJoinFSM.js');
+var ProcJoinFSM = require('./ProcJoinFSM.js');
 var ProcSplitterFSM = require('./ProcSplitterFSM.js');
 
 
@@ -37,6 +39,7 @@ fsm.registerFSM(ProcSplitterFSM);
 // - config.emulate (true/false) = should engine work in the emulation mode?
 var Engine = function(config, wflib, wfId, cb) {
     this.wflib = wflib;
+    this.eventServer = eventServerFactory.createEventServer();
     this.wfId = wfId;
     this.tasks = [];      // array of task FSMs
     this.ins = [];

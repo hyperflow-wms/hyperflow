@@ -234,11 +234,12 @@ var ProcLogic = function() {
             */
 
         proc.wflib.invokeTaskFunction2(
-                proc.appId, 
-                proc.procId, 
-                funcIns, 
-                proc.sigValues, 
-                funcOuts, emul, 
+                proc.appId,
+                proc.procId,
+                funcIns,
+                proc.sigValues,
+                funcOuts, emul,
+                proc.engine.eventServer,
                 function(err, outs) {
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }

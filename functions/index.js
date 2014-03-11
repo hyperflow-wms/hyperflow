@@ -178,6 +178,7 @@ exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
 exports.exit = exit;
 exports.command_print = cmd.command_print;
+exports.command_notifyevents = cmd.command_notifyevents;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;

@@ -35,5 +35,20 @@ function command_print(ins, outs, config, cb) {
     cb(null, outs);
 }
 
+function command_notifyevents(ins, outs, config, cb) {
+    var exec = config.executor.executable,
+        args = config.executor.args;
+
+    var eventServer = config['eventServer'];
+    if(typeof eventServer !== 'undefined' && eventServer) {
+        eventServer.emit("trace.job", exec, args);
+    } else {
+        console.log("loged: " + exec, args);
+    }
+    cb(null, outs);
+}
+
+
 exports.command = command;
 exports.command_print = command_print;
+exports.command_notifyevents = command_notifyevents;
