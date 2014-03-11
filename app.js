@@ -111,20 +111,51 @@ app.post('/apps', function(req, res) {
 
 // returns workflow instance ('app') info
 app.get('/apps/:i', function(req, res) {
+    var appId = req.params.i;
+    var appIns, appOuts;
+    var wfInstanceStatus = "unknown";
+
+    if (!(appId in engine)) return notfound(res); // 404
+
     var renderHTML = function() {
+        var start, end;
         var ctype = acceptsXml(req);
         res.header('content-type', ctype);
-        res.send('GET /apps/{appId}');
-        //res.render ... TODO
+        start = (new Date()).getTime();
+        res.render('workflow-instance', {
+            title: 'Application',
+            nr: appId,
+            host: req.headers.host,
+            wfname: "Application",
+            wfins: appIns,
+            wfouts: appOuts,
+            stat: wfInstanceStatus, 
+            now: (new Date()).getTime(),
+            submit_inputs_uri: '/apps/'+appId
+        }, function(err, html) {
+            if (err) { throw(err); }
+            end = (new Date()).getTime();
+            console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
+            res.statuscode = 200;
+            res.send(html);
+        });
+
     }
+
     var renderJSON = function() {
         res.header('content-type', 'text/plain');
         res.send('GET /apps/{appId}');
         // res.render ... TODO
     }
-    res.format({
-        'text/html': renderHTML,
-        'application/json': renderJSON
+
+    wflib.getWfInsAndOutsInfoFull(req.params.i, function(err, ins, outs) {
+        if (err) return notfound(res);
+        appIns = ins;
+        appOuts = outs;
+        res.format({
+            'text/html': renderHTML,
+            'application/json': renderJSON
+        });
     });
 });
 
@@ -222,8 +253,8 @@ app.get('/apps/:i/ins', function(req, res) {
 
 // returns info about a signal exchanged within the workflow
 app.get('/apps/:i/sigs/:j', function(req, res) {
-    var wfId = req.params.i, dataId = req.params.j;
-    wflib.getDataInfoFull(wfId, dataId, function(err, wfData, dSource, dSinks) {
+    var appId = req.params.i, sigId = req.params.j;
+    wflib.getDataInfoFull(appId, sigId, function(err, wfData, dSource, dSinks) {
 	if (err) {
 	    res.statusCode = 404;
 	    res.send(inst.toString());
@@ -232,10 +263,10 @@ app.get('/apps/:i/sigs/:j', function(req, res) {
 	    res.header('content-type', ctype);
 	    res.render('workflow-data', {
 		title: 'workflow data',
-		wfname: req.params.w,
+		wfname: "Application",
 		data: wfData,
 		source: dSource,
-		data_id: dataId,
+		data_id: sigId,
 		sinks: dSinks
 	    });
 	}

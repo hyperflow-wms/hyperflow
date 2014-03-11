@@ -18,11 +18,11 @@ uri="http://localhost:$1/apps"
 # Body: valid workflow description in JSON
 # on success returns: 201, Location: {appuri}
 # "location" - wf instance URI extracted from the HTTP header 
-location=`curl -v -X POST -d @workflows/Wf_Rest_test.json $uri --header "Content-Type:application/json" 2>&1 | grep Location | cut -f 3 -d' '`
+location=`curl -v -X POST -d @workflows/Montage_143.json $uri --header "Content-Type:application/json" 2>&1 | grep Location | cut -f 3 -d' '`
 
 appuri="http://localhost:$1"$location
 echo $appuri
 
 # 2) POST {appuri} - sends a signal to a workflow
 # Body: valid signal data (JSON with mandatory "name")
-curl -X POST -d '{ "name": "counter1", "data": [0] }' $appuri --header "Content-Type:application/json"
+# curl -X POST -d '{ "name": "counter1", "data": [0] }' $appuri --header "Content-Type:application/json"
