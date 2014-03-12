@@ -49,7 +49,7 @@ var ChoiceLogic = function() {
         proc.ready = true;
         proc.tryTransition(proc, session);
 
-        //onsole.log("Enter state ready: "+task.procId);
+        //onsole.log("Enter state ready: "+proc.procId);
     };
 
     this.running_enter = function(session, state, transition, msg) {
@@ -128,7 +128,6 @@ var ChoiceLogic = function() {
                 outs[i]["source"] = proc.procId;
                 outs[i]["firingId"] = firingId;
                 outValues.push(outs[i]);
-
             }
         }
         // if there exists "merge" output, emit the 'merge' control signal first. 
@@ -148,6 +147,8 @@ var ChoiceLogic = function() {
                 //onsole.log("runningCount (" + proc.fullInfo.name + ")/2:", proc.runningCount);
                 err ? cb(err): cb(null);
             });
+        } else {
+            cb(null);
         }
     }
 
