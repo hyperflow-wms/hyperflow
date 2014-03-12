@@ -73,7 +73,7 @@ function computeThreatLevel(ins, outs, config, cb) {
     }, 5000);
 }
 
-// Set 2b: perform actions in the severe emergency level
+// Step 2b: perform actions in the severe emergency level
 function severeEmergencyActions(ins, outs, config, cb) {
     console.log("Severe Emergency Actions!");
     cb(null, outs);
