@@ -9,6 +9,7 @@ var fs = require('fs'),
     value = require('value'),
     request = require('request'),
     Q = require('q'),
+    pathTool = require('path'),
     //toobusy = require('toobusy'),
     rcl;
 
@@ -1415,8 +1416,8 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
             rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
-                // FIXME: how to know the (relative?) path to the module?
-                var f = require('../'+fun.module)[taskInfo.fun]; 
+                var fpath = pathTool.join(process.cwd(), fun.module);
+                var f = require(fpath)[taskInfo.fun]; 
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
                 //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
