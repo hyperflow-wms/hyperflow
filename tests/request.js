@@ -24,6 +24,7 @@ exports.call_getLeveeState = function (test) {
     functions.getLeveeState(ins, outs, config, function (err, outs) {
         if (!err) {
             //TODO: add more assertions?
+            console.log(JSON.stringify(outs));
             test.done();
         } else {
             test.fail("getLeveeState response is invalid!");
@@ -47,8 +48,15 @@ exports.call_storeThreatLevels = function (test) {
     });
 };
 
-functions.call_severeEmergencyActions = function (test) {
+exports.call_severeEmergencyActions = function (test) {
+    var ins = [],
+        outs = [],
+        config = {};
 
+    functions.severeEmergencyActions(ins, outs, config, function (err, outs) {
+        test.ok(!err);
+        test.done();
+    });
 };
 
 function createServer() {
