@@ -14,7 +14,7 @@ exports.tearDown = function (callback) {
     callback();
 };
 
-exports.call_get_levee_levels = function (test) {
+exports.call_getLeveeState = function (test) {
     var ins = [],
         outs = [],
         config = {
@@ -31,7 +31,7 @@ exports.call_get_levee_levels = function (test) {
     });
 };
 
-exports.call_store_threat_level = function (test) {
+exports.call_storeThreatLevels = function (test) {
     var ins = [],
         outs = [],
         config = {
@@ -47,6 +47,9 @@ exports.call_store_threat_level = function (test) {
     });
 };
 
+functions.call_severeEmergencyActions = function (test) {
+
+};
 
 function createServer() {
     //mock of services exposed by AIR

@@ -81,7 +81,7 @@ function computeThreatLevel(ins, outs, config, cb) {
         function(error, response, body) {
             if(!error && response.statusCode == 201) {
                 parsedResponse = JSON.parse(body);
-                if (parsedResponse.result === "ok") {
+                if (parsedResponse.result == "ok") {
                     cb(null, outs);
                 } else {
                     cb("Invalid response!", outs);
