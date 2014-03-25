@@ -60,7 +60,7 @@ exports.call_severeEmergencyActions = function (test) {
 };
 
 function createServer() {
-    //mock of services exposed by AIR
+    //mock of services exposed by DAP
     return http.createServer(function (req, resp) {
         if (req.method === "GET" && req.url === "/levee_state/1") {
             //response for call_get_levee_levels
