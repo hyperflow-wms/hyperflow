@@ -1,7 +1,7 @@
 var request = require('request');
 var http = require('http');
 
-var functions = require('../workflows/ismop/LMonFunctions.js');
+var functions = require('../functions/ismop/LMonFunctions.js');
 
 exports.setUp = function (callback) {
     this.server = createServer();
