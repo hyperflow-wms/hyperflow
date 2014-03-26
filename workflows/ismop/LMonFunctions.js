@@ -3,20 +3,20 @@ var request = require('request'); // http client
 
 var EmergLevel = {
     NONE: "none",
-    HIGHTENED: "hightened",
+    HEIGHTENED: "heightened",
     SEVERE: "severe"
 };
 
 var ThreatLevel = {
     NONE: "none",
-    HIGHTENED: "hightened",
+    HEIGHTENED: "heightened",
     SEVERE: "severe"
 };
 
 // Step 1: periodically reads the Levee state from DAP.
 // The main parameter of interest is `emergencyLevel':
 // - If 'none', no action taken
-// - If 'hightened', triggers computation of the current threat level
+// - If 'heightened', triggers computation of the current threat level
 // - If 'severe', triggers appropriate actions
 function getLeveeState(ins, outs, config, cb) {
     // var leveeURI = config.leveeUri;  // URI could be passed through config
@@ -36,9 +36,9 @@ function getLeveeState(ins, outs, config, cb) {
                 //TODO; check for emergencyLevel == undefined, if so fail
                 console.log("emergencyLevel=" + emergencyLevel);
 
-                if (emergencyLevel == EmergLevel.HIGHTENED && threatLevel == ThreatLevel.NONE) {
-                    console.log("Setting hightened emergency level");
-                    outs[0].condition = "true"; // emit "ELHightened" signal
+                if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
+                    console.log("Setting heightened emergency level");
+                    outs[0].condition = "true"; // emit "ELHeightened" signal
                     outs[0].data = [
                         { }
                     ];
@@ -67,7 +67,7 @@ function computeThreatLevel(ins, outs, config, cb) {
     if (rand > 0.95) {
         threatLevel = ThreatLevel.SEVERE; 
     } else if (rand > 0.7) {
-        threatLevel = ThreatLevel.HIGHTENED;
+        threatLevel = ThreatLevel.HEIGHTENED;
     } else {
         threatLevel = ThreatLevel.NONE;
     }

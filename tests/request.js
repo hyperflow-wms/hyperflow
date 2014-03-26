@@ -67,7 +67,7 @@ function createServer() {
             resp.writeHead(200, {"Content-Type": "text/plain"});
             resp.write(JSON.stringify(
                 {
-                    "emergencyLevel": "hightened",
+                    "emergencyLevel": "heightened",
                     "threatLevel": "none"
                 }
             ));
