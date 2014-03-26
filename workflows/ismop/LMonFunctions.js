@@ -54,7 +54,7 @@ function getLeveeState(ins, outs, config, cb) {
 
                 cb(null, outs);
             } else {
-                cb("Error reading response!", outs);
+                cb(new Error("Error reading response from getLeveeState!"), outs);
             }
         });
 }
@@ -84,10 +84,10 @@ function computeThreatLevel(ins, outs, config, cb) {
                 if (parsedResponse.result == "ok") {
                     cb(null, outs);
                 } else {
-                    cb("Invalid response!", outs);
+                    cb(new Error("Error reading response from storeThreatLevel!"), outs);
                 }
             } else {
-                cb("Error reading response!", outs);
+                cb(new Error("Error reading response from storeThreatLevel!"), outs);
             }
         }
     );
