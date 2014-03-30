@@ -38,11 +38,11 @@ var DataflowLogic = function() {
                 this.firingSigs.push([sigId, 1]);
             }
         }
+        // "next" signal (if present) is also required for firing (even the first one)
         if ("next" in this.ctrIns) {
             this.firingSigs.push([this.ctrIns.next,1]);
         }
     }
-
 
     this.ready_enter = function(session, state, transition, msg) {
         var proc = session.logic;

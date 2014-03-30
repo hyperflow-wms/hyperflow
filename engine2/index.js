@@ -51,7 +51,13 @@ var Engine = function(config, wflib, wfId, cb) {
     this.nTasksLeft = 0;  // how many tasks left (not finished)? 
     this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
+
+    this.logProvenance = false;
                           
+    this.eventServer.on('prov', function(data) {
+        console.log(arguments[1]);
+    });
+
     this.emulate = config.emulate == "true" ? true: false;       
 
     this.startTime = (new Date()).getTime(); // the start time of this engine (workflow)
@@ -198,6 +204,12 @@ Engine.prototype.emitSignals = function(sigs, cb) {
         async.each(sigInstances, function(s, doneIterInner) {
             var _sigId = s._id;
             engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
+                // at this point "s" contains unique 'sigIdx' set in 'sendSignal' => we can emit "write" 
+                // provenance events (for signals which have "source", i.e. were written by a process)
+                if (s.source && engine.logProvenance) { 
+                    engine.eventServer.emit("prov", ["write", +engine.wfId, s.source, s.firingId, s._id, s.sigIdx]);
+                }
+
                 if (!err) {
                     // notify sinks that the signals have arrived
                     for (var j=0; j<sinks.length; j++) {

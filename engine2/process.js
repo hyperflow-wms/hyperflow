@@ -65,18 +65,20 @@ var ProcLogic = function() {
 
     this.ready = false; // is the proc ready to read input signals?
 
+    this.provStash = []; // stash for provenance events
+
     this.init = function(engine, appId, procId, session, fullInfo) {
         this.engine = engine;
         this.wflib = engine.wflib;
 	this.procs = engine.tasks;
-	this.appId = appId;
-	this.procId = procId;
+	this.appId = +appId;
+	this.procId = +procId;
 	this.ins = engine.ins[procId];
 	this.outs = engine.outs[procId];
 	this.sources = engine.sources;
 	this.sinks = engine.sinks;
         this.nDataIns = engine.ins[procId].length;
-        this.firstInvocation = true;
+        this.firstFiring = true;
         this.fullInfo = fullInfo;
 	this.name = fullInfo.name;
 	this.parlevel = fullInfo.parlevel ? fullInfo.parlevel : 1; // maximum level of parallelism
@@ -102,7 +104,7 @@ var ProcLogic = function() {
 
         if (this.nDataIns == 0) { // special case with no data inputs (a 'source' pocess)
             // FIXME: add assertion/validation that firing interval is defined!
-            // TODO:  change semantics of firingInterval to *minimal* firing interval regardless of # of inputs
+            // TODO: change semantics of firingInterval to *minimal* firing interval regardless of # of inputs
             this.firingInterval = this.fullInfo.firingInterval;
 	}
 
@@ -130,8 +132,7 @@ var ProcLogic = function() {
         if (proc.nDataIns == 0 && proc.ready) { 
             // a "source" process: to be fired regularly according to a firing interval
             proc.ready = false;
-            if (proc.firstInvocation) {
-                proc.firstInvocation = false;
+            if (proc.firstFiring) {
                 proc.makeTransition("ReRu");
             } else {
                 setTimeout(function() {
@@ -186,11 +187,10 @@ var ProcLogic = function() {
         var asyncInvocation = false;
         var funcIns = [], funcOuts = [];
 
-        //onsole.log(proc);
-        // create arrays of data ins and outs ids
+        // create arrays of data ins and outs ids (exclude control signals)
         for (var i=0; i<proc.firingSigs.length; ++i) {
             var sigId = proc.firingSigs[i][0];
-            if (!(sigId in proc.fullInfo.cinset)) { 
+            if (!(sigId in proc.fullInfo.cinset)) {  
                 funcIns.push(proc.sigId);
             }
         }
@@ -221,6 +221,10 @@ var ProcLogic = function() {
         }
         //onsole.log("RESET CNT Proc", proc.procId, proc.cnt, proc.dataIns);
 
+        if (proc.firstFiring) {
+            proc.firstFiring = false;
+        }
+
         if (!proc.done && (proc.runningCount < proc.parlevel || proc.parlevel == 0)) {
             asyncInvocation = true;
             // we return to the ready state BEFORE invoking the function, i.e. the firing
@@ -233,6 +237,44 @@ var ProcLogic = function() {
             proc.cnt += proc.fullInfo.sticky; // sticky signals weren't actually consumed!
             */
 
+        ///////////////////////////////////////////
+        ///////// Provenance logging //////////////
+        ///////////////////////////////////////////
+
+        if (proc.engine.logProvenance) {
+            // 1. emit stashed ("state-*") provenance events
+            if (proc.provStash) {
+                while (proc.provStash.length) {
+                    proc.engine.eventServer.emit("prov", proc.provStash.shift());
+                }
+            }
+
+            // 2a. emit "read" provenance events (signal was read by a process)
+            // 2b. stash "state-reset" or "state-remove" provenance events for next firing
+            var isStateful = function(sigId) { 
+                return proc.fullInfo.stateful && (sigId in proc.fullInfo.statefulSigs);
+            }
+            proc.sigValues.forEach(function(sigs) {
+                sigs.forEach(function(sig) {
+                    proc.engine.eventServer.emit("prov", 
+                        ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]);
+
+                    // stash events for the next firing
+
+                    // (a) process is stateless => do "state-reset" in next firing
+                    if (!proc.fullInfo.stateful) { 
+                        proc.provStash.push( 
+                            ["state-reset", proc.appId, proc.procId, proc.firingId+1, null, null]);
+
+                        // (b) some sigs are stateful => do "state-remove" for those which aren't
+                    } else if (!isStateful(sig._id)) { 
+                        proc.provStash.push( 
+                            ["state-remove", proc.appId, proc.procId, proc.firingId+1, sig._id, sig.sigIdx]);
+                    }
+                });
+            });
+        }
+
         proc.wflib.invokeTaskFunction2(
                 proc.appId,
                 proc.procId,
@@ -240,7 +282,7 @@ var ProcLogic = function() {
                 proc.sigValues,
                 funcOuts, emul,
                 proc.engine.eventServer,
-                function(err, outs) {
+                function(err, outs, options) {
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );
@@ -251,9 +293,9 @@ var ProcLogic = function() {
 
         var outValues = outs;
         for (var i=0; i<funcOuts.length; ++i) {
-            outValues[i]["_id"] = funcOuts[i];
-            outValues[i]["source"] = proc.procId;
-            outValues[i]["firingId"] = firingId;
+            outValues[i]["_id"] = +funcOuts[i];
+            outValues[i]["source"] = +proc.procId;
+            outValues[i]["firingId"] = +firingId;
         }
         if (proc.ctrOuts.next) { // emit "next" signal if there is such an output port
             outValues.push({"_id": proc.ctrOuts.next });

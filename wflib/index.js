@@ -696,7 +696,7 @@ exports.init = function(redisClient) {
 
         rcl.eval([popScript, 3, sigQueueKey, sigInstanceKey, isStickyKey, sigId], function(err, res) {
             var sig = JSON.parse(res[0]);
-            sig.sigIdx = res[1];
+            //sig.sigIdx = res[1];
             cb(err, sig);
         });
         return; 
@@ -1429,9 +1429,9 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                     conf['eventServer'] = eventServer;
                 }
 
-                f(ins, outs, conf, function(err, outs) {
+                f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
-                    cb(null, outs);
+                    cb(null, outs, options);
                 });
             });
         });
@@ -1472,7 +1472,7 @@ function sendSignalLua(wfId, sigValue, cb) {
     var sigNextIdKey = "wf:"+wfId+":sigs:"+sigId+":nextId"; // KEYS[3]
     var sigSinksKey = sigKey + ":sinks"; // KEYS[4]
     var wfKey = "wf:" + wfId; // KEYS[5]
-    var sig = JSON.stringify(sigValue); // ARGV[2]
+    var sig ; // ARGV[2]
     //onsole.log(sigInstanceKey);
     //onsole.log(sigNextIdKey);
     //onsole.log(sigSinksKey);
@@ -1482,7 +1482,7 @@ function sendSignalLua(wfId, sigValue, cb) {
 
     var sendSignalScript = '\
         local ret \
-        local sigIdx = tostring(redis.call("INCR", KEYS[3])) \
+        local sigIdx = ARGV[3] \
         redis.call("HSET", KEYS[2], sigIdx, ARGV[2]) \
         local sinks = redis.call("ZRANGE", KEYS[4], 0, -1) \
         for k,taskId in pairs(sinks) do \
@@ -1502,38 +1502,43 @@ function sendSignalLua(wfId, sigValue, cb) {
         end \
         return sinks';
 
-    rcl.eval([sendSignalScript, 5, sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey, sigId, sig], function(err, res) {
-        //time -= (new Date()).getTime();
-        //onsole.log("SENDING SIGNAL X", sigId, "TOOK", -time+"ms");
-        //sendSignalTime -= time;
-        /*var delay = 0;
-        if (toobusy()) { onsole.log("TOO BUSY !!!!!!!!!!!!!!!!!!!!!!!!!!"); delay = 40; }
-        setTimeout(function() { cb(err, res); }, delay);*/
-        if (err) return cb(err);
+    // sigIdx = unique signal instance id
+    rcl.incr("wf:"+wfId+":sigs:"+sigId+":nextId", function(err, sigIdx) { 
+        sigValue.sigIdx = +sigIdx;
+        sig = JSON.stringify(sigValue);
+        rcl.eval([sendSignalScript, 5, sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey, sigId, sig, sigIdx], function(err, res) {
+            //time -= (new Date()).getTime();
+            //onsole.log("SENDING SIGNAL X", sigId, "TOOK", -time+"ms");
+            //sendSignalTime -= time;
+            /*var delay = 0;
+              if (toobusy()) { onsole.log("TOO BUSY !!!!!!!!!!!!!!!!!!!!!!!!!!"); delay = 40; }
+              setTimeout(function() { cb(err, res); }, delay);*/
+            if (err) return cb(err);
 
-        if (sigValue.remoteSinks) {
-            rcl.smembers(sigKey+":remotesinks", function(err, remoteSinks) {
-                delete sigValue.remoteSinks;
-                async.each(remoteSinks, function(sinkUri, doneIterCb) {
-                    request.post({
-                        headers: {'content-type' : 'application/json'},
-                        url:     sinkUri,
-                        json:    sigValue
-                    }, function(error, response, body) {
-                        if (error) console.log("ERROR", error);
-                        doneIterCb();
-                        //onsole.log(error);
-                        //onsole.log(response);
-                        //onsole.log(body);
+            if (sigValue.remoteSinks) {
+                rcl.smembers(sigKey+":remotesinks", function(err, remoteSinks) {
+                    delete sigValue.remoteSinks;
+                    async.each(remoteSinks, function(sinkUri, doneIterCb) {
+                        request.post({
+                            headers: {'content-type' : 'application/json'},
+                            url:     sinkUri,
+                            json:    sigValue
+                        }, function(error, response, body) {
+                            if (error) console.log("ERROR", error);
+                            doneIterCb();
+                            //onsole.log(error);
+                            //onsole.log(response);
+                            //onsole.log(body);
+                        });
+                        //onsole.log("REMOTE SINKS: ", ret);
+                    }, function doneAll(err) {
+                        cb(err, res);
                     });
-                    //onsole.log("REMOTE SINKS: ", ret);
-                }, function doneAll(err) {
-                    cb(err, res);
                 });
-            });
-        } else {
-            cb(err, res);
-        }
+            } else {
+                cb(err, res);
+            }
+        });
     });
 }
 
