@@ -8,7 +8,7 @@
 var redis = require('redis'),
     rcl = redis.createClient(),
     wflib = require('../wflib').init(rcl),
-    Engine = require('../engine'),
+    Engine = require('../engine2'),
     async = require('async'),
     argv = require('optimist').argv,
     dbId = 0, 
