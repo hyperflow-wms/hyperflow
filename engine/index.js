@@ -243,7 +243,6 @@ Engine.prototype.emitSignals = function(sigs, cb) {
         async.each(sigInstances, function(s, doneIterInner) {
             var _sigId = s._id;
             engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
-		//onsole.log(sinks);
                 if (!err) {
                     // notify sinks that the signals have arrived
                     for (var j=0; j<sinks.length; j++) {

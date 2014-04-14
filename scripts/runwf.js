@@ -34,6 +34,8 @@ if (!argv.id && !argv.f) {
     console.log("   -i WFID   : use already created wf instance with WFID as its Redis id");
     console.log("   -s        : send input signals to the workflow (starts execution)");
     console.log("   -d DBID   : Redis db number to be used (default=0)");
+    console.log("   --cfg <conf1.json> [--cfg <conf2.json>...] : configuration files");
+    console.log("         will create a config JSON object { conf1: {...}, conf2: {...} }");
     process.exit();
 }
 
