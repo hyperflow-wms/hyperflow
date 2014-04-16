@@ -1416,7 +1416,8 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
             rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
-                var fpath = pathTool.join(process.cwd(), fun.module);
+                //var fpath = pathTool.join(process.cwd(), fun.module);
+                var fpath = pathTool.join(__dirname, "..", fun.module);
                 var f = require(fpath)[taskInfo.fun]; 
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
