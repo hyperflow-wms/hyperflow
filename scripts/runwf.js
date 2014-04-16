@@ -8,7 +8,7 @@
 var redis = require('redis'),
     rcl = redis.createClient(),
     wflib = require('../wflib').init(rcl),
-    Engine = require('../engine'),
+    Engine = require('../engine2'),
     async = require('async'),
     argv = require('optimist').argv,
     dbId = 0, 
@@ -34,6 +34,8 @@ if (!argv.id && !argv.f) {
     console.log("   -i WFID   : use already created wf instance with WFID as its Redis id");
     console.log("   -s        : send input signals to the workflow (starts execution)");
     console.log("   -d DBID   : Redis db number to be used (default=0)");
+    console.log("   --cfg <conf1.json> [--cfg <conf2.json>...] : configuration files");
+    console.log("         will create a config JSON object { conf1: {...}, conf2: {...} }");
     process.exit();
 }
 
@@ -44,6 +46,10 @@ if (argv.d) {
 
 var runWf = function(wfId) { 
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
+        //This represent custom plugin listening on event from available eventServer
+//        engine.eventServer.on('trace.*', function(exec, args) {
+//            console.log('Event captured: ' + exec + ' ' + args + ' job done');
+//        });
         engine.runInstance(function(err) {
             console.log("Wf id="+wfId);
             if (argv.s) {

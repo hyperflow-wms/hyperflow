@@ -1,6 +1,8 @@
 /*
-** Hypermedia workflow
-** Author: Bartosz Balis (2012)
+** HyperFlow engine
+** Author: Bartosz Balis (2012-2014)
+** 
+** HyperFlow server implementing the REST API for HyperFlow workflows.
 */
 
 'use strict';
@@ -19,31 +21,10 @@ var redis = require('redis'),
     rcl = redis.createClient();
 
 var server = http.createServer(app);
-
-// for couch
-var cradle = require('cradle');
-var host = 'http://beboj.iriscouch.com';
-var port = 5984;
-var credentials = {
-	username: 'balis',
-	password: 'ala123'
-};
-var local = false;
-var db;
-if (local === true) {
-	db = new(cradle.Connection)().database('hyperwf');
-}
-else {
-	db = new(cradle.Connection)(host, port, {
-		auth: credentials
-	}).database('hyperwf');
-}
-
-var executor = require('./executor_simple').init();
 var wflib = require('./wflib').init(rcl);
 var Engine = require('./engine');
 var engine = {}; // engine.i contains the engine object for workflow instance 'i'
-var urlReq = require('./req_url');
+var request = require('request');
 
 var timers = require('timers');
 
@@ -63,7 +44,7 @@ app.configure(function() {
 	app.engine('ejs', cons.ejs);
 	app.set('views', __dirname + '/views');
 	app.set('view engine', 'ejs');
-	app.use(express.bodyParser());
+	app.use(express.bodyParser({strict: false}));
 	app.use(express.methodOverride());
 	app.use(app.router);
 	app.use(express.static(__dirname + '/public'));
@@ -80,6 +61,271 @@ app.configure('development', function() {
 app.configure('production', function() {
 	app.use(express.errorHandler());
 });
+
+/////////////////////////////////////////////////////////////////
+////           REST API for HyperFlow workflows              ////
+/////////////////////////////////////////////////////////////////
+
+// returns a list of all workflow instances (aka 'apps')
+app.get('/apps', function(req, res) {
+    var renderHTML = function() {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.send('GET /apps');
+        //res.render ... TODO
+    }
+    var renderJSON = function() {
+        res.header('content-type', 'text/plain');
+        res.send('GET /apps');
+        // res.render ... TODO
+    }
+    res.format({
+        'text/html': renderHTML,
+        'application/json': renderJSON
+    });
+});
+
+// creates a new workflow instance ('app')
+// body must be a valid workflow description in JSON
+app.post('/apps', function(req, res) {
+    var wfJson = req.body;
+    var baseUrl = '';
+    //onsole.log(wfJson);
+    
+    // FIXME: validate workflow description
+    // FIXME: add proper/more detailed error info instead of "badRequest(res)"
+    wflib.createInstance(wfJson, baseUrl, function(err, appId) {
+        if (err) return badRequest(res); 
+        engine[appId] = new Engine({"emulate": "false"}, wflib, appId, function(err) {
+            if (err) return badRequest(res); 
+            engine[appId].runInstance(function(err) {
+                if (err) return badRequest(res); 
+                res.header('Location', req.url + '/' + appId);
+                res.send(201, null);
+                //res.redirect(req.url + '/' + appId, 302);
+                // TODO: implement sending all input signals (just like -s flag in runwf.js)
+            });
+        });
+    });
+});
+
+// returns workflow instance ('app') info
+app.get('/apps/:i', function(req, res) {
+    var appId = req.params.i;
+    var appIns, appOuts;
+    var wfInstanceStatus = "unknown";
+
+    if (!(appId in engine)) return notfound(res); // 404
+
+    var renderHTML = function() {
+        var start, end;
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        start = (new Date()).getTime();
+        res.render('workflow-instance', {
+            title: 'Application',
+            nr: appId,
+            host: req.headers.host,
+            wfname: "Application",
+            wfins: appIns,
+            wfouts: appOuts,
+            stat: wfInstanceStatus, 
+            now: (new Date()).getTime(),
+            submit_inputs_uri: '/apps/'+appId
+        }, function(err, html) {
+            if (err) { throw(err); }
+            end = (new Date()).getTime();
+            console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
+            res.statuscode = 200;
+            res.send(html);
+        });
+
+    }
+
+    var renderJSON = function() {
+        res.header('content-type', 'text/plain');
+        res.send('GET /apps/{appId}');
+        // res.render ... TODO
+    }
+
+    wflib.getWfInsAndOutsInfoFull(req.params.i, function(err, ins, outs) {
+        if (err) return notfound(res);
+        appIns = ins;
+        appOuts = outs;
+        res.format({
+            'text/html': renderHTML,
+            'application/json': renderJSON
+        });
+    });
+});
+
+// emits a signal to a workflow
+// body must be a valid signal representation, such as:
+// { 
+//   "name": <signame>
+//   <attr>: <value>
+//   "data": [ sig(s) data ]
+// }
+// - attribute 'name' is mandatory and must be equal to a signal name in the target wf
+// - other attributes (including actual signal data) are optional
+// - if the 'data' array contains multiple elements, multiple signals will be emitted
+app.post('/apps/:i', function(req, res) {
+    var appId = req.params.i;
+    if (!(appId in engine)) return notfound(res); // 404
+
+    var ctype = req.headers["content-type"];
+    var sigValue;
+    if (ctype == "application/json") {
+        sigValue = req.body;
+    } else if (ctype == "application/x-www-form-urlencoded") {
+        sigValue = req.body;
+    }
+    //onsole.log(ctype);
+    //onsole.log(sigValue);
+    //onsole.log(sigValue.name);
+    //onsole.log(req.headers);
+    if (!("name" in sigValue)) return badrequest(res);
+
+    var sigName = sigValue.name;
+    wflib.getSigByName(appId, sigName, function(err, sigId) {
+        if (err) return badrequest(res); // FIXME: add detailed error info
+        sigValue._id = sigId;
+        //onsole.log(sigValue);
+        engine[appId].emitSignals([ sigValue ], function(err) {
+            if (err) return badrequest(res); // FIXME: add detailed error info
+            res.header('content-type', 'text/plain');
+            res.send('Emit signal OK!');
+        });
+    });
+
+});
+
+
+// returns a list of signals consumed/emitted by the workflow
+app.get('/apps/:i/sigs', function(req, res) {
+    var renderHTML = function() {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        //res.render ... TODO
+    }
+    var renderJSON = function() {
+        // TODO
+    }
+    res.format({
+        'text/html': renderHTML,
+        'application/json': renderJSON
+    });
+});
+
+
+// returns a list of input signals for the workflow
+app.get('/apps/:i/ins', function(req, res) {
+    var wfId = req.params.i;
+    var wfInsInfo;
+
+    var renderHTML = function() {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        //res.send(wfInsInfo);
+        res.render('workflow-inputs', {
+            title: 'workflow inputs',
+            wfname: 'Workflow',
+            wfins: wfInsInfo,
+            submit_ins_uri: req.url
+        });
+    }
+
+    var renderJSON = function() {
+        res.header('content-type', 'application/json');
+        res.send(wfInsInfo);
+    }
+
+    wflib.getWfIns(wfId, false, function(err, wfIns) {
+        wflib.getSignalInfo(wfId, wfIns, function(err, sigsInfo) {
+            wfInsInfo = sigsInfo;
+            res.format({
+                'text/html': renderHTML,
+                'application/json': renderJSON
+            });
+        });
+    });
+});
+
+// returns info about a signal exchanged within the workflow
+app.get('/apps/:i/sigs/:j', function(req, res) {
+    var appId = req.params.i, sigId = req.params.j;
+    wflib.getDataInfoFull(appId, sigId, function(err, wfData, dSource, dSinks) {
+	if (err) {
+	    res.statusCode = 404;
+	    res.send(inst.toString());
+	} else {
+	    var ctype = acceptsXml(req);
+	    res.header('content-type', ctype);
+	    res.render('workflow-data', {
+		title: 'workflow data',
+		wfname: "Application",
+		data: wfData,
+		source: dSource,
+		data_id: sigId,
+		sinks: dSinks
+	    });
+	}
+    });
+});
+
+
+// returns a list of remote sinks of a signal
+app.get('/apps/:i/sigs/:name/remotesinks', function(req, res) {
+    var appId = req.params.i;
+    var sigName = req.params.name;
+    var remoteSinks = req.body;
+
+    var renderHTML = function(rsinks) {
+        var ctype = acceptsXml(req);
+        res.header('content-type', ctype);
+        res.send(200, JSON.stringify(rsinks));
+    }
+    var renderJSON = function(rsinks) {
+        res.send(200, "TODO");
+        // TODO
+    }
+
+    wflib.getSigByName(appId, sigName, function(err, sigId) {
+        wflib.getSigRemoteSinks(appId, sigId, function(err, rsinks) {
+            renderHTML(rsinks);
+            /*res.format({
+                'text/html': renderHTML(rsinks),
+                'application/json': renderJSON(rsinks)
+            });*/
+        });
+    });
+});
+
+
+// sets remote sinks for a given signal
+// body: JSON array of objects: [ { "uri": uri1 }, { "uri": uri2 }, ... ]
+app.put('/apps/:i/sigs/:name/remotesinks', function(req, res) {
+    var appId = req.params.i;
+    var sigName = req.params.name;
+    var remoteSinks = req.body;
+
+    wflib.getSigByName(appId, sigName, function(err, sigId) {
+        if (err) return badrequest(res);
+        wflib.setSigRemoteSinks(appId, sigId, remoteSinks, { "replace": true }, function(err) {
+            if (err) return badrequest(res);
+            res.send(200, "Remote sinks set succesfully");
+        });
+    });
+
+});
+
+
+////////////////////////////////////////////////////////////////////////
+////                        REST API (END)                         /////
+////////////////////////////////////////////////////////////////////////
+
+
+
 
 /* validate user (from  db) via HTTP Basic Auth */
 
@@ -203,11 +449,11 @@ app.post('/workflow/:w/instances/:i', function(req, res) {
                     spec[id] = { "value": req.body[i] }
                     dataIds.push(id);
                 }
-                //console.log(spec);
+                //onsole.log(spec);
             }
             if (Object.keys(spec).length) { // not empty
                 wflib.setDataState(wfId, spec, function(err, rep) {
-                    //console.log(spec);
+                    //onsole.log(spec);
                     engine[wfId].markDataReady(dataIds, function(err) {
                         res.redirect(req.url, 302); 
                     });
@@ -423,114 +669,6 @@ app.post('/workflow/:w/instances/:i/data-:j', function(req, res) {
     }
 });
 
-////////////////////////////////////////////////////////////////////////
-//// NEW HTTP API for workflows (experimental) -- in JSON and HTML /////
-////////////////////////////////////////////////////////////////////////
-
-
-// returns a list of input signals for the workflow
-app.get('/workflows/:i/inputs', function(req, res) {
-    var wfId = req.params.i;
-    var wfInsInfo;
-
-    var renderHTML = function() {
-        var ctype = acceptsXml(req);
-        res.header('content-type', ctype);
-        //res.send(wfInsInfo);
-        res.render('workflow-inputs', {
-            title: 'workflow inputs',
-            wfname: 'Workflow',
-            wfins: wfInsInfo,
-            submit_ins_uri: req.url
-        });
-    }
-
-    var renderJSON = function() {
-        res.header('content-type', 'application/json');
-        res.send(wfInsInfo);
-    }
-
-    wflib.getWfIns(wfId, false, function(err, wfIns) {
-        wflib.getSignalInfo(wfId, wfIns, function(err, sigsInfo) {
-            wfInsInfo = sigsInfo;
-            res.format({
-                'text/html': renderHTML,
-                'application/json': renderJSON
-            });
-        });
-    });
-});
-
-// returns info about a signal exchanged within the workflow
-app.get('/workflows/:i/sig-:j', function(req, res) {
-    var wfId = req.params.i, dataId = req.params.j;
-    wflib.getDataInfoFull(wfId, dataId, function(err, wfData, dSource, dSinks) {
-	if (err) {
-	    res.statusCode = 404;
-	    res.send(inst.toString());
-	} else {
-	    var ctype = acceptsXml(req);
-	    res.header('content-type', ctype);
-	    res.render('workflow-data', {
-		title: 'workflow data',
-		wfname: req.params.w,
-		data: wfData,
-		source: dSource,
-		data_id: dataId,
-		sinks: dSinks
-	    });
-	}
-    });
-});
-
-// posts a signal to the workflow
-app.post('/workflows/:i/sig-:j', function(req, res) {
-    var wfId = req.params.i, dataId = req.params.j;
-    var ctype = req.headers["Content-Type"];
-    var sigValue;
-    if (ctype == "application/json") {
-        sigValue = req.body;
-	    
-    } else if (ctype == "application/x-www-form-urlencoded") {
-        sigValue = req.body;
-    }
-    console.log(sigValue);
-
-    // send the signal 
-    // TODO
-
-    /*if (req.body['data-value']) {
-        var spec = {};
-        spec[dataId] = {"value": req.body['data-value']};
-        wflib.setDataState(wfId, spec, function(err, rep) {
-            engine[wfId].markDataReady(dataId, function(err) {
-                if (err) {
-                    res.statusCode = 404;
-                    res.send(err.toString());
-                } else {
-                    res.redirect(req.url, 302);
-                }
-            });
-        });
-    } else {
-        engine[wfId].markDataReady(dataId, function(err) {
-            if (err) {
-                res.statusCode = 404;
-                res.send(err.toString());
-            } else {
-                res.redirect(req.url, 302);
-            }
-        });
-    }*/
-});
-
-////////////////////////////////////////////////////////////////////////
-////                        NEW HTTP API (END)                     /////
-////////////////////////////////////////////////////////////////////////
-
-
-
-
 
 /* support various content-types from clients */
 
@@ -625,6 +763,17 @@ function forbidden(res) {
 	res.statusCode = 403;
 	res.end(body);
 }
+
+// 404 response
+function notfound(res) {
+    var body = 'Resource not found (404)';
+
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Length', body.length);
+    res.statusCode = 404;
+    res.end(body);
+}
+
 
 /* return standard 'auth required' response */
 

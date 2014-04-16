@@ -4,7 +4,7 @@
         "name": "echoWithDelay",
         "module":"functions"
     }, {
-        "name": "echo",
+        "name": "print2",
         "module":"functions"
     } ],
     "processes": [ {
@@ -38,7 +38,7 @@
     }, {
         "name": "Merger",
 	"type": "dataflow",
-        "function": "echo",
+        "function": "print2",
 	"firingLimit": 16,
         "ins": [ 4 ],
         "outs": [ 5 ]

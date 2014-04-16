@@ -175,7 +175,7 @@ function TaskLogic() {
 	this.sources = engine.sources;
 	this.sinks = engine.sinks;
         this.nDataIns = engine.ins[taskId].length;
-        this.firstInvocation = true;
+        this.firstFiring = true;
 	this.name = fullInfo.name;
         this.fullInfo = fullInfo;
 

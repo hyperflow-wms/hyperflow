@@ -4,6 +4,7 @@ var fsp = require('./fileSplitter.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, config, cb) {
+    //console.log("PRINT", JSON.stringify(ins));
         ins.forEach(function(input) {
                 //console.log("sigId=", input.sigId + ":", input.data[0])
 		//console.log(JSON.stringify(input, null, 2));
@@ -16,6 +17,13 @@ function print(ins, outs, config, cb) {
         cb(null, outs);
 }
 
+function print2(ins, outs, config, cb) {
+        ins.forEach(function(input) {
+            console.log(input.data[0]);
+	});
+        cb(null, outs);
+}
+
 function echo(ins, outs, config, cb) {
     var data = JSON.stringify(ins[0].data);
     //console.log(data);
@@ -25,7 +33,7 @@ function echo(ins, outs, config, cb) {
     //if (typeof data == "object" || typeof data == "array")
      //   data = JSON.stringify(data);
 
-    process.stdout.write(data[2]);
+    //process.stdout.write(data[2]);
     //console.log(data);
     cb(null, outs);
 }
@@ -130,16 +138,15 @@ function grepFile(ins, outs, config, cb) {
 }
 
 
-var cnt = 0;
+//var cnt = 0;
 function count(ins, outs, config, cb) {
-    //console.log(ins);
-    cnt++;
+    var cnt = ins[0].data[0];
     outs[0].data = [];
-    outs[0].data[0] = cnt;
+    outs[0].data[0] = cnt+1;
     if (cnt % 1000 == 0) { 
         console.log("count:", cnt)
     }
-    if (cnt == 10000)
+    if (cnt == 5000)
         process.exit();
     cb(null, outs);
 }
@@ -158,6 +165,7 @@ function montage_mProjectPP(ins, outs, config, cb) {
 */
 
 exports.print = print;
+exports.print2 = print2;
 exports.add = add;
 exports.sqr = sqr;
 exports.length = length;
@@ -166,6 +174,7 @@ exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
 exports.exit = exit;
 exports.command_print = cmd.command_print;
+exports.command_notifyevents = cmd.command_notifyevents;
 exports.scanDirForJs = scanDirForJs;
 exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
