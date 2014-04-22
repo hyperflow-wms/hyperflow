@@ -26,9 +26,14 @@ function getLeveeState(ins, outs, config, cb) {
     request(
         {
             "timeout": 1000,
-            "url": rest_config.dap_url + rest_config.levee_service + config.levee_id
+            "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
+            "strictSSL": false,
+            "headers": {
+                "PRIVATE-TOKEN": rest_config.auth_token
+            }
         },
         function (error, response, body) {
+            console.log(body);
             if (!error && response.statusCode == 200) {
                 var result = JSON.parse(body);
                 var emergencyLevel = EmergLevel[result.levee.emergency_level.toUpperCase()];
@@ -78,7 +83,11 @@ function computeThreatLevel(ins, outs, config, cb) {
         {
             "timeout": 1000,
             "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
-            "form": {"id": config.levee_id, "threat_level": threatLevel}
+            "form": {"id": config.levee_id, "threat_level": threatLevel},
+            "strictSSL": false,
+            "headers": {
+                "PRIVATE-TOKEN": rest_config.auth_token
+            }
         },
         function(error, response, body) {
             if(!error && response.statusCode == 201) {
