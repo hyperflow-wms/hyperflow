@@ -33,7 +33,6 @@ function getLeveeState(ins, outs, config, cb) {
             }
         },
         function (error, response, body) {
-            console.log(body);
             if (!error && response.statusCode == 200) {
                 var result = JSON.parse(body);
                 var emergencyLevel = EmergLevel[result.levee.emergency_level.toUpperCase()];
@@ -92,7 +91,6 @@ function computeThreatLevel(ins, outs, config, cb) {
         function(error, response, body) {
             if(!error && response.statusCode == 201) {
                 parsedResponse = JSON.parse(body);
-//                console.log("got: ", parsedResponse.levee.threat_level, ", wanted: ", threatLevel);
                 if (parsedResponse.levee.threat_level == threatLevel) {
                     cb(null, outs);
                 } else {
