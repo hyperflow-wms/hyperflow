@@ -1,5 +1,7 @@
 var request = require('request');
 var http = require('http');
+var traverse = require('traverse');
+var url = require('url');
 
 var functions = require('../functions/ismop/LMonFunctions.js');
 
@@ -22,27 +24,25 @@ exports.call_getLeveeState = function (test) {
     functions.getLeveeState(ins, outs, config, function (err, outs) {
         if (!err) {
             //TODO: add more assertions?
-            console.log(JSON.stringify(outs));
-            test.done();
+//            console.log(JSON.stringify(outs));
         } else {
             test.fail("getLeveeState response is invalid!");
         }
+        test.done();
     });
 };
 
 exports.call_storeThreatLevels = function (test) {
     var ins = [],
         outs = [],
-        config = {
-            "url": "http://localhost:8080/levee_threatLevel/1"
-        };
+        config = { "levee_id": 1};
 
     functions.computeThreatLevel(ins, outs, config, function (err, outs) {
         if (!err) {
-            test.done();
         } else {
             test.fail("computeThreatLevel response is invalid!");
         }
+        test.done();
     });
 };
 
@@ -56,6 +56,18 @@ exports.call_severeEmergencyActions = function (test) {
         test.done();
     });
 };
+
+//Helper functions
+
+function parseParamString(paramString, paramName) {
+    var parts = paramString.split("&");
+    for (i = 0; i < parts.length; i++) {
+        var pair = parts[i].split("=");
+        if (pair[0] == paramName) {
+            return pair[1];
+        }
+    }
+}
 
 function createServer() {
 
@@ -103,9 +115,8 @@ function createServer() {
             "threat_level_updated_at": "2014-04-02T14:37:37.276Z"
         }
     };
-    var storeThreatLevels_response = {
-        "result": "ok"
-    };
+    //copy response with changed value for threat_level
+    var storeThreatLevels_response = traverse.clone(getLeveeState_response);
 
 
     //mock of services exposed by DAP
@@ -115,14 +126,16 @@ function createServer() {
             resp.writeHead(200, {"Content-Type": "application/json"});
             resp.write(JSON.stringify(getLeveeState_response));
             resp.end();
-        } else if (req.method === "POST" && req.url === "/levee_threatLevel/1") {
+        } else if (req.method === "PUT" && req.url === "/api/v1/levees/1") {
             //response for call_storeThreatLevels
             var body = "";
             req.on("data", function (data) {
                 body += data;
             });
             req.on("end", function () {
-                resp.writeHead(201, {"Content-Type": "text/plain"});
+                var threatLevel = parseParamString(body, "threat_level");
+                storeThreatLevels_response.levee["threat_level"] = threatLevel;
+                resp.writeHead(201, {"Content-Type": "application/json"});
                 resp.write(JSON.stringify(storeThreatLevels_response)); //respond with ok
                 resp.end();
             });

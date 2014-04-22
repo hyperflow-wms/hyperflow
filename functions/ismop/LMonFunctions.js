@@ -35,8 +35,8 @@ function getLeveeState(ins, outs, config, cb) {
                 var threatLevel = ThreatLevel[result.levee.threat_level.toUpperCase()];
 
                 //TODO; check for emergencyLevel == undefined, if so fail
-                console.log("emergencyLevel=" + emergencyLevel);
-                console.log("threatLevel=" + threatLevel);
+//                console.log("emergencyLevel=" + emergencyLevel);
+//                console.log("threatLevel=" + threatLevel);
 
                 if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
                     console.log("Setting heightened emergency level");
@@ -65,25 +65,26 @@ function getLeveeState(ins, outs, config, cb) {
 function computeThreatLevel(ins, outs, config, cb) {
     var threatLevel;
 
-    var rand = Math.random(); 
+    var rand = Math.random();
     if (rand > 0.95) {
-        threatLevel = ThreatLevel.SEVERE; 
+        threatLevel = ThreatLevel.SEVERE;
     } else if (rand > 0.7) {
         threatLevel = ThreatLevel.HEIGHTENED;
     } else {
         threatLevel = ThreatLevel.NONE;
     }
 
-    request.post(
+    request.put(
         {
             "timeout": 1000,
-            "url": config.url,
-            "form": {"threatLevel": threatLevel}
+            "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
+            "form": {"id": config.levee_id, "threat_level": threatLevel}
         },
         function(error, response, body) {
             if(!error && response.statusCode == 201) {
                 parsedResponse = JSON.parse(body);
-                if (parsedResponse.result == "ok") {
+//                console.log("got: ", parsedResponse.levee.threat_level, ", wanted: ", threatLevel);
+                if (parsedResponse.levee.threat_level == threatLevel) {
                     cb(null, outs);
                 } else {
                     cb(new Error("Error reading response from storeThreatLevel!"), outs);
