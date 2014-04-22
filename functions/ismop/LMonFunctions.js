@@ -26,16 +26,17 @@ function getLeveeState(ins, outs, config, cb) {
     request(
         {
             "timeout": 1000,
-            "url": config.url
+            "url": rest_config.dap_url + rest_config.levee_service + config.levee_id
         },
         function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 var result = JSON.parse(body);
-                var emergencyLevel = EmergLevel[result.emergencyLevel.toUpperCase()];
-                var threatLevel = EmergLevel[result.emergencyLevel.toUpperCase()];
+                var emergencyLevel = EmergLevel[result.levee.emergency_level.toUpperCase()];
+                var threatLevel = ThreatLevel[result.levee.threat_level.toUpperCase()];
 
                 //TODO; check for emergencyLevel == undefined, if so fail
                 console.log("emergencyLevel=" + emergencyLevel);
+                console.log("threatLevel=" + threatLevel);
 
                 if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
                     console.log("Setting heightened emergency level");
