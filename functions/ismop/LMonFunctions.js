@@ -1,4 +1,5 @@
 var request = require('request'); // http client
+var rest_config = require('./LMonFunctions.config.js');
 
 
 var EmergLevel = {
