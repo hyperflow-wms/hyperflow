@@ -1,7 +1,6 @@
 var request = require('request');
 var http = require('http');
 var traverse = require('traverse');
-var url = require('url');
 
 var functions = require('../functions/ismop/LMonFunctions.js');
 
