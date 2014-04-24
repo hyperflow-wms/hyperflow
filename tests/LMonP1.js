@@ -34,7 +34,7 @@ exports.call_getLeveeState = function (test) {
 exports.call_storeThreatLevels = function (test) {
     var ins = [],
         outs = [],
-        config = { "levee_id": 1};
+        config = { "levee_id": 1 };
 
     functions.computeThreatLevel(ins, outs, config, function (err, outs) {
         if (!err) {
@@ -132,9 +132,9 @@ function createServer() {
                 body += data;
             });
             req.on("end", function () {
-                var threatLevel = parseParamString(body, "threat_level");
+                var threatLevel = parseParamString(body, "levee[threat_level]");
                 storeThreatLevels_response.levee["threat_level"] = threatLevel;
-                resp.writeHead(201, {"Content-Type": "application/json"});
+                resp.writeHead(200, {"Content-Type": "application/json"});
                 resp.write(JSON.stringify(storeThreatLevels_response)); //respond with ok
                 resp.end();
             });

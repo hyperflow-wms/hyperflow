@@ -82,19 +82,19 @@ function computeThreatLevel(ins, outs, config, cb) {
         {
             "timeout": 1000,
             "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
-            "form": {"id": config.levee_id, "threat_level": threatLevel},
+            "form": { "levee": { "id": config.levee_id, "threat_level": threatLevel }},
             "strictSSL": false,
             "headers": {
                 "PRIVATE-TOKEN": rest_config.auth_token
             }
         },
         function(error, response, body) {
-            if(!error && response.statusCode == 201) {
+            if(!error && response.statusCode == 200) {
                 parsedResponse = JSON.parse(body);
                 if (parsedResponse.levee.threat_level == threatLevel) {
                     cb(null, outs);
                 } else {
-                    cb(new Error("Error reading response from storeThreatLevel!"), outs);
+                    cb(new Error("Error storing threatLevel!"), outs);
                 }
             } else {
                 cb(new Error("Error reading response from storeThreatLevel!"), outs);
