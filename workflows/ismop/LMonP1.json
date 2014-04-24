@@ -2,18 +2,19 @@
     "name": "LeveeMonitorP1",
     "functions": [ {
         "name": "getLeveeState",
-        "module": "workflows/ismop/LMonFunctions.js"
+        "module": "functions/ismop/LMonFunctions.js"
     }, {
         "name": "computeThreatLevel",
-        "module": "workflows/ismop/LMonFunctions.js"
+        "module": "functions/ismop/LMonFunctions.js"
     }, {
         "name": "severeEmergencyActions",
-        "module": "workflows/ismop/LMonFunctions.js"
+        "module": "functions/ismop/LMonFunctions.js"
     } ],
     "processes": [ {
         "name": "LeveeStateChecker",
 	"type": "choice",
         "function": "getLeveeState",
+        "config": { "levee_id": 1},
 	"firingInterval": 5000,
         "ins": [ ],
         "outs": [ "ELHightened", "ELSevere" ]
@@ -21,6 +22,7 @@
         "name": "ThreatLevelComputation",
 	"type": "dataflow",
         "function": "computeThreatLevel",
+        "config": { "levee_id": 1},
         "ins": [ "ELHightened" ],
         "outs": [ ]
     }, {
