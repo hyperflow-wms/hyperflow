@@ -2,27 +2,33 @@
     "name": "LeveeMonitorP1",
     "functions": [ {
         "name": "getLeveeState",
-        "module": "workflows/ismop/LMonFunctions.js"
+        "module": "functions/ismop/LMonFunctions.js"
     }, {
         "name": "computeThreatLevel",
-        "module": "workflows/ismop/LMonFunctions.js"
+        "module": "functions/ismop/LMonFunctions.js"
     }, {
         "name": "severeEmergencyActions",
-        "module": "workflows/ismop/LMonFunctions.js"
+        "module": "functions/ismop/LMonFunctions.js"
     } ],
     "processes": [ {
         "name": "LeveeStateChecker",
 	"type": "choice",
         "function": "getLeveeState",
-	"firingInterval": 5000,
+	"firingInterval": 500,
         "ins": [ ],
-        "outs": [ "ELHightened", "ELSevere" ]
+        "outs": [ "ELHeightened", "ELSevere" ],
+        "config": {
+            "levee_id": "1"
+        }
     }, {
         "name": "ThreatLevelComputation",
 	"type": "dataflow",
         "function": "computeThreatLevel",
-        "ins": [ "ELHightened" ],
-        "outs": [ ]
+        "ins": [ "ELHeightened" ],
+        "outs": [ ],
+        "config": {
+            "levee_id": "1"
+        }
     }, {
         "name": "SevereEmergency",
 	"type": "dataflow",
@@ -31,7 +37,7 @@
         "outs": [ ]
     } ],
     "signals": [ {
-        "name": "ELHightened"
+        "name": "ELHeightened"
     }, {
         "name": "ELSevere"
     } ],

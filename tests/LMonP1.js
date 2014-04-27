@@ -25,7 +25,7 @@ exports.call_getLeveeState = function (test) {
             //TODO: add more assertions?
 //            console.log(JSON.stringify(outs));
         } else {
-            test.fail("getLeveeState response is invalid!");
+            test.fail("getLeveeState failed!");
         }
         test.done();
     });
@@ -39,7 +39,7 @@ exports.call_storeThreatLevels = function (test) {
     functions.computeThreatLevel(ins, outs, config, function (err, outs) {
         if (!err) {
         } else {
-            test.fail("computeThreatLevel response is invalid!");
+            test.fail("computeThreatLevel failed!");
         }
         test.done();
     });
@@ -117,6 +117,8 @@ function createServer() {
     //copy response with changed value for threat_level
     var storeThreatLevels_response = traverse.clone(getLeveeState_response);
 
+    var threat_level = "none";
+    var emergency_level = "none";
 
     //mock of services exposed by DAP
     return http.createServer(function (req, resp) {
@@ -132,8 +134,8 @@ function createServer() {
                 body += data;
             });
             req.on("end", function () {
-                var threatLevel = parseParamString(body, "threat_level");
-                storeThreatLevels_response.levee["threat_level"] = threatLevel;
+                threat_level = parseParamString(body, "threat_level");
+                storeThreatLevels_response.levee["threat_level"] = threat_level;
                 resp.writeHead(201, {"Content-Type": "application/json"});
                 resp.write(JSON.stringify(storeThreatLevels_response)); //respond with ok
                 resp.end();
