@@ -14,7 +14,8 @@
         "name": "LeveeStateChecker",
 	"type": "choice",
         "function": "getLeveeState",
-	"firingInterval": 500,
+        "config": { "levee_id": 1},
+	    "firingInterval": 500,
         "ins": [ ],
         "outs": [ "ELHeightened", "ELSevere" ],
         "config": {
