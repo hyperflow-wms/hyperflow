@@ -12,10 +12,10 @@
     } ],
     "processes": [ {
         "name": "LeveeStateChecker",
-	"type": "choice",
+        "type": "choice",
         "function": "getLeveeState",
         "config": { "levee_id": 1},
-	    "firingInterval": 500,
+        "firingInterval": 5000,
         "ins": [ ],
         "outs": [ "ELHeightened", "ELSevere" ],
         "config": {
