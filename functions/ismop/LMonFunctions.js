@@ -39,7 +39,7 @@ function getLeveeState(ins, outs, config, cb) {
                 var threatLevel = ThreatLevel[result.levee.threat_level.toUpperCase()];
 
                 //TODO; check for emergencyLevel == undefined, if so fail
-                console.log("getLeveeState: emergencyLevel=" + emergencyLevel + ", threatLevel=" + threatLevel);
+                console.log("getLeveeState: emergencyLevel=", emergencyLevel, ", threatLevel=", threatLevel);
 
                 if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
                     console.log("Setting heightened emergency level");
@@ -60,7 +60,7 @@ function getLeveeState(ins, outs, config, cb) {
                 cb(null, outs);
             } else {
                 console.log("Error reading response from getLeveeState!");
-                console.log("error: " + error + ", response: " + response);
+                console.log("error:", error, ", response:", response);
                 cb(new Error("Error reading response from getLeveeState!"), outs);
             }
         });
@@ -79,21 +79,28 @@ function computeThreatLevel(ins, outs, config, cb) {
         threatLevel = ThreatLevel.NONE;
     }
 
+    var levee = { "levee": {
+       "id": config.levee_id,
+        "threat_level": threatLevel
+    }};
+
     request.put(
         {
             "timeout": 1000,
             "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
-            "form": { "levee": { "id": config.levee_id, "threat_level": threatLevel }},
+//            "form": { "levee": { "id": config.levee_id, "threat_level": threatLevel }},
+            "body": JSON.stringify(levee),
             "strictSSL": false,
             "headers": {
-                "PRIVATE-TOKEN": rest_config.auth_token
+                "PRIVATE-TOKEN": rest_config.auth_token,
+                "Content-Type": "application/json"
             }
         },
         function(error, response, body) {
             if(!error && response.statusCode == 200) {
                 parsedResponse = JSON.parse(body);
                 if (parsedResponse.levee.threat_level == threatLevel) {
-                    console.log("computeThreatLevel: threat level=" + threatLevel);
+                    console.log("computeThreatLevel: threat level=", threatLevel);
                     cb(null, outs);
                 } else {
                     console.log("Error storing threatLevel!");
@@ -101,7 +108,7 @@ function computeThreatLevel(ins, outs, config, cb) {
                 }
             } else {
                 console.log("Error reading response from storeThreatLevel!");
-                console.log("error: " + error + ", response: " + response);
+                console.log("error:", error, ", response:", response);
                 cb(new Error("Error reading response from storeThreatLevel!"), outs);
             }
         }

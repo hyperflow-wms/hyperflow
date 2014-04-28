@@ -57,7 +57,7 @@ exports.call_severeEmergencyActions = function (test) {
 };
 
 //Helper functions
-
+//get parameter from url encoded parameter list, probably not needed anymore
 function parseParamString(paramString, paramName) {
     var parts = paramString.split("&");
     for (i = 0; i < parts.length; i++) {
@@ -134,7 +134,7 @@ function createServer() {
                 body += data;
             });
             req.on("end", function () {
-                var threatLevel = parseParamString(body, "levee[threat_level]");
+                var threatLevel = JSON.parse(body).levee.threat_level;
                 storeThreatLevels_response.levee["threat_level"] = threatLevel;
                 resp.writeHead(200, {"Content-Type": "application/json"});
                 resp.write(JSON.stringify(storeThreatLevels_response)); //respond with ok
