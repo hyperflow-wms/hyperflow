@@ -93,9 +93,51 @@ exports.init = function(redisClient) {
             for (var i=0; i<sigs.length; ++i) {
                 var sigName = sigs[i].name;
                 if (sigKeys[sigName]) 
-                    sigKeys[sigName].push(i);
+                    sigKeys[sigName].push(i); // TODO: here throw exception to enforce unique names
                 else
                     sigKeys[sigName] = [i];
+            }
+
+            // extract signal counts
+            for (var i in procs) {
+                var incounts = {};
+                for (var j in procs[i].ins) {
+                    if (value(procs[i].ins[j]).typeOf(String)) {
+                        var sig = procs[i].ins[j].split(":");
+                        if (sig.length > 1) { // there is a 'count' modifier 
+                            procs[i].ins[j] = sig[0];
+                            if (parseInt(sig[1])) {
+                                sig[1] = +sig[1]
+                            }
+                            if (sig[1] != 1) {
+                                var sigId = +sigKeys[sig[0]]+1;
+                                incounts[+sigId] = +sig[1];
+                            }
+                        }
+                    }
+                }
+                var outcounts = {};
+                for (var j in procs[i].outs) {
+                    if (value(procs[i].outs[j]).typeOf(String)) {
+                        var sig = procs[i].outs[j].split(":");
+                        if (sig.length > 1) { // there is a 'count' modifier 
+                            if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                                throw(new Error("Signal count modifier in '" + procs[i].outs[j] + "' for process '" + 
+                                            procs[i].name + "' must be a valid control signal name."));
+                            }
+                            procs[i].outs[j] = sig[0];
+                            procs[i].outs.push(sig[1]); // add the 'count' signal to process outputs (FIXME: check if duplicate signal id will work -- they should be no harm because of utilizing redis sets; however -- there is also score)
+                            var sigId = +sigKeys[sig[0]]+1;
+                            outcounts[+sigId] = +sig[1];
+                        }
+                    }
+                }
+                if (Object.keys(incounts).length) {
+                    procs[i].incounts = incounts;
+                }
+                if (Object.keys(outcounts).length) {
+                    procs[i].outcounts = outcounts;
+                }
             }
 
             // convert process' ins, outs and sticky arrays
@@ -108,6 +150,8 @@ exports.init = function(redisClient) {
             // convert workflow ins and outs
             convertSigNames(ins);
             convertSigNames(outs);
+
+            console.log(JSON.stringify(wfJson, "", 2));
         }
 
         var createWfInstance = function(cb) {
@@ -249,6 +293,7 @@ exports.init = function(redisClient) {
 
             // FIXME: "task" type deprecated, change the default type to "dataflow"
             // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
+            // FIXME: score is now deprecated
             task.type = task.type ? task.type.toLowerCase() : "task";
             multi.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
 
@@ -283,6 +328,19 @@ exports.init = function(redisClient) {
                     }
                 })(i+1, task.outs[i]+1);
             }
+
+            // add info about input and output counts
+            for (var sig in task.incounts) {
+                (function(s, c) {
+                    multi.hset(taskKey+":incounts", s, c);
+                })(sig, task.incounts[sig])
+            }
+            for (var sig in task.outcounts) {
+                (function(s, c) {
+                    multi.hset(taskKey+":outcounts", s, c);
+                })(sig, task.outcounts[sig])
+            }
+
             // add info on which input ports (if any) are "sticky" 
             if (!task.sticky) task.sticky = [];
             for (var i=0; i<task.sticky.length; ++i) {
@@ -1012,10 +1070,23 @@ function public_getWfMap(wfId, cb) {
                                 function(cb) {
                                     rcl.smembers(taskKey+":coutset", function(err, couts) {
                                         if (!couts) couts = [];
+                                        //console.log("COUTS", couts);
                                         fullInfo[taskId].coutset = {};
                                         couts.forEach(function(c) {
                                             fullInfo[taskId].coutset[+c] = true;
                                         });
+                                        cb(err);
+                                    });
+                                },
+                                function(cb) {
+                                    rcl.hgetall(taskKey+":incounts", function(err, incounts) {
+                                        fullInfo[taskId].incounts = incounts;
+                                        cb(err);
+                                    });
+                                },
+                                function(cb) {
+                                    rcl.hgetall(taskKey+":outcounts", function(err, incounts) {
+                                        fullInfo[taskId].outcounts = incounts;
                                         cb(err);
                                     });
                                 }
@@ -1053,6 +1124,7 @@ function public_getWfMap(wfId, cb) {
                     });
                     asyncTasks.push(function(callback) {
                         rcl.hgetall(taskKey+":couts", function(err, ret) {
+                            //console.log("Proc COUTS WFLIB", ret);
                             if (err || ret == -1) { throw(new Error("Redis error")); }
                             if (ret != null) {
                                 if (!(taskId in cPortsInfo)) {
@@ -1371,7 +1443,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             delete funcIns[i].status;
             // if there were more signal instances, only copy their data
             for (var j=1; j<insValues[i].length; ++j) {
-                funcIns[i].data.push(insValues[i][j].data);
+                funcIns[i].data.push(insValues[i][j].data[0]);
             }
         }
         return funcIns;

@@ -104,9 +104,12 @@ var ProcLogic = function() {
 
         if (this.nDataIns == 0) { // special case with no data inputs (a 'source' pocess)
             // FIXME: add assertion/validation that firing interval is defined!
-            // TODO: change semantics of firingInterval to *minimal* firing interval regardless of # of inputs
+            // TODO: change semantics of firingInterval to *minimal* firing interval (regardless of # of inputs)
             this.firingInterval = this.fullInfo.firingInterval;
 	}
+
+        //console.log("INCOUNTS", this.fullInfo.incounts);
+        //console.log("OUTCOUNTS", this.fullInfo.outcounts);
 
         session.addListener({
             contextCreated      : function( obj ) {    },
@@ -115,6 +118,9 @@ var ProcLogic = function() {
             stateChanged        : function( obj ) {    },
             customEvent         : fireInput
         });
+
+        //console.log("PROC COUTSET: ", this.fullInfo.coutset);
+        //console.log("PROC CTROUTS: ", this.ctrOuts);
 
         // process-specific initialization
         if (this.init2) {

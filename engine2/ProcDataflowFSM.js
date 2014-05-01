@@ -33,11 +33,15 @@ var DataflowLogic = function() {
     this.init2 = function() {
         // set firing sigs
         for (var i in this.ins) {
-            var sigId = this.ins[i];
+            var sigId = this.ins[i], 
+                sigCount = this.fullInfo.incounts[sigId] ? this.fullInfo.incounts[sigId]: 1;
             if (!this.fullInfo.cinset[sigId]) {
-                this.firingSigs.push([sigId, 1]);
+                this.firingSigs.push([sigId, +sigCount]);
             }
         }
+
+        console.log("FIRNG SIGS:", this.firingSigs);
+
         // "next" signal (if present) is also required for firing (even the first one)
         if ("next" in this.ctrIns) {
             this.firingSigs.push([this.ctrIns.next,1]);

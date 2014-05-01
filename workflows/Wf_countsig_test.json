@@ -1,0 +1,30 @@
+{
+    "name": "Wf_CountSigTest",
+    "functions": [ {
+        "name": "count",
+        "module":"functions"
+    } ],
+    "processes": [ {
+        "name": "CountOut",
+	"type": "dataflow",
+        "function": "count",
+        "ins": [ "sig1:3" ],
+        "outs": [ "sig2:count1", "sig3:count2"]
+    } ],
+    "signals": [ {
+        "name": "sig1",
+        "data": [1, 2, 3]
+    }, {
+        "name": "sig2"
+    }, {
+        "name": "sig3"
+    }, {
+        "name": "count1",
+        "control": "count"
+    }, {
+        "name": "count2",
+        "control": "count"
+    } ],
+    "ins": [ ],
+    "outs": [ ]
+}
