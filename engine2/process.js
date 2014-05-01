@@ -263,21 +263,22 @@ var ProcLogic = function() {
             proc.sigValues.forEach(function(sigs) {
                 sigs.forEach(function(sig) {
                     proc.engine.eventServer.emit("prov", 
-                        ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]);
-
-                    // stash events for the next firing
-
-                    // (a) process is stateless => do "state-reset" in next firing
-                    if (!proc.fullInfo.stateful) { 
-                        proc.provStash.push( 
-                            ["state-reset", proc.appId, proc.procId, proc.firingId+1, null, null]);
-
-                        // (b) some sigs are stateful => do "state-remove" for those which aren't
-                    } else if (!isStateful(sig._id)) { 
-                        proc.provStash.push( 
-                            ["state-remove", proc.appId, proc.procId, proc.firingId+1, sig._id, sig.sigIdx]);
-                    }
+                        ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]
+                    );
                 });
+
+                // stash events for the next firing
+                if (!proc.fullInfo.stateful) { 
+                    // process is stateless => do "state-reset" in next firing
+                    proc.provStash.push( 
+                        ["state-reset", proc.appId, proc.procId, proc.firingId+1, null, null]
+                    );
+                } else if (!isStateful(sig._id)) { 
+                    // some sigs are stateful => do "state-remove" for those which aren't
+                    proc.provStash.push( 
+                        ["state-remove", proc.appId, proc.procId, proc.firingId+1, sig._id, sig.sigIdx]
+                    );
+                }
             });
         }
 
