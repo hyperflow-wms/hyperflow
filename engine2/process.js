@@ -161,7 +161,7 @@ var ProcLogic = function() {
         var sigs = proc.firingSigs;
         proc.wflib.fetchInputs(proc.appId, proc.procId, sigs, true, function(arrived, sigValues) {
             if (arrived) {
-                //onsole.log("FETCHED", sigs, proc.procId);
+                console.log("FETCHED", sigs, proc.procId);
                 if (sigs[sigs.length-1][0] == proc.ctrIns.next) {
                     sigValues.pop(); // remove 'next' signal (should not be passed to the function)
                 }
@@ -260,26 +260,28 @@ var ProcLogic = function() {
             var isStateful = function(sigId) { 
                 return proc.fullInfo.stateful && (sigId in proc.fullInfo.statefulSigs);
             }
-            proc.sigValues.forEach(function(sigs) {
-                sigs.forEach(function(sig) {
-                    proc.engine.eventServer.emit("prov", 
-                        ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]
-                    );
-                });
+            if (proc.sigValues) {
+                proc.sigValues.forEach(function(sigs) {
+                    sigs.forEach(function(sig) {
+                        proc.engine.eventServer.emit("prov", 
+                            ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]
+                        );
+                    });
 
-                // stash events for the next firing
-                if (!proc.fullInfo.stateful) { 
-                    // process is stateless => do "state-reset" in next firing
-                    proc.provStash.push( 
-                        ["state-reset", proc.appId, proc.procId, proc.firingId+1, null, null]
-                    );
-                } else if (!isStateful(sig._id)) { 
-                    // some sigs are stateful => do "state-remove" for those which aren't
-                    proc.provStash.push( 
-                        ["state-remove", proc.appId, proc.procId, proc.firingId+1, sig._id, sig.sigIdx]
-                    );
-                }
-            });
+                    // stash events for the next firing
+                    if (!proc.fullInfo.stateful) { 
+                        // process is stateless => do "state-reset" in next firing
+                        proc.provStash.push( 
+                            ["state-reset", proc.appId, proc.procId, proc.firingId+1, null, null]
+                        );
+                    } else if (!isStateful(sig._id)) { 
+                        // some sigs are stateful => do "state-remove" for those which aren't
+                        proc.provStash.push( 
+                            ["state-remove", proc.appId, proc.procId, proc.firingId+1, sig._id, sig.sigIdx]
+                        );
+                    }
+                });
+            }
         }
 
         proc.wflib.invokeTaskFunction2(
