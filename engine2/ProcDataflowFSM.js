@@ -33,8 +33,12 @@ var DataflowLogic = function() {
     this.init2 = function() {
         // set firing sigs
         for (var i in this.ins) {
-            var sigId = this.ins[i], 
+            var sigId = this.ins[i], sigCount; 
+            if (this.fullInfo.incounts) {
                 sigCount = this.fullInfo.incounts[sigId] ? this.fullInfo.incounts[sigId]: 1;
+            } else {
+                sigCount = 1;
+            }
             if (!this.fullInfo.cinset[sigId]) {
                 this.firingSigs.push([sigId, +sigCount]);
             }
