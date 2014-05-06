@@ -36,6 +36,7 @@
     "nodeunit": "",
     "request": "",
     "q": "",
-    "traverse": ""
+    "traverse": "",
+    "istanbul": ""
    }
 }
