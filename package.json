@@ -1,29 +1,32 @@
 {
   "name": "hyperflow",
   "version": "1.0.0-beta-2",
-   "engines": {
-     "node": "0.10.x"
-   },
-   "env": {
-     "PYTHON": "c:/programs/python27"
-   },
-   "dependencies": {
-    "express":"3.x",
-    "consolidate":"0.9.1",
-    "cradle":"0.6.6",
-    "ejs":"0.8.4",
-    "eyes":"0.1.8",
-    "async":"0.2.x",
-    "redis":"0.9.1",
-    "xml2js":"0.2.7",
-    "underscore":"1.x",
-    "uuid":"",
-    "amqplib":"",
-    "when":"",
-    "eventemitter2":"",
-    "optimist":"0.6.0",
-    "walkdir":"0.0.7",
-    "path":"0.4.9",
+  "engines": {
+    "node": "0.10.x"
+  },
+  "bin": {
+    "hyperflow": "./bin/hyperflow",
+    "hyperflow-convert-dax": "./bin/hyperflow-convert-dax",
+    "hyperflow-convert-dax-amqp": "./bin/hyperflow-convert-dax-amqp",
+    "hyperflow-create-workflow": "./bin/hyperflow-create-workflow"
+  },
+  "dependencies": {
+    "express": "3.x",
+    "consolidate": "0.9.1",
+    "cradle": "0.6.6",
+    "ejs": "0.8.4",
+    "eyes": "0.1.8",
+    "async": "0.2.x",
+    "redis": "0.9.1",
+    "xml2js": "0.2.7",
+    "underscore": "1.x",
+    "uuid": "",
+    "amqplib": "",
+    "when": "",
+    "eventemitter2": "",
+    "optimist": "0.6.0",
+    "walkdir": "0.0.7",
+    "path": "0.4.9",
     "z-schema": "2.0.x",
     "walk": "2.x",
     "mtwitter": "1.5.2",
@@ -38,5 +41,5 @@
     "q": "",
     "traverse": "",
     "istanbul": ""
-   }
+  }
 }
