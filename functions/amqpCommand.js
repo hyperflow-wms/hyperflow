@@ -12,10 +12,12 @@ connection.then(function(conn) {
   connection.once('SIGINT', function() { connection.close(); });
 })
 
+var taskCount = 0;
+
 function amqpCommand(ins, outs, config, cb) {
   connection.then(function(connection) {
     return when(connection.createChannel().then(function(ch) {
-      var message = {
+      var jobMessage = {
         "executable": config.executor.executable,
         "args": config.executor.args,
         "inputs": ins,
@@ -39,21 +41,23 @@ function amqpCommand(ins, outs, config, cb) {
       });
 
       ok = ok.then(function(queue) {
-        console.log("[AMQP][" + corrId + "] Publishing job");
-        ch.sendToQueue('hyperflow.jobs', new Buffer(JSON.stringify(message)), {replyTo: queue, contentType: 'application/json', correlationId: corrId});
+        taskCount += 1;
+        console.log("[AMQP][" + corrId + "][" + taskCount + "] Publishing job " + JSON.stringify(jobMessage));
+        ch.sendToQueue('hyperflow.jobs', new Buffer(JSON.stringify(jobMessage)), {replyTo: queue, contentType: 'application/json', correlationId: corrId});
         return answer.promise;
       }); 
 
       return ok.then(function(message) {
         var parsed = JSON.parse(message);
+        ch.close();
         if (parsed.exit_status == "0") {
-          console.log("[AMQP][" + corrId + "] Job finished!", outs);
+          console.log("[AMQP][" + corrId + "] Job finished! job[" + JSON.stringify(jobMessage) + "] msg[" + message + "]", outs);
           cb(null, outs);
         } else {
-          console.log("[AMQP][" + corrId + "] Error during job execution! " + parsed.exceptions);
+          console.log("[AMQP][" + corrId + "] Error during job execution! msg[" + JSON.stringify(jobMessage) + "] job[" + message + "] exception[" + parsed.exceptions + "]");
+          // process.exit(5);
           cb(parsed.exceptions, outs);
         }
-        ch.close();
       });
     }))
   }).then(null, function(err) { console.trace(err.stack); });
