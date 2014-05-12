@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /* Hypermedia workflow
  * Bartosz Balis, 2013
  * createwf: creates workflow state in Redis db from a json file

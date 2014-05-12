@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var PegasusConverter = require('../converters/pegasus_dax.js'),
     argv = require('optimist').argv;
 

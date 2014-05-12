@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /* Hypermedia workflow
  * Bartosz Balis, 2013
  * runwf: 
