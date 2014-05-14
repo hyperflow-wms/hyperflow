@@ -1,7 +1,5 @@
 # HyperFlow: a distributed workflow execution engine
 
-## Description
-
 HyperFlow provides a model of computation and an execution engine for complex, distributed [workflow](http://en.wikipedia.org/wiki/Workflow) applications which consist of a set of **processes** performing well-defined **functions** and exchanging **signals**. Browse the [wiki pages](https://github.com/dice-cyfronet/hyperflow/wiki) to learn more about the HyperFlow workflow model. 
 
 
@@ -34,13 +32,16 @@ $ hyperflow start
 Hyperflow starting!
 Listening on *:1234, webui: http://1.2.3.4:1234/
 hello-world workflow loaded, sending initial signals.
+Workflow id is 9876.
 ... to be continued
 ```
 ### Advanced options
 
 ```
 hyperflow start [--functions functions.js] [--dag dag.json|dag.js] [--config hyperflow.json] [--config-KEY=VALUE]
-````
+hyperflow resume workflow_id [--functions functions.js] [--dag dag.json|dag.js] [--config hyperflow.json] [--config-KEY=VALUE]
+hyperflow terminate workflow_id
+```
 
 
 ### Workflow directory structure
