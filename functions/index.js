@@ -140,15 +140,17 @@ function grepFile(ins, outs, config, cb) {
 
 //var cnt = 0;
 function count(ins, outs, config, cb) {
-    var cnt = ins[0].data[0];
     console.log("COUNT INS:", JSON.stringify(ins));
     outs[0].data = [];
-    outs[0].data[0] = cnt+1;
-    if (cnt % 1000 == 0) { 
-        console.log("count:", cnt)
-    }
-    if (cnt == 5000)
-        process.exit();
+    ins[0].data.forEach(function(cnt) {
+        outs[0].data.push(cnt+1);
+        if (cnt % 1000 == 0) { 
+            console.log("count:", cnt);
+        }
+        if (cnt == 5000) {
+            process.exit();
+        }
+    });
     cb(null, outs);
 }
 

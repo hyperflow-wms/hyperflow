@@ -21,11 +21,20 @@ function fireInput(obj) {
         sigId = msg.sigId,
         sig = msg.sig;
 
-    //onsole.log("FIRE INPUT Proc", proc.procId);
+    console.log("FIRE INPUT Proc", proc.procId, sig);
+    console.log("FIRING SIGS="+JSON.stringify(proc.firingSigs));
 
-    if (sigId == proc.ctrIns.done) { // "done" signal has arrived
+    if (sigId == proc.ctrIns.done) { // the "done" control signal has arrived
         proc.done = true;
     } else {
+        if (sig.control == "count") { // a "count" control signal has arrived
+            console.log("COUNT SIG ARRIVED!", sig);
+            var tSigId = proc.fullInfo.incounts.rev[sigId];
+            console.log("WILL SET sig '" + tSigId + "' count to", sig.count);
+            proc.firingSigs[tSigId] = sig.count;
+
+            // FIXME: should handle multpile count signals waiting in the queue
+        }
         if (!proc.dataIns[sigId]) {
             proc.dataIns[sigId] = 1;
             proc.cnt++;
@@ -34,7 +43,7 @@ function fireInput(obj) {
         }
 
         //onsole.log("CNT Proc", proc.procId, proc.cnt, proc.dataIns);
-        if (proc.cnt >= proc.firingSigs.length) { // not accurate if signal counts > 1 in the firing pattern
+        if (proc.cnt >= Object.keys(proc.firingSigs).length) { // not accurate if signal counts > 1 in the firing pattern
             proc.tryTransition();
         }
     }
@@ -57,7 +66,7 @@ var ProcLogic = function() {
     this.sinks = [];
     this.firingInterval = -1; // a process can have 0 data inputs and a firing interval ==> its 
                               // function will be invoked regularly according to this interval
-    this.firingSigs = [];    // sigs required to fire the process
+    this.firingSigs = {};    // sigs required to fire the process
     this.firingLimit = -1;   // max number of times the process can fire (-1 = unlimited)
     this.sigValues = null;
     this.firingId = 0;       // which firing of the process is this?
@@ -159,12 +168,13 @@ var ProcLogic = function() {
 
     this.fetchInputs = function(proc, cb) {
         var sigs = proc.firingSigs;
+        //onsole.log("FETCHING", sigs);
         proc.wflib.fetchInputs(proc.appId, proc.procId, sigs, true, function(arrived, sigValues) {
             if (arrived) {
-                console.log("FETCHED", sigs, proc.procId);
-                if (sigs[sigs.length-1][0] == proc.ctrIns.next) {
+                //onsole.log("FETCHED", sigValues, proc.procId);
+                /*if (sigs[sigs.length-1][0] == proc.ctrIns.next) {
                     sigValues.pop(); // remove 'next' signal (should not be passed to the function)
-                }
+                }*/
                 proc.sigValues = sigValues; // set input signal values to be passed to the function
             } else {
                 proc.ready = true;
@@ -194,10 +204,9 @@ var ProcLogic = function() {
         var funcIns = [], funcOuts = [];
 
         // create arrays of data ins and outs ids (exclude control signals)
-        for (var i=0; i<proc.firingSigs.length; ++i) {
-            var sigId = proc.firingSigs[i][0];
+        for (var sigId in proc.firingSigs) {
             if (!(sigId in proc.fullInfo.cinset)) {  
-                funcIns.push(proc.sigId);
+                funcIns.push(sigId);
             }
         }
         for (var i=0; i<proc.outs.length; ++i) {
@@ -215,9 +224,8 @@ var ProcLogic = function() {
         // update - 'cnt': number of inputs with signals waiting
         //        - 'dataIns': signal counts on input queues
         proc.cnt = 0;
-        for (var i=0; i<proc.firingSigs.length; ++i) {
-            var sigId = proc.firingSigs[i][0],
-                sigCount = proc.firingSigs[i][1];
+        for (var sigId in proc.firingSigs) {
+            var sigCount = proc.firingSigs[sigId];
             if (!isSticky(sigId)) {
                 proc.dataIns[sigId] -= sigCount;
             }
@@ -246,6 +254,8 @@ var ProcLogic = function() {
         ///////////////////////////////////////////
         ///////// Provenance logging //////////////
         ///////////////////////////////////////////
+        
+        // TODO: implement user-driven events (state-reset and state-remove)
 
         if (proc.engine.logProvenance) {
             // 1. emit stashed ("state-*") provenance events
@@ -305,9 +315,25 @@ var ProcLogic = function() {
             outValues[i]["_id"] = +funcOuts[i];
             outValues[i]["source"] = +proc.procId;
             outValues[i]["firingId"] = +firingId;
+
+            // emit the associated "count" signal (if exists)
+            var countSigId = proc.fullInfo.outcounts && 
+                proc.fullInfo.outcounts[funcOuts[i]] ? proc.fullInfo.outcounts[funcOuts[i]]: undefined;
+            if (countSigId) {
+                var count = outValues[i].data ? outValues[i].data.length: 1;
+                var sigId = countSigId.split(":")[1]; 
+
+                //onsole.log("FUNC OUTS", funcOuts);
+                //onsole.log("EMITTING COUNT SIG", sigId);
+                //onsole.log("IN  COUNTS", proc.fullInfo.incounts);
+                //onsole.log("OUT COUNTS", proc.fullInfo.outcounts);
+                proc.engine.emitSignals([{"_id": +sigId, "count": count, "control": "count", data: [{}]}]);
+                // TODO ########################################
+            }
         }
+
         if (proc.ctrOuts.next) { // emit "next" signal if there is such an output port
-            outValues.push({"_id": proc.ctrOuts.next });
+            outValues.push({"_id": proc.ctrOuts.next, "control": "next" });
         }
 
         proc.engine.emitSignals(outValues, function(err) {
