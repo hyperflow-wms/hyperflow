@@ -1113,7 +1113,7 @@ function public_getWfMap(wfId, cb) {
                                 },
                                 function(cb) {
                                     rcl.hgetall(taskKey+":incounts", function(err, incounts) {
-                                        if (incounts.rev) {
+                                        if (incounts && incounts.rev) {
                                             incounts.rev = JSON.parse(incounts.rev);
                                         }
                                         fullInfo[taskId].incounts = incounts;
@@ -1399,9 +1399,11 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
             rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
+                var module = fun ? fun.module: "functions";
                 //var fpath = pathTool.join(process.cwd(), fun.module);
-                var fpath = pathTool.join(__dirname, "..", fun.module);
+                var fpath = pathTool.join(__dirname, "..", module);
                 var f = require(fpath)[taskInfo.fun]; 
+                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
                 //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG

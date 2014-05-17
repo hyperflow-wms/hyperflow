@@ -21,17 +21,26 @@ function fireInput(obj) {
         sigId = msg.sigId,
         sig = msg.sig;
 
-    console.log("FIRE INPUT Proc", proc.procId, sig);
-    console.log("FIRING SIGS="+JSON.stringify(proc.firingSigs));
+    //onsole.log("FIRE INPUT Proc", proc.procId, sig);
+    //onsole.log("FIRING SIGS="+JSON.stringify(proc.firingSigs));
 
     if (sigId == proc.ctrIns.done) { // the "done" control signal has arrived
         proc.done = true;
     } else {
         if (sig.control == "count") { // a "count" control signal has arrived
-            console.log("COUNT SIG ARRIVED!", sig);
+            //onsole.log("COUNT SIG ARRIVED!", sig);
             var tSigId = proc.fullInfo.incounts.rev[sigId];
-            console.log("WILL SET sig '" + tSigId + "' count to", sig.count);
-            proc.firingSigs[tSigId] = sig.count;
+            //onsole.log("WILL SET sig '" + tSigId + "' count to", sig.count);
+
+            if (!proc.countSigs[sigId]) {
+                proc.countSigs[sigId] = [];
+            }
+            if (!proc.countSigs[sigId].length) { // no previous 'count' signals 
+                // set the appropriate 'count' in the firing signals pattern
+                proc.firingSigs[tSigId] = sig.count;
+            }
+            proc.countSigs[sigId].push(sig); // stash the signal
+
 
             // FIXME: should handle multpile count signals waiting in the queue
         }
@@ -71,6 +80,8 @@ var ProcLogic = function() {
     this.sigValues = null;
     this.firingId = 0;       // which firing of the process is this?
     this.runningCount = 0;   // how many firings are currently running in parallel (max = parlevel)?
+
+    this.countSigs = {}; // stash for 'count' signals for next firings
 
     this.ready = false; // is the proc ready to read input signals?
 
@@ -117,8 +128,8 @@ var ProcLogic = function() {
             this.firingInterval = this.fullInfo.firingInterval;
 	}
 
-        //console.log("INCOUNTS", this.fullInfo.incounts);
-        //console.log("OUTCOUNTS", this.fullInfo.outcounts);
+        //onsole.log("INCOUNTS", this.fullInfo.incounts);
+        //onsole.log("OUTCOUNTS", this.fullInfo.outcounts);
 
         session.addListener({
             contextCreated      : function( obj ) {    },
@@ -128,8 +139,8 @@ var ProcLogic = function() {
             customEvent         : fireInput
         });
 
-        //console.log("PROC COUTSET: ", this.fullInfo.coutset);
-        //console.log("PROC CTROUTS: ", this.ctrOuts);
+        //onsole.log("PROC COUTSET: ", this.fullInfo.coutset);
+        //onsole.log("PROC CTROUTS: ", this.ctrOuts);
 
         // process-specific initialization
         if (this.init2) {
@@ -243,6 +254,7 @@ var ProcLogic = function() {
             asyncInvocation = true;
             // we return to the ready state BEFORE invoking the function, i.e. the firing
             // is ASYCHRONOUS; as a result, another firing can happen in parallel
+            proc.shiftCountSigs(); 
             proc.makeTransition("RuRe");
         }
 
@@ -345,6 +357,7 @@ var ProcLogic = function() {
 
     this.postInvokeTransition = function(asyncInvocation, cb) {
         if (!asyncInvocation) {
+            this.shiftCountSigs();
             this.makeTransition("RuRe"); // proc goes back to ready state
         }
         cb(null);
@@ -355,6 +368,21 @@ var ProcLogic = function() {
 
 ProcLogic.prototype.makeTransition = function(tr) {
     this.session.dispatch( { msgId: tr } );
+}
+
+// If there are input 'count' signals, sets the associated signal counts for next firing
+ProcLogic.prototype.shiftCountSigs = function() {
+    for (var s in this.countSigs) {
+        if (this.countSigs[s]) {
+            this.countSigs[s].shift();
+        }
+        if (this.countSigs[s] && this.countSigs[s].length) {
+            var sig = this.countSigs[s][0], sigId = s;
+            var tSigId = this.fullInfo.incounts.rev[sigId];
+            //onsole.log("SHIFTING COUNTS... WILL SET sig '" + tSigId + "' count to", sig.count);
+            this.firingSigs[tSigId] = sig.count;
+        }
+    }
 }
 
 

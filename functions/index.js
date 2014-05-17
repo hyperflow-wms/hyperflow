@@ -18,17 +18,22 @@ function print(ins, outs, config, cb) {
 }
 
 function print2(ins, outs, config, cb) {
-        ins.forEach(function(input) {
+    console.log("PRINT2");
+    ins.forEach(function(input) {
+        if (input.data.length == 1) {
             console.log(input.data[0]);
-	});
-        cb(null, outs);
+        } else {
+            console.log(input.data);
+        }
+    });
+    cb(null, outs);
 }
 
 function echo(ins, outs, config, cb) {
     var data = JSON.stringify(ins[0].data);
     //console.log(data);
-    outs[0].data = ins[0].data;
-    //console.log(JSON.stringify(ins, null, 2));
+    outs[0].data = [ins[0].data];
+    //onsole.log("ECHO", JSON.stringify(ins, null, 2));
 
     //if (typeof data == "object" || typeof data == "array")
      //   data = JSON.stringify(data);
@@ -40,7 +45,7 @@ function echo(ins, outs, config, cb) {
 
 function echoWithDelay(ins, outs, config, cb) {
     //console.log(ins, outs);
-    outs[0] = ins[0];
+    outs[0].data = [ins[0].data];
     setTimeout(function() {
         cb(null, outs);
     }, Math.floor(Math.random()*1000+1));
@@ -140,7 +145,7 @@ function grepFile(ins, outs, config, cb) {
 
 //var cnt = 0;
 function count(ins, outs, config, cb) {
-    console.log("COUNT INS:", JSON.stringify(ins));
+    //onsole.log("COUNT INS:", JSON.stringify(ins));
     outs[0].data = [];
     ins[0].data.forEach(function(cnt) {
         outs[0].data.push(cnt+1);
@@ -157,6 +162,20 @@ function count(ins, outs, config, cb) {
 function exit(ins, outs, config, cb) {
   console.log("Exiting\n\n");
   process.exit(0);
+}
+
+function genCollection(ins, outs, config, cb) {
+    var len = ins[0].data[0];
+    outs[0].data = [];
+
+    for (var i=0; i<len; i++) {
+        //outs[0].data.push(Math.floor(Math.random() * 5) + 1); 
+        outs[0].data.push(i+1);
+    }
+
+    console.log("GEN COLLECTION", outs[0].data);
+
+    cb(null, outs);
 }
 
 /*
@@ -185,3 +204,4 @@ exports.echo = echo;
 exports.echoWithDelay = echoWithDelay;
 exports.count = count;
 exports.match = match;
+exports.genCollection = genCollection;
