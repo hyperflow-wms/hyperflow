@@ -36,7 +36,7 @@
     "nodeunit": "",
     "request": "",
     "q": "",
-    "traverse": "",
-    "istanbul": ""
+    "istanbul": "",
+    "rewire": ""
    }
 }
