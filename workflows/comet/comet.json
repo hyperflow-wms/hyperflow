@@ -1,0 +1,56 @@
+{
+  "name": "Comet",
+  "functions": [ {
+    "name": "genXmlCollection",
+    "module": "./workflows/collection/comet.js"
+  }, {
+    "name": "genDataSets",
+    "module": "./workflows/collection/comet.js"
+  }, {
+    "name": "plotData",
+    "module": "./workflows/collection/comet.js"
+  } ],
+  "processes": [ {
+    "name": "GenCountiesCollection",
+    "function": "genXmlCollection",
+    "ins": [ "xmlData", "config1" ],
+    "outs": [ "counties" ]
+  }, {
+    "name": "GenStationsCollection",
+    "function": "genXmlCollection",
+    "ins": [ "counties", "config2" ],
+    "sticky": [ "config2" ],
+    "outs": [ "stations:dataSetsCount"]
+  }, {
+    "name": "GenDataSets",
+    "function": "genDataSets",
+    "ins": [ "stations" ],
+    "outs": [ "dataSet" ]
+  }, {
+    "name": "PlotGraphs",
+    "function": "plotData",
+    "ins": ["dataSet"],
+    "outs": []
+  } ],
+  "signals": [ {
+    "name": "xmlData",
+    "data": [ { "path": "./data.xml" } ]
+  }, {
+    "name": "counties"
+  }, {
+    "name": "stations"
+  }, {
+    "name": "config1",
+    "data": [ { "xpath": "//Collection[@label='county']" } ]
+  }, {
+    "name": "config2",
+    "data": [ { "xpath": "//Collection[@label='station']" } ]
+  }, {
+    "name": "dataSet"
+  }, {
+    "name": "dataSetsCount",
+    "control": "count"
+  } ],
+  "ins": [],
+  "outs": []
+}
