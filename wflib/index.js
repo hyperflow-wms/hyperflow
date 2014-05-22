@@ -1,6 +1,6 @@
-/* Hypermedia workflow. 
+/* HyperFlow workflow engine
  ** API over redis-backed workflow instance
- ** Author: Bartosz Balis (2013)
+ ** Author: Bartosz Balis (2013-2014)
  */
 var fs = require('fs'),
     redis = require('redis'),
