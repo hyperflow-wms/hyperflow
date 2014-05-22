@@ -1,5 +1,5 @@
- /* Hypermedia workflow. 
- ** Author: Bartosz Balis (2013)
+ /* HyperFlow workflow engine
+ ** Author: Bartosz Balis (2013-2014)
  **
  ** Common functions used by processes
  ** 
@@ -35,14 +35,11 @@ function fireInput(obj) {
             if (!proc.countSigs[sigId]) {
                 proc.countSigs[sigId] = [];
             }
-            if (!proc.countSigs[sigId].length) { // no previous 'count' signals 
-                // set the appropriate 'count' in the firing signals pattern
+            if (!proc.countSigs[sigId].length) { // no previously stashed 'count' signals...
+                // ...set the appropriate 'count' in the firing signals pattern
                 proc.firingSigs[tSigId] = sig.count;
             }
             proc.countSigs[sigId].push(sig); // stash the signal
-
-
-            // FIXME: should handle multpile count signals waiting in the queue
         }
         if (!proc.dataIns[sigId]) {
             proc.dataIns[sigId] = 1;
@@ -52,7 +49,7 @@ function fireInput(obj) {
         }
 
         //onsole.log("CNT Proc", proc.procId, proc.cnt, proc.dataIns);
-        if (proc.cnt >= Object.keys(proc.firingSigs).length) { // not accurate if signal counts > 1 in the firing pattern
+        if (proc.cnt >= Object.keys(proc.firingSigs).length) { // FIXME: not accurate if signal counts > 1 in the firing pattern
             proc.tryTransition();
         }
     }
@@ -370,17 +367,17 @@ ProcLogic.prototype.makeTransition = function(tr) {
     this.session.dispatch( { msgId: tr } );
 }
 
-// If there are input 'count' signals, sets the associated signal counts for next firing
+// If there are stashed input 'count' signals, sets the associated signal counts for next firing
 ProcLogic.prototype.shiftCountSigs = function() {
     for (var s in this.countSigs) {
         if (this.countSigs[s]) {
-            this.countSigs[s].shift();
+            this.countSigs[s].shift(); // remove current 'count' signal
         }
         if (this.countSigs[s] && this.countSigs[s].length) {
             var sig = this.countSigs[s][0], sigId = s;
             var tSigId = this.fullInfo.incounts.rev[sigId];
             //onsole.log("SHIFTING COUNTS... WILL SET sig '" + tSigId + "' count to", sig.count);
-            this.firingSigs[tSigId] = sig.count;
+            this.firingSigs[tSigId] = sig.count; // set signal count for next firing
         }
     }
 }
