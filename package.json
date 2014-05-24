@@ -37,6 +37,7 @@
     "request": "",
     "q": "",
     "istanbul": "",
-    "rewire": ""
+    "rewire": "",
+    "docopt": ""
    }
 }
