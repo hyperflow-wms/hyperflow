@@ -7,10 +7,16 @@ HyperFlow provides a model of computation and an execution engine for complex, d
 
 ### Installing Hyperflow
 
-Hyperflow requires [node.js](http://nodejs.org) runtime and may be installed using npm package manager:
+Hyperflow requires [node.js](http://nodejs.org) runtime. Stable version may be installed using npm package manager:
 
 ```shell
 $ npm install -g hyperflow
+```
+
+You can install bleeding-edge from GitHub:
+
+```shell
+$ npm install -g https://github.com/dice-cyfronet/hyperflow/archive/develop.tar.gz
 ```
 
 Hyperflow also requires [Redis](http://redis.io) server.
@@ -26,32 +32,32 @@ $ sudo yum install redis
 ### Running *hello world* workflow
 
 ```shell
-$ git clone http://github.com/dice-cyfronet/hyperflow-hello-world
+$ git clone http://github.com/dice-cyfronet/hyperflow-hello-world.git
 $ cd hyperflow-hello-world
-$ hyperflow start
+$ hflow start
 Hyperflow starting!
 Listening on *:1234, webui: http://1.2.3.4:1234/
 hello-world workflow loaded, sending initial signals.
 Workflow id is 9876.
-... to be continued
 ```
 ### Advanced options
 
 ```
-hyperflow start [--functions functions.js] [--dag dag.json|dag.js] [--config hyperflow.json] [--config-KEY=VALUE]
-hyperflow resume workflow_id [--functions functions.js] [--dag dag.json|dag.js] [--config hyperflow.json] [--config-KEY=VALUE]
-hyperflow terminate workflow_id
+hflow start [--background] [--functions functions.js] [--dag graph.json|graph.js] [--config config.json] [--config-KEY=VALUE] 
+hflow resume [workflow_id] [--functions functions.js] [--dag graph.json|graph.js] [--config config.json] [--config-KEY=VALUE]
+hflow terminate [workflow_id]
+hflow status [workflow_id]
+hflow watch_events [workflow_id]
 ```
-
 
 ### Workflow directory structure
 
 Workflow is a directory that bundles all files required and contains:
 
-* workflow DAG:
-  * `dag.json` – static workflow DAG in JSON, or
-  * `dag.js` – DAG generation code as node.js module, 
-* `hyperflow.json` – hyperflow configuration and workflow parameters,
+* workflow graph:
+  * `graph.json` – static workflow graph in JSON, or
+  * `graph.js` – graph generation code as node.js module, 
+* `config.json` – hyperflow configuration and workflow parameters,
 * `functions.js` – functions specific for given workflow.
 
 ## Configuration
