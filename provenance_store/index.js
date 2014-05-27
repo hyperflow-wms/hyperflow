@@ -1,7 +1,10 @@
 var neo4j = require('neo4j');
-var db = new neo4j.GraphDatabase('http://localhost:7474');
+var async = require('async');
 
-function handle_data(data, args) {
+var db = new neo4j.GraphDatabase('http://localhost:7474');
+var queue = async.queue(store_provenance_info, 1); //max concurrency
+
+function store_provenance_info(args, callback) {
     var op = args[0],
         appId = args[1],
         procId = args[2],
@@ -31,6 +34,15 @@ function handle_data(data, args) {
             console.log("error saving to db!", err);
         } else {
             console.log('successful save:', node.id);
+        }
+        callback();
+    });
+}
+
+function handle_data(data, args) {
+    queue.push([ args ], function (err) {
+        if(err) {
+            console.log("Error saving:", data, "err:", err);
         }
     });
 }
