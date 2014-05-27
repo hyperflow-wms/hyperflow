@@ -205,8 +205,8 @@ exports.init = function(redisClient) {
                 }
 
                 if (sigObj.data) { // signal info also contains its instance(s) (initial signals to the workflow)
-                    // add signal instance(s) to a special hash 
-                    multi.hset(wfKey + ":initialsigs", sigId, JSON.stringify(sigObj), 
+                    // add signal instance(s) to a special hash
+                    multi.hset(wfKey + ":initialsigs", sigId, JSON.stringify(sigObj),
                             function(err, ret) { });
                     delete sigObj.data; // don't store instances in signal info
                 }
@@ -1427,8 +1427,11 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
 function getInitialSignals(wfId, cb) {
     var wfKey = "wf:"+wfId;
+
+    //FIXME: hgetall returs keys as string, but it was set as number
     rcl.hgetall(wfKey + ":initialsigs", function(err, sigs) {
         var sigSpec = [];
+        console.log("sigs:", sigs, typeof sigs);
         for (var sigId in sigs) {
             var sig = JSON.parse(sigs[sigId]);
             delete sig._ts;
