@@ -1344,9 +1344,12 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
     isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
 
     var convertSigValuesToFunctionInputs = function() {
-        var funcIns = [];
-        for (var i=0; i<insIds.length; ++i) {
-            funcIns[i] = insValues[i][0]; // for start, copy the first signal instance
+        function Arg() {} // arguments will be an Array-like object
+        Arg.prototype = Object.create(Array.prototype);
+        var funcIns = new Arg;
+        for (var i=+0; i<insIds.length; ++i) {
+            funcIns.push(insValues[i][0]);
+            //funcIns[i] = insValues[i][0]; // for start, copy the first signal instance
             delete funcIns[i]._ts;
             delete funcIns[i].ts;
             delete funcIns[i]._uri;
@@ -1356,11 +1359,17 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             for (var j=1; j<insValues[i].length; ++j) {
                 funcIns[i].data.push(insValues[i][j].data[0]);
             }
+            var sigName = funcIns[i].name; // TODO: validate names
+            funcIns[sigName] = funcIns[i]; // as a result, in the function input signals can be accessed by their name or index
         }
         return funcIns;
     }
 
-    var ins = convertSigValuesToFunctionInputs(), outs = [];
+    var ins = convertSigValuesToFunctionInputs();
+
+    function Arg() {} // make 'outs' an Array-like object
+    Arg.prototype = Object.create(Array.prototype);
+    var outs = new Arg;
 
     public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
         if (err) return cb(err); 
@@ -1373,7 +1382,8 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 asyncTasks.push(function(callback) {
                     var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
                     rcl.hgetall(dataKey, function(err, dataInfo) {
-                        outs[idx] = dataInfo;
+                        outs[+idx] = dataInfo;
+                        outs[dataInfo.name] = outs[idx];
                         callback(err, dataInfo);
                     });
                 })
