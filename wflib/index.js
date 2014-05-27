@@ -1365,11 +1365,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
         return funcIns;
     }
 
-    var ins = convertSigValuesToFunctionInputs();
-
-    function Arg() {} // make 'outs' an Array-like object
-    Arg.prototype = Object.create(Array.prototype);
-    var outs = new Arg;
+    var ins = convertSigValuesToFunctionInputs(), outsTmp = [];
 
     public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
         if (err) return cb(err); 
@@ -1382,17 +1378,25 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 asyncTasks.push(function(callback) {
                     var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
                     rcl.hgetall(dataKey, function(err, dataInfo) {
-                        outs[+idx] = dataInfo;
-                        outs[dataInfo.name] = outs[idx];
+                        outsTmp[+idx] = dataInfo;
                         callback(err, dataInfo);
                     });
                 })
             })(i);
         }
 
+        function Arg() {} // make 'outs' an Array-like object
+        Arg.prototype = Object.create(Array.prototype);
+        var outs = new Arg;
+
         async.parallel(asyncTasks, function done(err, result) {
             if (err) return cb(err);
 
+            // convert 'outsTmp' array to array-like object 'outs'
+            for (var i=0; i<outsTmp.length; i++) {
+                outs.push(outsTmp[i]);
+                outs[outsTmp[i].name] = outs[i];
+            }
             if (emulate) {
                 setTimeout(function() {
                     return cb(null, outs);
