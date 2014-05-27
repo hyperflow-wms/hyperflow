@@ -1431,7 +1431,6 @@ function getInitialSignals(wfId, cb) {
     //FIXME: hgetall returs keys as string, but it was set as number
     rcl.hgetall(wfKey + ":initialsigs", function(err, sigs) {
         var sigSpec = [];
-        console.log("sigs:", sigs, typeof sigs);
         for (var sigId in sigs) {
             var sig = JSON.parse(sigs[sigId]);
             delete sig._ts;
