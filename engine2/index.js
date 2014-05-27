@@ -52,8 +52,9 @@ var Engine = function(config, wflib, wfId, cb) {
     this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
 
-    this.logProvenance = false;
-                          
+    this.logProvenance = true;
+//    this.logProvenance = false;
+
     this.eventServer.on('prov', function(data) {
         console.log(arguments[1]);
     });
