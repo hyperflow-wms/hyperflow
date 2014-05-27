@@ -55,9 +55,9 @@ var Engine = function(config, wflib, wfId, cb) {
     this.logProvenance = true;
 //    this.logProvenance = false;
 
-    this.eventServer.on('prov', function(data) {
-        console.log(arguments[1]);
-    });
+//    this.eventServer.on('prov', function(data) {
+//        console.log(arguments[1]);
+//    });
 
     this.emulate = config.emulate == "true" ? true: false;       
 

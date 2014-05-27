@@ -11,8 +11,9 @@ var redis = require('redis'),
     Engine = require('../engine2'),
     async = require('async'),
     argv = require('optimist').argv,
-    dbId = 0, 
-    engine;
+    dbId = 0,
+    engine,
+    provenance_store = require('../provenance_store');
 
 function createWf(cb) {
     rcl.select(dbId, function(err, rep) {
@@ -50,6 +51,7 @@ var runWf = function(wfId) {
 //        engine.eventServer.on('trace.*', function(exec, args) {
 //            console.log('Event captured: ' + exec + ' ' + args + ' job done');
 //        });
+        engine.eventServer.on('prov', provenance_store.handle_data);
         engine.runInstance(function(err) {
             console.log("Wf id="+wfId);
             if (argv.s) {
