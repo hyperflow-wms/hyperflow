@@ -1451,7 +1451,7 @@ function getInitialSignals(wfId, cb) {
             delete sig._uri;
             delete sig.uri;
             delete sig.status;
-            sig._id = sigId;
+            sig._id = +sigId;
             sigSpec.push(sig);
             /*sigInstances = JSON.parse(sigs[sigId]);
             for (var idx in sigInstances) {
