@@ -1,0 +1,36 @@
+{
+    "name": "Wf_CountSigTest",
+    "functions": [ {
+        "name": "count",
+        "module":"functions"
+    } ],
+    "processes": [ {
+        "name": "CountOut",
+	"type": "dataflow",
+        "function": "count",
+        "ins": [ "sig1:3" ],
+        "outs": [ "sig2:count1" ]
+    }, {
+        "name": "CountIn",
+        "type": "dataflow",
+        "function": "count",
+        "ins": [ "sig2:count1" ],
+        "outs": [ "sig3" ]
+    } ],
+    "signals": [ {
+        "name": "sig1",
+        "data": [2, 4, 6, 1, 3, 5]
+    }, {
+        "name": "sig2"
+    }, {
+        "name": "sig3"
+    }, {
+        "name": "count1",
+        "control": "count"
+    }, {
+        "name": "count2",
+        "control": "count"
+    } ],
+    "ins": [ ],
+    "outs": [ ]
+}

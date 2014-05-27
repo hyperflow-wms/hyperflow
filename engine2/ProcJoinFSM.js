@@ -162,10 +162,10 @@ function JoinLogic() {
             }
             if (proc.firingSigsH[0] && proc.firingSigsH[0].length >= Nj0) {
                 proc.ready = false;
-                proc.firingSigs = [];
+                proc.firingSigs = {};
                 for (var i=0; i<Nj0; ++i) {
                     var sigId = proc.firingSigsH[0][i]; 
-                    proc.firingSigs.push([sigId, 1]);
+                    proc.firingSigs[sigId] = 1;
                 }
                 //onsole.log("FIRE!", proc.firingSigs, "ready="+proc.ready, "Nj="+proc.Nj, "Nb="+proc.Nb);
                 proc.fetchInputs(proc, function(arrived, sigValues) {
@@ -181,7 +181,7 @@ function JoinLogic() {
 
     this.resetProc = function(cb) {
         var proc = this;
-        var sigs = [];
+        var sigs2Fetch = {};
 
         proc.canReset = false;
         var reset = function() {
@@ -201,14 +201,14 @@ function JoinLogic() {
             var sigs = proc.firingSigsH[0].slice(Nj0);
             for (var i in sigs) { 
                 proc.dataIns[sigs[i]]--;
-                sigs[i] = [ sigs[i], 1 ];
+                sigs2Fetch[sigs[i]] = 1;
             }
         }
         if (proc.ctrIns.merge) { // also remove the 'merge' signal if exists
-            sigs.push([proc.ctrIns.merge, 1]);
+            sigs2Fetch[proc.ctrIns.merge] = 1;
         }
-        if (sigs.length) {
-            proc.wflib.fetchInputs(proc.appId, proc.procId, sigs, true, function(arrived, sigValues) {
+        if (sigs2Fetch.length) {
+            proc.wflib.fetchInputs(proc.appId, proc.procId, sigs2Fetch, true, function(arrived, sigValues) {
                 if (arrived) {
                     // TODO(?): additional signals ("between" Nj and Nb) are simply discarded;
                     // is this the right semantics? Or should the function be called again,
@@ -281,7 +281,6 @@ function fireInputJoin(obj) {
         sigId = msg.sigId,
         sig = msg.sig;
 
-    console.log("RECV SIG", sig.name, proc.ctrIns.merge);
     if (sigId == proc.ctrIns.done) { // "done" signal has arrived
         proc.done = true;
     } else if (proc.ctrIns.merge && sigId == proc.ctrIns.merge)  { // there is a 'merge' input port

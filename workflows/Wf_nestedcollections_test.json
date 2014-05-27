@@ -1,0 +1,69 @@
+{
+    "name": "Wf_CountSigTest",
+    "functions": [ {
+        "name": "genCollection",
+        "module":"functions"
+    }, {
+        "name": "print2",
+        "module": "functions"
+    }, {
+        "name": "echo",
+        "module": "functions"
+    }, {
+        "name": "count",
+        "module": "functions"
+    } ],
+    "processes": [ {
+        "name": "Splitter1",
+	"type": "dataflow",
+        "function": "genCollection",
+        "ins": [ "cnt" ],
+        "outs": [ "elemsA:countA" ]
+    }, {
+        "name": "Splitter2",
+        "type": "dataflow",
+        "function": "genCollection",
+        "ins": [ "elemsA" ],
+        "outs": [ "elemsB:countB" ]
+    }, {
+        "name": "Processor",
+        "type": "dataflow",
+        "function": "count",
+        "ins":  [ "elemsB" ],
+        "outs": [ "elemsC" ]
+    }, {
+        "name": "Collector1",
+        "type": "dataflow",
+        "function": "echo",
+        "ins":  [ "elemsC:countB" ],
+        "outs": [ "listB" ]
+    }, {
+        "name": "Collector2",
+        "type": "dataflow",
+        "function": "print2",
+        "ins":  [ "listB:countA" ],
+        "outs": [ "listFinal" ]
+    } ],
+    "signals": [ {
+        "name": "cnt",
+        "data": [2, 3]
+    }, {
+        "name": "elemsA"
+    }, {
+        "name": "elemsB"
+    }, {
+        "name": "elemsC"
+    }, {
+        "name": "listB"
+    }, {
+        "name": "listFinal"
+    }, {
+        "name": "countA",
+        "control": "count"
+    }, {
+        "name": "countB",
+        "control": "count"
+    } ],
+    "ins": [ ],
+    "outs": [ ]
+}

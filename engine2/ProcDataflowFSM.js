@@ -33,15 +33,37 @@ var DataflowLogic = function() {
     this.init2 = function() {
         // set firing sigs
         for (var i in this.ins) {
-            var sigId = this.ins[i];
+            var sigId = this.ins[i], sigCount; 
+            if (this.fullInfo.incounts) {
+                sigCount = this.fullInfo.incounts[sigId] ? this.fullInfo.incounts[sigId]: 1;
+            } else {
+                sigCount = 1;
+            }
+            //onsole.log("SIG COUNT="+sigCount);
+            //onsole.log("CINSET", this.fullInfo.cinset);
             if (!this.fullInfo.cinset[sigId]) {
-                this.firingSigs.push([sigId, 1]);
+                this.firingSigs[+sigId] = +sigCount;
             }
         }
+
+        // all "count" signals (if present) are required for firing
+        if ("count" in this.ctrIns) {
+            var proc = this;
+            if (Array.isArray(this.ctrIns.count)) {
+                this.ctrIns.count.forEach(function(countSig) {
+                    proc.firingSigs[+countSig] = 1;
+                });
+            } else {
+                proc.firingSigs[this.ctrIns.count] = 1;
+            }
+        }
+
         // "next" signal (if present) is also required for firing (even the first one)
         if ("next" in this.ctrIns) {
-            this.firingSigs.push([this.ctrIns.next,1]);
+            this.firingSigs[this.ctrIns.next] = 1;
         }
+
+        //onsole.log("FIRING SIGS", this.firingSigs);
     }
 
     this.ready_enter = function(session, state, transition, msg) {
