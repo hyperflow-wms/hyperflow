@@ -272,7 +272,7 @@ exports.init = function(redisClient) {
             }
             // register workflow functions
             for (var i in wfJson.functions) {
-                multi.hset("wf:functions:"+wfJson.functions[i].name, "module", 
+                multi.hset("wf:"+wfId+":functions:"+wfJson.functions[i].name, "module", 
                         wfJson.functions[i].module, function(err, rep) { });
             }
 
@@ -1411,12 +1411,14 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             // INVOKE THE FUNCTION //
             /////////////////////////
 
-            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
+            rcl.hgetall("wf:"+wfId+":functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
                 var module = fun ? fun.module: "functions";
                 //var fpath = pathTool.join(process.cwd(), fun.module);
                 var fpath = pathTool.join(__dirname, "..", module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun, module);
                 var f = require(fpath)[taskInfo.fun]; 
+                //onsole.log("FUNCTION", taskInfo.fun, module);
                 //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
