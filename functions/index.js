@@ -145,7 +145,18 @@ function grepFile(ins, outs, config, cb) {
 
 //var cnt = 0;
 function count(ins, outs, config, cb) {
-    //onsole.log("COUNT INS:", JSON.stringify(ins));
+    //onsole.log("COUNT  INS:", JSON.stringify(ins));
+    //onsole.log("COUNT OUTS:", JSON.stringify(outs));
+    //onsole.log(ins.length);
+    //onsole.log("COUNT INS:", ins.length);
+    ins.forEach(function(input) {
+      console.log(input); 
+    });
+    /*console.log("COUNT OUTS:", outs.length);
+    outs.forEach(function(output) {
+      console.log(output); 
+    });*/
+ 
     outs[0].data = [];
     ins[0].data.forEach(function(cnt) {
         outs[0].data.push(cnt+1);
@@ -156,6 +167,7 @@ function count(ins, outs, config, cb) {
             process.exit();
         }
     });
+    console.log("COUNT OUTS 2:", outs.length);
     cb(null, outs);
 }
 

@@ -1,8 +1,9 @@
 {
   "name": "Comet",
   "functions": [ {
+    "name": "genXmlCollection",
     "module": "./workflows/comet/comet.js"
-  } ], {
+  }, {
     "name": "genTimeWindows",
     "module": "./workflows/comet/comet.js"
   }, {
@@ -18,11 +19,6 @@
     "ins": [ "xmlData", "config" ],
     "outs": [ "stations:dataSetsCount"]
   }, {
-    "name": "GenTimeWindows",
-    "function": "genTimeWindows",
-    "ins": [ "xmlData", "config" ],
-    "outs": [ "stations:dataSetsCount"]
-  }, {
     "name": "GenDataSets",
     "function": "genDataSets",
     "ins": [ "stations" ],
@@ -35,14 +31,20 @@
   } ],
   "signals": [ {
     "name": "xmlData",
-    "data": [ { "path": "./data.xml" } ]
+    "data": [ { "path": "./workflows/comet/data.xml" } ]
   }, {
     "name": "counties"
   }, {
     "name": "stations"
   }, {
+    "name": "timeWindow"
+  }, {
     "name": "config",
-    "data": [ { "xpath": "//Collection[@label='station']" } ]
+    "data": [ { 
+       "xpath": "//Collection[@label='station']",
+       "start_time": "1.196499599E9",
+       "end_time": "1.197359999E9"
+    } ]
   }, {
     "name": "dataSet"
   }, {

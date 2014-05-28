@@ -4,10 +4,10 @@ var fs = require("fs"),
     spawn = require('child_process').spawn;
 
 function genTimeWindows(ins, outs, config, cb) {
-    var start_time = Number(ins[0].data[0].start_time),
-        end_time = Number(ins[0].data[0].end_time);
+    var start_time = Number(ins.config.data[0].start_time),
+        end_time = Number(ins.config.data[0].end_time);
 
-    console.log(start_time, end_time);
+    console.log("XX", start_time, end_time);
 
     var t0, windows = [];
     t0 = start_time;
@@ -21,6 +21,7 @@ function genTimeWindows(ins, outs, config, cb) {
         t0 += 43200; // "advance" time by 12 hours
     }
     console.log("WINDOWS:", JSON.stringify(windows, null, 2));
+    cb(null, outs);
 }
 
 //var data = [ { "start_time": "1.196499599E9", "end_time": "1.197359999E9" } ]
@@ -119,3 +120,4 @@ function plotData(ins, outs, config, cb) {
 exports.genXmlCollection = genXmlCollection;
 exports.genDataSets = genDataSets;
 exports.plotData = plotData;
+exports.genTimeWindows = genTimeWindows;
