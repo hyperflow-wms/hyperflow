@@ -43,8 +43,8 @@ Workflow id is 9876.
 ### Advanced options
 
 ```
-hflow start [--background] [--functions functions.js] [--dag graph.json|graph.js] [--config config.json] [--config-KEY=VALUE] 
-hflow resume [workflow_id] [--functions functions.js] [--dag graph.json|graph.js] [--config config.json] [--config-KEY=VALUE]
+hflow start [--background] [--functions functions.js] [--dag graph.json|graph.js] [--config config.json] [--set-KEY=VALUE] 
+hflow resume [workflow_id] [--functions functions.js] [--dag graph.json|graph.js] [--config config.json] [--set-KEY=VALUE]
 hflow terminate [workflow_id]
 hflow status [workflow_id]
 hflow watch_events [workflow_id]
