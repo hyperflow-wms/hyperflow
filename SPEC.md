@@ -31,12 +31,14 @@ $ sudo yum install redis
 
 ### Installing additional modules
 
-`hyperflow` package provides only core functionality, while additional packages extend it to provide additional *functions*. The functions may be later referenced from workflow graph as `$npm_package_name:$function_name`.
+`hyperflow` package provides only core functionality, while additional packages can bundle *functions* and *graphs*. The functions may be later referenced from workflow graph as `$npm_package_name:$function_name`.
 
 We provide:
 
 * `hyperflow-amqp` – allows remote execution of tasks by using AMQP queues,
-* `hyperflow-map-reduce` – functions for constructing Map-Reduce workflows.
+* `hyperflow-map-reduce` – functions for constructing Map-Reduce workflows,
+* `hyperflow-pegasus` – support for executing [Pegasus](http://...) DAX workflows,
+* `hyperflow-montage` – support for executing [Montage](http://...) workflow.
 
 See [wiki page](http://...) to see how to create hyperflow function packages. 
 
@@ -85,8 +87,9 @@ Configuration is provided in JSON format, while some options may be also specifi
 
 Options are:
 
-* `packages` – list of function packages that are required by workflow
-* `port` or `$PORT` (defaults to 1234)
-* `redis_url` or `$REDIS_URL` (defaults to: `redis://127.0.0.1:6379/0`)
-* `amqp_url` or `$AMQP_URL` (defaults to `amqp://localhost`)
-* `amqp_executor_config` (defaults to `{"storage": "local", "workdir": "/tmp/"}`)
+* `packages` – list of function packages that are required by workflow (e.g. `montage/functions`),
+* `graph` – filename of graph file (defaults to `./graph.[js|json]`), may use also bundled graphs (e.g. `montage/graph`),
+* `port` or `$PORT` (defaults to 1234),
+* `redis_url` or `$REDIS_URL` (defaults to: `redis://127.0.0.1:6379/0`),
+* `amqp_url` or `$AMQP_URL` (defaults to `amqp://localhost`),
+* `amqp_executor_config` (defaults to `{"storage": "local", "workdir": "/tmp/"}`).
