@@ -29,6 +29,17 @@ $ sudo apt-get install redis-server
 $ sudo yum install redis 
 ```
 
+### Installing additional modules
+
+`hyperflow` package provides only core functionality, while additional packages extend it to provide additional *functions*. The functions may be later referenced from workflow graph as `$npm_package_name:$function_name`.
+
+We provide:
+
+* `hyperflow-amqp` – allows remote execution of tasks by using AMQP queues,
+* `hyperflow-map-reduce` – functions for constructing Map-Reduce workflows.
+
+See [wiki page](http://...) to see how to create hyperflow function packages. 
+
 ### Running *hello world* workflow
 
 ```shell
@@ -74,6 +85,7 @@ Configuration is provided in JSON format, while some options may be also specifi
 
 Options are:
 
+* `packages` – list of function packages that are required by workflow
 * `port` or `$PORT` (defaults to 1234)
 * `redis_url` or `$REDIS_URL` (defaults to: `redis://127.0.0.1:6379/0`)
 * `amqp_url` or `$AMQP_URL` (defaults to `amqp://localhost`)
