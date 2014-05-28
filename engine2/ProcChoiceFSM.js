@@ -34,12 +34,12 @@ var ChoiceLogic = function() {
         for (var i in this.ins) {
             var sigId = this.ins[i];
             if (!(sigId in this.ctrIns)) {
-                this.firingSigs.push([sigId, 1]);
+                this.firingSigs[sigId] = 1;
             }
         }
         // "next" signal (if present) is also required for firing (even the first one)
         if ("next" in this.ctrIns) {
-            this.firingSigs.push([this.ctrIns.next,1]);
+            this.firingSigs.push[this.ctrIns.next] = 1;
         }
     }
 
@@ -124,9 +124,9 @@ var ChoiceLogic = function() {
                 // attribute 'condition' is only relevant for making the decision on which signals 
                 // to emit. it's safe (and cleaner) to remove it before passing the signal on
                 delete outs[i].condition; 
-                outs[i]["_id"] = funcOuts[i];
-                outs[i]["source"] = proc.procId;
-                outs[i]["firingId"] = firingId;
+                outs[i]["_id"] = +funcOuts[i];
+                outs[i]["source"] = +proc.procId;
+                outs[i]["firingId"] = +firingId;
                 outValues.push(outs[i]);
             }
         }

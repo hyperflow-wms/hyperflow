@@ -1,0 +1,58 @@
+#!/bin/env node
+
+var docopt = require('docopt').docopt,
+    spawn = require('child_process').spawn,
+    fs = require('fs'), 
+    pathtool = require('path');
+
+var doc = "\
+Usage:\n\
+  hflow run <workflow_dir_or_file> [-s]\n\
+  hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
+  hflow -h | --help | --version";
+
+var opts = docopt(doc);
+
+var hfroot = process.env.HFLOW_PATH;
+
+if (opts.run) {
+  hflow_run();
+} else if (opts.send) {
+  hflow_send();
+}
+
+function hflow_run() {
+  var wfpath = opts['<workflow_dir_or_file>'],
+      wfstats = fs.lstatSync(wfpath),
+      wffile;
+  
+  if (wfstats.isDirectory()) {
+    wffile = pathtool.join(wfpath, "workflow.json");
+  } else if (wfstats.isFile()) {
+    wffile = wfpath;
+  }
+
+  var args = [hfroot+"/bin/hflow-run.js", "-f", wffile];
+
+  if (opts['-s']) {
+    args.push("-s");
+  }
+
+  spawn_proc("node", args);
+}
+
+function hflow_send() {
+  console.log("send signal to a workflow: not implemented");
+}
+
+function spawn_proc(exec, args) {
+  var proc = spawn(exec, args);
+
+  proc.stdout.on('data', function(data) {
+    console.log(data.toString().trimRight());
+  });
+
+  proc.stderr.on('data', function(data) {
+    console.log(data.toString().trimRight());
+  });
+}

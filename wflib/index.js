@@ -1,6 +1,6 @@
-/* Hypermedia workflow. 
+/* HyperFlow workflow engine
  ** API over redis-backed workflow instance
- ** Author: Bartosz Balis (2013)
+ ** Author: Bartosz Balis (2013-2014)
  */
 var fs = require('fs'),
     redis = require('redis'),
@@ -93,9 +93,71 @@ exports.init = function(redisClient) {
             for (var i=0; i<sigs.length; ++i) {
                 var sigName = sigs[i].name;
                 if (sigKeys[sigName]) 
-                    sigKeys[sigName].push(i);
+                    sigKeys[sigName].push(i); // TODO: here throw exception to enforce unique names
                 else
                     sigKeys[sigName] = [i];
+            }
+
+            // extract signal counts and set proc.fullInfo.{incounts,outcounts} objects
+            // as follows (example): { '1': '3', '2': 'id:4' }, which means:
+            // - signal with id '1' has count 3
+            // - signal with id '2' has count associated with a count signal with id 4
+            // For output signal counts only the 'id:xxx' variant is valid (of course)
+            for (var i in procs) {
+                var incounts = {};
+                for (var j in procs[i].ins) {
+                    if (value(procs[i].ins[j]).typeOf(String)) {
+                        var sig = procs[i].ins[j].split(":");
+                        if (sig.length > 1) { // there is a 'count' modifier 
+                            procs[i].ins[j] = sig[0];
+                            var sigId = +sigKeys[sig[0]]+1;
+                            if (parseInt(sig[1])) { // count is a number
+                                sig[1] = +sig[1];
+                                if (sig[1] != 1) {
+                                    incounts[+sigId] = +sig[1];
+                                }
+                            } else { // count isn't a number, then it must be a signal name
+                                if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                                    throw(new Error("Signal count modifier in '" + procs[i].outs[j] + 
+                                                "' for process '" + procs[i].name + 
+                                                "' must be a valid control signal name."));
+                                }
+                                var sigCountId = +sigKeys[sig[1]]+1;
+                                if (!incounts.rev)
+                                    incounts.rev = {};
+                                incounts.rev[+sigCountId] = +sigId; // reverse map (sigCountId => sigId)
+                                incounts[+sigId] = 1; // this count will be set dynamically by the count signal
+                                procs[i].ins.push(sig[1]); // add the signal to the list of process' inputs
+                            }
+                        }
+                    }
+                }
+                //onsole.log("PROC", +i+1, "INS", procs[i].ins);
+                var outcounts = {};
+                for (var j in procs[i].outs) {
+                    if (value(procs[i].outs[j]).typeOf(String)) {
+                        var sig = procs[i].outs[j].split(":");
+                        if (sig.length > 1) { // there is a 'count' modifier 
+                            if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                                throw(new Error("Signal count modifier in '" + procs[i].outs[j] + "' for process '" + 
+                                            procs[i].name + "' must be a valid control signal name."));
+                            }
+                            procs[i].outs[j] = sig[0];
+                            procs[i].outs.push(sig[1]); // add the 'count' signal to process outputs (FIXME: it could result in duplicate signal id if the signal already was on the list -- this should be no harm because of utilizing redis sets; however -- there is also the score)
+                            var sigId = +sigKeys[sig[0]]+1,
+                                sigCountId = +sigKeys[sig[1]]+1;
+                            outcounts[+sigId] = "id:"+sigCountId;
+                        }
+                    }
+                }
+                //onsole.log("PROC", +i+1, "OUTS", procs[i].outs);
+
+                if (Object.keys(incounts).length) {
+                    procs[i].incounts = incounts;
+                }
+                if (Object.keys(outcounts).length) {
+                    procs[i].outcounts = outcounts;
+                }
             }
 
             // convert process' ins, outs and sticky arrays
@@ -162,8 +224,9 @@ exports.init = function(redisClient) {
                 multi.hmset(sigKey, sigObj, function(err, ret) { });
 
                 // add this signal id to the sorted set of all workflow signals
-                // score determines the type/status of the signal:
+                // score determines the type/status of the signal: 
                 // 0: data signal/not ready, 1: data signal/ready, 2: control signal
+                // FIXME: score deprecated
                 multi.zadd(wfKey+":data", score, sigId, function(err, ret) { });
             }
 
@@ -171,7 +234,7 @@ exports.init = function(redisClient) {
             var taskKey;
             for (var i=0; i<procs.length; ++i) {
                 var taskId = i+1, uri;
-                if (procs[i].host) { // TODO: preparation to handle remote sinks
+                if (procs[i].host) { // FIXME: host deprecated (replaced by remote sinks)
                     uri = procs[i].host + '/apps/' + wfId;
                 } else {
                     uri = baseUri;
@@ -209,7 +272,7 @@ exports.init = function(redisClient) {
             }
             // register workflow functions
             for (var i in wfJson.functions) {
-                multi.hset("wf:functions:"+wfJson.functions[i].name, "module", 
+                multi.hset("wf:"+wfId+":functions:"+wfJson.functions[i].name, "module", 
                         wfJson.functions[i].module, function(err, rep) { });
             }
 
@@ -249,6 +312,7 @@ exports.init = function(redisClient) {
 
             // FIXME: "task" type deprecated, change the default type to "dataflow"
             // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
+            // FIXME: score is now deprecated
             task.type = task.type ? task.type.toLowerCase() : "task";
             multi.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
 
@@ -267,7 +331,8 @@ exports.init = function(redisClient) {
                     multi.zadd(taskKey+":ins", inId, dataId, function(err, rep) { });
                     multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
                     if (sigs[dataId-1].control) { // add all control inputs to a separate hash
-                        multi.hmset(taskKey+":cins", sigs[dataId-1].control, dataId);
+                        //multi.hmset(taskKey+":cins", sigs[dataId-1].control, dataId);
+                        multi.hmset(taskKey+":cins", dataId, sigs[dataId-1].control);
                         multi.sadd(taskKey+":cinset", dataId);
                     }
                 })(i+1, task.ins[i]+1);
@@ -283,6 +348,22 @@ exports.init = function(redisClient) {
                     }
                 })(i+1, task.outs[i]+1);
             }
+
+            // add info about input and output counts
+            for (var sig in task.incounts) {
+                (function(s, c) {
+                    if (s == "rev") {
+                        c = JSON.stringify(c);
+                    }
+                    multi.hset(taskKey+":incounts", s, c);
+                })(sig, task.incounts[sig])
+            }
+            for (var sig in task.outcounts) {
+                (function(s, c) {
+                    multi.hset(taskKey+":outcounts", s, c);
+                })(sig, task.outcounts[sig])
+            }
+
             // add info on which input ports (if any) are "sticky" 
             if (!task.sticky) task.sticky = [];
             for (var i=0; i<task.sticky.length; ++i) {
@@ -494,7 +575,7 @@ exports.init = function(redisClient) {
                                     data_ins[ins[i]] = err;
                                 } else {
                                     data_ins[ins[i]] = reply;
-                                    data_ins[ins[i]].id = ins[i]; // TODO: redundant (key is the id)
+                                    data_ins[ins[i]].id = ins[i]; // FIXME: redundant (key is the id)
                                     // but WARNING: invoke currently may rely on it
                                 }
                                 callback(null, reply);
@@ -511,7 +592,7 @@ exports.init = function(redisClient) {
                                     data_outs[outs[i]] = err;
                                 } else {
                                     data_outs[outs[i]] = reply;
-                                    data_outs[outs[i]].id = outs[i]; // TODO: redundant
+                                    data_outs[outs[i]].id = outs[i]; // FIXME: redundant
                                 }
                                 callback(null, reply);
                             });
@@ -878,7 +959,7 @@ exports.init = function(redisClient) {
 
 
     // checks if given input signals are ready (in the queues), and returns their values
-    // @spec format: [ [ sigId, count], [sigId, count], ... ]
+    // @sigsSpec format: { sigId: count, sigId: count, ... }
     // @deref (boolean): if true and all sigs are ready, their values will be returned
     // @cb: function(result, [sigValues])
     //   result: true if 'count' instances of each signal 'sigId' are present in the queues
@@ -892,8 +973,12 @@ exports.init = function(redisClient) {
     //   
     // TODO: optimize by introducing a counter of how many signals await on ALL ports of a given task.
     //       often it will be enough to tell that a process is NOT ready to fire, without checking all queues 
-    function fetchInputs(wfId, taskId, spec, deref, cb) {
+    function fetchInputs(wfId, taskId, sigsSpec, deref, cb) {
         //var time = (new Date()).getTime();
+        var spec = [];
+        for (var i in sigsSpec)  { // TODO: rewrite the code below to use object, instead of converting to array
+            spec.push([i, sigsSpec[i]]);
+        }
         var sigValues = [];
         async.every(spec, function (sig, callback) {
             var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig[0];
@@ -904,10 +989,16 @@ exports.init = function(redisClient) {
         }, function(result) {
             if (!result || !deref) return cb(result);
             async.times(spec.length, function(n, cbNext) {
-                sigValues[n] = [];
+                //sigValues[n] = [];
                 async.timesSeries(spec[n][1] /* count */, function(m, cbNextInner) {
                     popInput(wfId, taskId, spec[n][0] /* sigId */, function(err, sig) {
-                        sigValues[n].push(sig);
+                        if (!sig.control) { // don't return values of control signals!
+                            if (m==0) {
+                                sigValues.push([sig]);
+                            } else {
+                                sigValues[sigValues.length-1].push(sig);
+                            }
+                        }
                         cbNextInner();
                     });
                 }, function(err, res) {
@@ -1012,10 +1103,26 @@ function public_getWfMap(wfId, cb) {
                                 function(cb) {
                                     rcl.smembers(taskKey+":coutset", function(err, couts) {
                                         if (!couts) couts = [];
+                                        //onsole.log("COUTS", couts);
                                         fullInfo[taskId].coutset = {};
                                         couts.forEach(function(c) {
                                             fullInfo[taskId].coutset[+c] = true;
                                         });
+                                        cb(err);
+                                    });
+                                },
+                                function(cb) {
+                                    rcl.hgetall(taskKey+":incounts", function(err, incounts) {
+                                        if (incounts && incounts.rev) {
+                                            incounts.rev = JSON.parse(incounts.rev);
+                                        }
+                                        fullInfo[taskId].incounts = incounts;
+                                        cb(err);
+                                    });
+                                },
+                                function(cb) {
+                                    rcl.hgetall(taskKey+":outcounts", function(err, outcounts) {
+                                        fullInfo[taskId].outcounts = outcounts;
                                         cb(err);
                                     });
                                 }
@@ -1042,17 +1149,35 @@ function public_getWfMap(wfId, cb) {
                         });
                     });
                     asyncTasks.push(function(callback) {
-                        rcl.hgetall(taskKey+":cins", function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            if (ret != null) {
-                                cPortsInfo[taskId] = {};
-                                cPortsInfo[taskId].ins = ret;
+                        rcl.hgetall(taskKey+":cins", function(err, csigs) {
+                            //onsole.log("CSIGS INS", JSON.stringify(csigs));
+                            if (err || csigs == -1) { throw(new Error("Redis error")); }
+                            if (csigs != null) {
+                                var tmp = {};
+                                for (var s in csigs) {
+                                    if (tmp[csigs[s]]) {
+                                        tmp[csigs[s]].push(s);
+                                    } else {
+                                        tmp[csigs[s]] = [s];
+                                    }
+                                }
+                                for (var i in tmp) {
+                                    if (tmp[i].length == 1) {
+                                        tmp[i] = tmp[i][0];
+                                    }
+                                }
+                                if (!(taskId in cPortsInfo)) {
+                                    cPortsInfo[taskId] = {};
+                                }
+                                cPortsInfo[taskId].ins = tmp;
+                                //onsole.log("C PORTS INFO=", JSON.stringify(cPortsInfo));
                             }
-                            callback(null, ret);
+                            callback(null, csigs);
                         });
                     });
                     asyncTasks.push(function(callback) {
                         rcl.hgetall(taskKey+":couts", function(err, ret) {
+                            //onsole.log("Proc COUTS WFLIB", ret);
                             if (err || ret == -1) { throw(new Error("Redis error")); }
                             if (ret != null) {
                                 if (!(taskId in cPortsInfo)) {
@@ -1203,150 +1328,6 @@ function public_getRemoteDataSinks(wfId, dataId, cb) {
 }
 
 
-// invokes function assinged to task passing input and output objects whose
-// ids are in arrays 'insIds' and 'outsIds'. 
-function public_invokeTaskFunction(wfId, taskId, insIds_, outsIds_, emulate, cb) {
-    function isArray(what) {
-        return Object.prototype.toString.call(what) === '[object Array]';
-    }
-    var insIds = [], outsIds = [];
-    isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
-    isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
-
-    public_getTaskInfoFull(wfId, taskId, function(err, taskInfo, taskIns, taskOuts) {
-        if (err) {
-            cb(err);
-        } else if (emulate) {
-            var outs = [];
-            for (var i in outsIds) {
-                outs.push(taskOuts[outsIds[i]]);
-            }                   
-            setTimeout(function() {
-                cb(null, outs);
-            }, 100);
-        } else {
-            if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
-                return cb(null, null);
-            }
-            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
-                if (err) return cb(err);
-                // FIXME: how to know the (relative?) path to the module?
-                var f = require('../'+fun.module)[taskInfo.fun]; 
-                var ins = [], outs = [];
-                for (var i in insIds) {
-                    ins.push(taskIns[insIds[i]]);
-                }
-                for (var i in outsIds) {
-                    outs.push(taskOuts[outsIds[i]]);
-                }                   
-                //onsole.log("INS:", ins);
-                //onsole.log("OUTS:", outs);
-                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
-                var conf = taskInfo.config ? JSON.parse(taskInfo.config): null, 
-                executor = taskInfo.executor ? taskInfo.executor: null;
-
-            f(ins, outs, executor, conf, function(err, outs) {
-                //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
-                cb(null, outs);
-                // write values if any
-                /*var spec = {};
-                  outs.forEach(function(out) {
-                  if ("value" in out) {
-                  spec[out.id] = { "value": out.value };
-                  }
-                  });
-                //onsole.log(spec);
-                if (Object.keys(spec).length) { // not empty
-                onsole.log(spec); // DEBUG
-                public_setDataState(wfId, spec, function(err, reps) {
-                cb(null, outs);
-                });
-                }*/
-            });
-            });
-        }
-    });
-}
-
-// Part of NEW API for continuous processes with FIFO queues
-// invokes function assinged to task passing input signal values and output signal placeholders
-// whose ids are in arrays 'insIds' and 'outsIds'. 
-function public_invokeTaskFunction1(wfId, taskId, insIds_, outsIds_, emulate, cb) {
-    function isArray(what) {
-        return Object.prototype.toString.call(what) === '[object Array]';
-    }
-    var insIds = [], outsIds = [];
-    isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
-    isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
-
-    var ins = [], outs = [];
-
-    public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
-        if (err) return cb(err); 
-
-        var asyncTasks = [];
-
-        // retrieve inputs signals given in 'insIds' from their queues
-        for (i=0; i<insIds.length; ++i) {
-            (function(idx) {
-                asyncTasks.push(function(callback) {
-                    popInput(wfId, taskId, insIds[idx], function(err, inValue) {
-                        ins[idx] = inValue;
-                        callback(err, inValue);
-                    });
-                });
-            })(i);
-        }
-
-        // retrieve task outputs given in 'outsIds'
-        for (i=0; i<outsIds.length; ++i) {
-            (function(idx) {
-                asyncTasks.push(function(callback) {
-                    var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
-                    rcl.hgetall(dataKey, function(err, dataInfo) {
-                        outs[idx] = dataInfo;
-                        callback(err, dataInfo);
-                    });
-                })
-            })(i);
-        }
-
-        async.parallel(asyncTasks, function done(err, result) {
-            if (err) return cb(err);
-
-            if (emulate) {
-                setTimeout(function() {
-                    return cb(null, outs);
-                }, 100);
-            }
-
-            if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
-                return cb(new Error("No function defined for task."));
-            }
-
-            /////////////////////////
-            // INVOKE THE FUNCTION //
-            /////////////////////////
-
-            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
-                if (err) return cb(err);
-                // FIXME: how to know the (relative?) path to the module?
-                var f = require('../'+fun.module)[taskInfo.fun]; 
-                //onsole.log("INS:", ins);
-                //onsole.log("OUTS:", outs);
-                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
-                var conf = taskInfo.config ? JSON.parse(taskInfo.config): null; 
-                var executor = taskInfo.executor ? taskInfo.executor: null;
-
-                f(ins, outs, executor, conf, function(err, outs) {
-                    //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
-                    cb(null, outs);
-                });
-            });
-        });
-    });
-}
-
 
 /*
  * @insValues - array of input signal values as returned by fetchInputs
@@ -1356,14 +1337,19 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
         return Object.prototype.toString.call(what) === '[object Array]';
     }
 
+    //onsole.log("INVOKING:", insIds_, insValues);
+
     var insIds = [], outsIds = [];
     isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
     isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
 
     var convertSigValuesToFunctionInputs = function() {
-        var funcIns = [];
-        for (var i=0; i<insIds.length; ++i) {
-            funcIns[i] = insValues[i][0]; // for start, copy the first signal instance
+        function Arg() {} // arguments will be an Array-like object
+        Arg.prototype = Object.create(Array.prototype);
+        var funcIns = new Arg;
+        for (var i=+0; i<insIds.length; ++i) {
+            funcIns.push(insValues[i][0]);
+            //funcIns[i] = insValues[i][0]; // for start, copy the first signal instance
             delete funcIns[i]._ts;
             delete funcIns[i].ts;
             delete funcIns[i]._uri;
@@ -1371,13 +1357,15 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             delete funcIns[i].status;
             // if there were more signal instances, only copy their data
             for (var j=1; j<insValues[i].length; ++j) {
-                funcIns[i].data.push(insValues[i][j].data);
+                funcIns[i].data.push(insValues[i][j].data[0]);
             }
+            var sigName = funcIns[i].name; // TODO: validate names
+            funcIns[sigName] = funcIns[i]; // as a result, in the function input signals can be accessed by their name or index
         }
         return funcIns;
     }
 
-    var ins = convertSigValuesToFunctionInputs(), outs = [];
+    var ins = convertSigValuesToFunctionInputs(), outsTmp = [];
 
     public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
         if (err) return cb(err); 
@@ -1390,16 +1378,25 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 asyncTasks.push(function(callback) {
                     var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
                     rcl.hgetall(dataKey, function(err, dataInfo) {
-                        outs[idx] = dataInfo;
+                        outsTmp[+idx] = dataInfo;
                         callback(err, dataInfo);
                     });
                 })
             })(i);
         }
 
+        function Arg() {} // make 'outs' an Array-like object
+        Arg.prototype = Object.create(Array.prototype);
+        var outs = new Arg;
+
         async.parallel(asyncTasks, function done(err, result) {
             if (err) return cb(err);
 
+            // convert 'outsTmp' array to array-like object 'outs'
+            for (var i=0; i<outsTmp.length; i++) {
+                outs.push(outsTmp[i]);
+                outs[outsTmp[i].name] = outs[i];
+            }
             if (emulate) {
                 setTimeout(function() {
                     return cb(null, outs);
@@ -1414,11 +1411,15 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             // INVOKE THE FUNCTION //
             /////////////////////////
 
-            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
+            rcl.hgetall("wf:"+wfId+":functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
+                var module = fun ? fun.module: "functions";
                 //var fpath = pathTool.join(process.cwd(), fun.module);
-                var fpath = pathTool.join(__dirname, "..", fun.module);
+                var fpath = pathTool.join(__dirname, "..", module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun, module);
                 var f = require(fpath)[taskInfo.fun]; 
+                //onsole.log("FUNCTION", taskInfo.fun, module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
                 //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
@@ -1451,7 +1452,7 @@ function getInitialSignals(wfId, cb) {
             delete sig._uri;
             delete sig.uri;
             delete sig.status;
-            sig._id = sigId;
+            sig._id = +sigId;
             sigSpec.push(sig);
             /*sigInstances = JSON.parse(sigs[sigId]);
             for (var idx in sigInstances) {
@@ -1986,8 +1987,6 @@ return {
     getRemoteDataSinks: public_getRemoteDataSinks,
     getWfMap: public_getWfMap,
     getTaskMap: public_getTaskMap,
-    invokeTaskFunction: public_invokeTaskFunction,
-    invokeTaskFunction1: public_invokeTaskFunction1,
     invokeTaskFunction2: public_invokeTaskFunction2,
     //sendSignal: public_sendSignal,
     sendSignal: sendSignalLua,
