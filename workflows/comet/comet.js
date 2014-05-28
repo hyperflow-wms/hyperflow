@@ -3,6 +3,29 @@ var fs = require("fs"),
     dom = require("xmldom").DOMParser,
     spawn = require('child_process').spawn;
 
+function genTimeWindows(ins, outs, config, cb) {
+    var start_time = Number(ins[0].data[0].start_time),
+        end_time = Number(ins[0].data[0].end_time);
+
+    console.log(start_time, end_time);
+
+    var t0, windows = [];
+    t0 = start_time;
+
+    // generates 12-hour (43200 seconds) and 24-hour windows (
+    while (t0 + 43200 <= end_time) {
+        windows.push([t0, t0+43200]);
+        if (t0 + 86400 <= end_time) {
+            windows.push([t0, t0+86400]);
+        }
+        t0 += 43200; // "advance" time by 12 hours
+    }
+    console.log("WINDOWS:", JSON.stringify(windows, null, 2));
+}
+
+//var data = [ { "start_time": "1.196499599E9", "end_time": "1.197359999E9" } ]
+//genTimeWindows([{ "data": data }], null, null, null);
+
 function genXmlCollection(ins, outs, config, cb) {
     var xmlData, xmlPath = ins[1].data[0].xpath;
 
@@ -44,7 +67,7 @@ function genDataSets(ins, outs, config, cb) {
         xmlPath = "//Collection[@label='CollectionPoint']",
         nodes = xpath.select(xmlPath, doc);
 
-    //onsole.log("DATA NODES:", nodes.length);
+    console.log("DATA NODES:", nodes.length);
 
     outs[0].data = [[]];
     nodes.forEach(function(node) {
@@ -63,7 +86,7 @@ function plotData(ins, outs, config, cb) {
         data <- read.csv("' + fileName + '.csv")\r\n\
         png(filename="' + fileName + '.png")\r\n\
         plot(data, type="l")\r\n\
-        dev.off()';
+        nil <- dev.off()';
 
     fs.writeFile(fileName+".R", Rscript, function(err) {
         if (err) throw err;
@@ -76,11 +99,11 @@ function plotData(ins, outs, config, cb) {
             var proc = spawn("R", ["--vanilla", "-q", "-f", fileName + ".R" ]);
 
             proc.stderr.on('data', function(data) {
-                console.log('stderr:', data.toString());
+                console.log(data.toString());
             });
 
             proc.stdout.on('data', function(data) {
-                console.log('stdout:', data.toString());
+                console.log(data.toString());
             });
 
             proc.on('exit', function(code) {
@@ -96,5 +119,3 @@ function plotData(ins, outs, config, cb) {
 exports.genXmlCollection = genXmlCollection;
 exports.genDataSets = genDataSets;
 exports.plotData = plotData;
-
-

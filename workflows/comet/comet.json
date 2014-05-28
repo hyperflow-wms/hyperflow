@@ -1,25 +1,26 @@
 {
   "name": "Comet",
   "functions": [ {
-    "name": "genXmlCollection",
-    "module": "./workflows/collection/comet.js"
+    "module": "./workflows/comet/comet.js"
+  } ], {
+    "name": "genTimeWindows",
+    "module": "./workflows/comet/comet.js"
   }, {
     "name": "genDataSets",
-    "module": "./workflows/collection/comet.js"
+    "module": "./workflows/comet/comet.js"
   }, {
     "name": "plotData",
-    "module": "./workflows/collection/comet.js"
+    "module": "./workflows/comet/comet.js"
   } ],
   "processes": [ {
-    "name": "GenCountiesCollection",
+    "name": "GenData",
     "function": "genXmlCollection",
-    "ins": [ "xmlData", "config1" ],
-    "outs": [ "counties" ]
+    "ins": [ "xmlData", "config" ],
+    "outs": [ "stations:dataSetsCount"]
   }, {
-    "name": "GenStationsCollection",
-    "function": "genXmlCollection",
-    "ins": [ "counties", "config2" ],
-    "sticky": [ "config2" ],
+    "name": "GenTimeWindows",
+    "function": "genTimeWindows",
+    "ins": [ "xmlData", "config" ],
     "outs": [ "stations:dataSetsCount"]
   }, {
     "name": "GenDataSets",
@@ -40,10 +41,7 @@
   }, {
     "name": "stations"
   }, {
-    "name": "config1",
-    "data": [ { "xpath": "//Collection[@label='county']" } ]
-  }, {
-    "name": "config2",
+    "name": "config",
     "data": [ { "xpath": "//Collection[@label='station']" } ]
   }, {
     "name": "dataSet"

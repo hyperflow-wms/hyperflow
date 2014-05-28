@@ -36,6 +36,9 @@
     "nodeunit": "",
     "request": "",
     "q": "",
-    "neo4j": ""
+    "neo4j": "",
+    "istanbul": "",
+    "rewire": "",
+    "docopt": ""
    }
 }

@@ -1,5 +1,5 @@
 var request = require('request'); // http client
-
+var rest_config = require('./LMonFunctions.config.js');
 
 var EmergLevel = {
     NONE: "none",
@@ -25,16 +25,20 @@ function getLeveeState(ins, outs, config, cb) {
     request(
         {
             "timeout": 1000,
-            "url": config.url
+            "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
+            "strictSSL": false,
+            "headers": {
+                "PRIVATE-TOKEN": rest_config.auth_token
+            }
         },
         function (error, response, body) {
             if (!error && response.statusCode == 200) {
                 var result = JSON.parse(body);
-                var emergencyLevel = EmergLevel[result.emergencyLevel.toUpperCase()];
-                var threatLevel = EmergLevel[result.emergencyLevel.toUpperCase()];
+                var emergencyLevel = EmergLevel[result.levee.emergency_level.toUpperCase()];
+                var threatLevel = ThreatLevel[result.levee.threat_level.toUpperCase()];
 
                 //TODO; check for emergencyLevel == undefined, if so fail
-                console.log("emergencyLevel=" + emergencyLevel);
+                console.log("getLeveeState: emergencyLevel=", emergencyLevel, ", threatLevel=", threatLevel);
 
                 if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
                     console.log("Setting heightened emergency level");
@@ -54,6 +58,8 @@ function getLeveeState(ins, outs, config, cb) {
 
                 cb(null, outs);
             } else {
+                console.log("Error reading response from getLeveeState!");
+                console.log("error:", error, ", response:", response);
                 cb(new Error("Error reading response from getLeveeState!"), outs);
             }
         });
@@ -63,30 +69,45 @@ function getLeveeState(ins, outs, config, cb) {
 function computeThreatLevel(ins, outs, config, cb) {
     var threatLevel;
 
-    var rand = Math.random(); 
+    var rand = Math.random();
     if (rand > 0.95) {
-        threatLevel = ThreatLevel.SEVERE; 
+        threatLevel = ThreatLevel.SEVERE;
     } else if (rand > 0.7) {
         threatLevel = ThreatLevel.HEIGHTENED;
     } else {
         threatLevel = ThreatLevel.NONE;
     }
 
-    request.post(
+    var levee = { "levee": {
+       "id": config.levee_id,
+        "threat_level": threatLevel
+    }};
+
+    request.put(
         {
             "timeout": 1000,
-            "url": config.url,
-            "form": {"threatLevel": threatLevel}
+            "url": rest_config.dap_url + rest_config.levee_service + config.levee_id,
+//            "form": { "levee": { "id": config.levee_id, "threat_level": threatLevel }},
+            "body": JSON.stringify(levee),
+            "strictSSL": false,
+            "headers": {
+                "PRIVATE-TOKEN": rest_config.auth_token,
+                "Content-Type": "application/json"
+            }
         },
         function(error, response, body) {
-            if(!error && response.statusCode == 201) {
+            if(!error && response.statusCode == 200) {
                 parsedResponse = JSON.parse(body);
-                if (parsedResponse.result == "ok") {
+                if (parsedResponse.levee.threat_level == threatLevel) {
+                    console.log("computeThreatLevel: threat level=", threatLevel);
                     cb(null, outs);
                 } else {
-                    cb(new Error("Error reading response from storeThreatLevel!"), outs);
+                    console.log("Error storing threatLevel!");
+                    cb(new Error("Error storing threatLevel!"), outs);
                 }
             } else {
+                console.log("Error reading response from storeThreatLevel!");
+                console.log("error:", error, ", response:", response);
                 cb(new Error("Error reading response from storeThreatLevel!"), outs);
             }
         }
@@ -95,7 +116,7 @@ function computeThreatLevel(ins, outs, config, cb) {
 
 // Step 2b: perform actions in the severe emergency level
 function severeEmergencyActions(ins, outs, config, cb) {
-    console.log("Severe Emergency Actions!");
+    console.log("severeEmergencyActions: firing!");
     cb(null, outs);
 }
 
