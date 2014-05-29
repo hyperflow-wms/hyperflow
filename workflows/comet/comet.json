@@ -7,10 +7,16 @@
     "name": "genTimeWindows",
     "module": "./workflows/comet/comet.js"
   }, {
-    "name": "genDataSets",
+    "name": "partitionData",
+    "module": "./workflows/comet/comet.js"
+  }, {
+    "name": "computeStats",
     "module": "./workflows/comet/comet.js"
   }, {
     "name": "plotData",
+    "module": "./workflows/comet/comet.js"
+  }, {
+    "name": "collectGraphs",
     "module": "./workflows/comet/comet.js"
   } ],
   "processes": [ {
@@ -19,15 +25,26 @@
     "ins": [ "xmlData", "config" ],
     "outs": [ "stations:dataSetsCount"]
   }, {
-    "name": "GenDataSets",
-    "function": "genDataSets",
+    "name": "PartitionData",
+    "function": "partitionData",
     "ins": [ "stations" ],
-    "outs": [ "dataSet" ]
+    "outs": [ "dataParts" ]
+  }, {
+    "name": "ComputeStats",
+    "function": "computeStats",
+    "ins": [ "dataParts", "config" ],
+    "sticky": ["config"],
+    "outs": [ "stats" ]
   }, {
     "name": "PlotGraphs",
     "function": "plotData",
-    "ins": ["dataSet"],
-    "outs": []
+    "ins": [ "stats" ],
+    "outs": [ "graph" ]
+  }, {
+     "name": "Collect",
+     "function": "collectGraphs",
+     "ins": [ "graph:dataSetsCount" ],
+     "outs": []
   } ],
   "signals": [ {
     "name": "xmlData",
@@ -43,10 +60,15 @@
     "data": [ { 
        "xpath": "//Collection[@label='station']",
        "start_time": "1.196499599E9",
-       "end_time": "1.197359999E9"
+       "end_time": "1.197359999E9",
+       "baseTemp": "10"
     } ]
   }, {
-    "name": "dataSet"
+    "name": "dataParts"
+  }, {
+    "name": "stats"
+  }, {
+    "name": "graph"
   }, {
     "name": "dataSetsCount",
     "control": "count"

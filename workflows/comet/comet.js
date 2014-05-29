@@ -7,8 +7,6 @@ function genTimeWindows(ins, outs, config, cb) {
     var start_time = Number(ins.config.data[0].start_time),
         end_time = Number(ins.config.data[0].end_time);
 
-    console.log("XX", start_time, end_time);
-
     var t0, windows = [];
     t0 = start_time;
 
@@ -62,7 +60,7 @@ function genXmlCollection(ins, outs, config, cb) {
 }
 
 
-function genDataSets(ins, outs, config, cb) {
+function partitionData(ins, outs, config, cb) {
     var xmlData = ins[0].data[0].value,
         doc = new dom().parseFromString(xmlData),
         xmlPath = "//Collection[@label='CollectionPoint']",
@@ -70,31 +68,89 @@ function genDataSets(ins, outs, config, cb) {
 
     console.log("DATA NODES:", nodes.length);
 
+    var timeWindowLength = 43200; // 12 hours
+
     outs[0].data = [[]];
+    var t = 0, idx = 0, first = true;
+    var timestamp, humidity, tref;
     nodes.forEach(function(node) {
-        var timestamp = xpath.select("Data[@label='timestamps']/text()", node).toString();
-        var humidity = xpath.select("Data[@label='humidity']/text()", node).toString();
-        outs[0].data[0].push([timestamp, humidity]);
+        if (t >= timeWindowLength) {
+            t -= timeWindowLength; idx += 1;
+            first = true;
+            //outs[0].data[0].push([]);
+        }
+        tref = timestamp;
+        timestamp = Number(xpath.select("Data[@label='timestamps']/text()", node).toString());
+        if (first) {
+            first = false;
+            tref = timestamp;
+        }
+        humidity = Number(xpath.select("Data[@label='humidity']/text()", node).toString());
+        t += timestamp - tref;
+        //onsole.log("T:", t, "TIMESTAMP:", timestamp, "TREF:", tref);
+        if (outs[0].data[0][idx]) {
+            outs[0].data[0][idx].push(timestamp, humidity);
+        } else {
+            outs[0].data[0][idx] = [timestamp, humidity];
+        }
         //console.log(timestamp, humidity);
     });
 
+    //onsole.log("DATA SETS #="+outs[0].data[0].length);
+    //onsole.log("DATA SETS X: ", JSON.stringify(outs, null, 2));
+
+    cb(null, outs);
+}
+
+function computeStats(ins, outs, config, cb) {
+    var tBase = Number(ins.config.data[0].baseTemp),
+        min, max, gdd;
+
+    var dsets = ins.dataParts.data[0];
+
+    stats = [];
+    dsets.forEach(function(d) {
+        var t = d[0]; // time stamp for the min/max/gdd
+        var min = -1, max = -1, gdd;
+        for (var i=0; i<d.length; i+=2) {
+            if (min == -1 || min > d[i+1]) { min = d[i+1]; }
+            if (max == -1 || max < d[i+1]) { max = d[i+1]; }
+        }
+        if (max < tBase) {
+            gdd = 0;
+        } else {
+            gdd = (min+max)/2 - tBase;
+        }
+        stats.push({"timestamp": t, "min": min, "max": max, "gdd": gdd})
+        
+    });
+    outs[0].data = [stats];
+    console.log("STATS: ", JSON.stringify(stats, null, 2));
     cb(null, outs);
 }
 
 function plotData(ins, outs, config, cb) {
     var fileName = "data" + (new Date()).getTime();
-    var Rscript = '\r\n\
-        data <- read.csv("' + fileName + '.csv")\r\n\
-        png(filename="' + fileName + '.png")\r\n\
-        plot(data, type="l")\r\n\
-        nil <- dev.off()';
+    var Rscript = '\n\
+        data <- read.csv("' + fileName + '.csv")\n\
+        png(filename="' + fileName + '.png")\n\
+        with(data, plot(timestamp, min, type="l", col="red", ylab="", ylim=c(0.0,100.0)))\n\
+        with(data, lines(timestamp, max, type="l", col="blue"))\n\
+        with(data, lines(timestamp, gdd, type="l", col="green"))\n\
+        legend("topright", legend=c("min", "max", "gdd"),lty=1,col=c("red", "blue", "green"), bty="n", cex=.75)\n\
+        x <- dev.off()';
+
+    //console.log("PLOT DATA", JSON.stringify(ins, null, 2));
+    
+    var stats = ins.stats.data[0];
 
     fs.writeFile(fileName+".R", Rscript, function(err) {
         if (err) throw err;
-        var data = "timestamp,humidity\r\n";
-        ins[0].data[0].forEach(function(p) {
-            data += p[0]+","+p[1]+"\r\n";
-        });
+        var data = "timestamp,min,max,gdd\n";
+        var d = ins[0].data[0];
+        for (var i=0; i<d.length; i+=2) {
+            data += d[i].timestamp+","+d[i].min+","+d[i].max+","+d[i].gdd+"\r\n";
+        }
         fs.writeFile(fileName+".csv", data, function(err) {
             if (err) throw err;
             var proc = spawn("R", ["--vanilla", "-q", "-f", fileName + ".R" ]);
@@ -110,14 +166,22 @@ function plotData(ins, outs, config, cb) {
             proc.on('exit', function(code) {
                 fs.unlinkSync(fileName + ".csv");
                 fs.unlinkSync(fileName + ".R");
-                console.log("EXITING...");
+                outs[0].data = [{}];
                 cb(null, outs);
             });
         });
     });
 }
 
+function collectGraphs(ins, outs, config, cb) {
+    console.log("All plots generated, finisning...");
+    cb(null, outs);
+    process.exit();
+}
+
 exports.genXmlCollection = genXmlCollection;
-exports.genDataSets = genDataSets;
+exports.partitionData = partitionData;
 exports.plotData = plotData;
 exports.genTimeWindows = genTimeWindows;
+exports.computeStats = computeStats;
+exports.collectGraphs = collectGraphs;
