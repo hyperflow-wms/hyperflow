@@ -4,7 +4,7 @@ var async = require('async');
 var db = new neo4j.GraphDatabase('http://localhost:7474');
 var queue = async.queue(store_provenance_info, 1); //max concurrency
 
-db.query("MATCH (n) DELETE n", function() {});
+db.query("MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r", function() {});
 
 function store_provenance_info(args, callback) {
     var op = args[0],
@@ -37,7 +37,6 @@ function store_provenance_info(args, callback) {
             console.log("error saving to db!", err);
         } else {
             console.log('successful save:', node.id);
-            //check for related nodes
             if (op == "read") {
                 var reverse_op = "write";
                 //TODO: needs to include firingId as a parameter
