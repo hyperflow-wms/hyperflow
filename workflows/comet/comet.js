@@ -3,27 +3,7 @@ var fs = require("fs"),
     dom = require("xmldom").DOMParser,
     spawn = require('child_process').spawn;
 
-function genTimeWindows(ins, outs, config, cb) {
-    var start_time = Number(ins.config.data[0].start_time),
-        end_time = Number(ins.config.data[0].end_time);
 
-    var t0, windows = [];
-    t0 = start_time;
-
-    // generates 12-hour (43200 seconds) and 24-hour windows (
-    while (t0 + 43200 <= end_time) {
-        windows.push([t0, t0+43200]);
-        if (t0 + 86400 <= end_time) {
-            windows.push([t0, t0+86400]);
-        }
-        t0 += 43200; // "advance" time by 12 hours
-    }
-    console.log("WINDOWS:", JSON.stringify(windows, null, 2));
-    cb(null, outs);
-}
-
-//var data = [ { "start_time": "1.196499599E9", "end_time": "1.197359999E9" } ]
-//genTimeWindows([{ "data": data }], null, null, null);
 
 function genXmlCollection(ins, outs, config, cb) {
     var xmlData, xmlPath = ins[1].data[0].xpath;
@@ -59,54 +39,42 @@ function genXmlCollection(ins, outs, config, cb) {
     }
 }
 
-
 function partitionData(ins, outs, config, cb) {
     var xmlData = ins[0].data[0].value,
         doc = new dom().parseFromString(xmlData),
         xmlPath = "//Collection[@label='CollectionPoint']",
         nodes = xpath.select(xmlPath, doc);
 
-    console.log("DATA NODES:", nodes.length);
-
     var timeWindowLength = 43200; // 12 hours
 
     outs[0].data = [[]];
     var t = 0, idx = 0, first = true;
     var timestamp, humidity, tref;
+
     nodes.forEach(function(node) {
         if (t >= timeWindowLength) {
             t -= timeWindowLength; idx += 1;
             first = true;
-            //outs[0].data[0].push([]);
         }
         tref = timestamp;
         timestamp = Number(xpath.select("Data[@label='timestamps']/text()", node).toString());
-        if (first) {
-            first = false;
-            tref = timestamp;
-        }
+        if (first) { first = false; tref = timestamp; }
         humidity = Number(xpath.select("Data[@label='humidity']/text()", node).toString());
         t += timestamp - tref;
-        //onsole.log("T:", t, "TIMESTAMP:", timestamp, "TREF:", tref);
         if (outs[0].data[0][idx]) {
             outs[0].data[0][idx].push(timestamp, humidity);
         } else {
             outs[0].data[0][idx] = [timestamp, humidity];
         }
-        //console.log(timestamp, humidity);
     });
-
-    //onsole.log("DATA SETS #="+outs[0].data[0].length);
-    //onsole.log("DATA SETS X: ", JSON.stringify(outs, null, 2));
 
     cb(null, outs);
 }
 
 function computeStats(ins, outs, config, cb) {
     var tBase = Number(ins.config.data[0].baseTemp),
+        dsets = ins.dataParts.data[0],
         min, max, gdd;
-
-    var dsets = ins.dataParts.data[0];
 
     stats = [];
     dsets.forEach(function(d) {
@@ -116,34 +84,27 @@ function computeStats(ins, outs, config, cb) {
             if (min == -1 || min > d[i+1]) { min = d[i+1]; }
             if (max == -1 || max < d[i+1]) { max = d[i+1]; }
         }
-        if (max < tBase) {
-            gdd = 0;
-        } else {
-            gdd = (min+max)/2 - tBase;
-        }
+        gdd = max < tBase ? 0: (min+max)/2 - tBase; 
         stats.push({"timestamp": t, "min": min, "max": max, "gdd": gdd})
         
     });
     outs[0].data = [stats];
-    console.log("STATS: ", JSON.stringify(stats, null, 2));
     cb(null, outs);
 }
 
 function plotData(ins, outs, config, cb) {
-    var fileName = "data" + (new Date()).getTime();
+    var hrtime = process.hrtime();
+    var fileName = "data" + hrtime[0] + hrtime[1];
     var Rscript = '\n\
         data <- read.csv("' + fileName + '.csv")\n\
         png(filename="' + fileName + '.png")\n\
         with(data, plot(timestamp, min, type="l", col="red", ylab="", ylim=c(0.0,100.0)))\n\
         with(data, lines(timestamp, max, type="l", col="blue"))\n\
         with(data, lines(timestamp, gdd, type="l", col="green"))\n\
-        legend("topright", legend=c("min", "max", "gdd"),lty=1,col=c("red", "blue", "green"), bty="n", cex=.75)\n\
+        legend("topright", legend=c("min", "max", "gdd"), lty=1,col=c("red", "blue", "green"), bty="n", cex=.75)\n\
         x <- dev.off()';
 
-    //console.log("PLOT DATA", JSON.stringify(ins, null, 2));
-    
     var stats = ins.stats.data[0];
-
     fs.writeFile(fileName+".R", Rscript, function(err) {
         if (err) throw err;
         var data = "timestamp,min,max,gdd\n";
@@ -174,10 +135,32 @@ function plotData(ins, outs, config, cb) {
 }
 
 function collectGraphs(ins, outs, config, cb) {
-    console.log("All plots generated, finisning...");
+    console.log("All plots generated, exiting...");
     cb(null, outs);
     process.exit();
 }
+
+function genTimeWindows(ins, outs, config, cb) {
+    var start_time = Number(ins.config.data[0].start_time),
+        end_time = Number(ins.config.data[0].end_time);
+
+    var t0, windows = [];
+    t0 = start_time;
+
+    // generates 12-hour (43200 seconds) and 24-hour windows (
+    while (t0 + 43200 <= end_time) {
+        windows.push([t0, t0+43200]);
+        if (t0 + 86400 <= end_time) {
+            windows.push([t0, t0+86400]);
+        }
+        t0 += 43200; // "advance" time by 12 hours
+    }
+    console.log("WINDOWS:", JSON.stringify(windows, null, 2));
+    cb(null, outs);
+}
+
+//var data = [ { "start_time": "1.196499599E9", "end_time": "1.197359999E9" } ]
+//genTimeWindows([{ "data": data }], null, null, null);
 
 exports.genXmlCollection = genXmlCollection;
 exports.partitionData = partitionData;

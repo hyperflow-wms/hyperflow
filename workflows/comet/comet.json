@@ -20,7 +20,7 @@
     "module": "./workflows/comet/comet.js"
   } ],
   "processes": [ {
-    "name": "GenData",
+    "name": "ReadDataSets",
     "function": "genXmlCollection",
     "ins": [ "xmlData", "config" ],
     "outs": [ "stations:dataSetsCount"]
@@ -33,22 +33,24 @@
     "name": "ComputeStats",
     "function": "computeStats",
     "ins": [ "dataParts", "config" ],
+    "parlevel": 3,
     "sticky": ["config"],
     "outs": [ "stats" ]
   }, {
     "name": "PlotGraphs",
     "function": "plotData",
+    "parlevel": 3,
     "ins": [ "stats" ],
     "outs": [ "graph" ]
   }, {
-     "name": "Collect",
+     "name": "CollectPlots",
      "function": "collectGraphs",
      "ins": [ "graph:dataSetsCount" ],
      "outs": []
   } ],
   "signals": [ {
     "name": "xmlData",
-    "data": [ { "path": "./workflows/comet/data.xml" } ]
+    "data": [ { "path": "./workflows/comet/data-big.xml" } ]
   }, {
     "name": "counties"
   }, {

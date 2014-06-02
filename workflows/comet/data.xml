@@ -5,9 +5,9 @@
 <Annotation key="Tbase">$Tbase</Annotation>
 <Collection label="HourlyDataStatistic">
     <Annotation key="county_name">"yolo"</Annotation>
-    <Collection label="county">
+    <Collection label="county" "county_name"="yolo">
         <Annotation key="station_number">"s2"</Annotation>
-        <Collection label="station">
+        <Collection label="station" "station_number"="s2">
             <Collection label="CollectionPoint">
                 <Data label="timestamps">1.196499599E9</Data>
                 <Data label="humidity">29.700001</Data>
@@ -969,7 +969,7 @@
                 <Data label="humidity">33.400002</Data>
         </Collection></Collection>
         <Annotation key="station_number">"s5"</Annotation>
-        <Collection label="station">
+        <Collection label="station" "station_number"="s5">
             <Collection label="CollectionPoint">
                 <Data label="timestamps">1.196499599E9</Data>
                 <Data label="humidity">36.799999</Data>
@@ -1931,9 +1931,9 @@
                 <Data label="humidity">31.1</Data>
     </Collection></Collection></Collection>
     <Annotation key="county_name">"sanfrancisco"</Annotation>
-    <Collection label="county">
+    <Collection label="county", "county_name"="sanfrancisco">
         <Annotation key="station_number">"s6"</Annotation>
-        <Collection label="station">
+        <Collection label="station" "station_number"="s6">
             <Collection label="CollectionPoint">
                 <Data label="timestamps">1.196499599E9</Data>
                 <Data label="humidity">32.0</Data>
