@@ -1,8 +1,11 @@
 var neo4j = require('neo4j');
 var async = require('async');
+var _ = require('underscore');
 
 var db = new neo4j.GraphDatabase('http://localhost:7474');
 var queue = async.queue(store_provenance_info, 1); //max concurrency
+
+var in_state_store = {};
 
 db.query("MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r", function () {
 });
@@ -37,10 +40,10 @@ function store_provenance_info(args, callback) {
         if (err) {
             console.log("error saving to db!", err);
         } else {
-            console.log('successful save:', node.id);
+//            console.log('successful save:', node.id);
             //create relationships
             if (op == "read") {
-                //connect writing and reading a signal with relationship
+                //connect writing and reading a signal with a relationship
                 var reverse_op = "write";
                 var query = [
                     "MATCH (n {",
@@ -59,20 +62,64 @@ function store_provenance_info(args, callback) {
 //                            console.log(">>>>>>>>>>>>>", JSON.stringify(results[i]["n"].id));
                             var related_node = results[i]["n"];
                             //if there are any, create relation
-                            related_node.createRelationshipTo(node, 'produces signal for', {}, function (err, rel) {
+                            related_node.createRelationshipTo(node, 'signal read/write', {}, function (err, rel) {
                                 if (err) {
                                     console.log("Error creating relation!", err);
                                 } else {
-                                    console.log("Created relationship for: ", node["data"]["procId"]);
                                 }
                             });
                         }
                     }
                 });
-            }
-            if (op == "write") {
-                //connect signals dependant according to being "in state"
-                
+
+                //register read as signal in state of proc
+                var state = { "firingId": firingId, "sigId": sigId, "sigIdx": sigIdx };
+                if (procId in in_state_store) {
+                    in_state_store[procId].push(state);
+                } else {
+                    in_state_store[procId] = [ state ];
+                }
+
+            } else if (op == "write") {
+                //connect writing signal events with dependant signals reads according to being "in state"
+//                console.log("p:", procId, in_state_store);
+
+                //find all in state read events (signals)
+                var in_states = in_state_store[procId];
+                for (var i = 0; i < in_states.length; i++) {
+                    var state = in_states[i];
+                    var query = [
+                        "MATCH (n {",
+                        "op:\"read\",",
+                            "procId:" + procId + ",",
+                            "firingId:" + state.firingId + ",",
+                            "sigId:" + state.sigId + ",",
+                            "sigIdx:" + state.sigIdx,
+                        "}) return n"
+                    ].join(" ");
+
+                    db.query(query, function (err, results) {
+                        if (err) {
+                            console.log("Query error!", err);
+                        } else {
+                            var related_node = results[0]["n"];
+//                            console.log("found:", result.data);
+                            //make relationship
+                            related_node.createRelationshipTo(node, 'depends on', {}, function(err, rel) {
+                                if (err) {
+                                    console.log("Error creating relation!", err);
+                                } else {
+//                                    console.log("created dependency for:", node.id, " and ", related_node.id);
+                                }
+                            });
+
+                        }
+                    });
+                }
+
+
+            } else if (op == "state-reset") {
+                delete in_state_store[procId];
             }
         }
         callback();
