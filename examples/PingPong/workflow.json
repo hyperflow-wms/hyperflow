@@ -1,9 +1,5 @@
 {
     "name": "Wf_PingPong",
-    "functions": [ {
-        "name": "count",
-        "module":"functions"
-    } ],
     "processes": [ {
         "name": "Ping",
 	"type": "dataflow",

@@ -1,12 +1,5 @@
 {
-  "functions": [
-    {
-      "name": "command_print",
-      "module": "functions"
-    }
-  ],
-  "tasks": [
-    {
+  "processes": [ {
       "name": "mProjectPP",
       "function": "command_print",
       "type": "dataflow",
@@ -3456,7 +3449,7 @@
       ]
     }
   ],
-  "data": [
+  "signals": [
     {
       "name": "2mass-atlas-990502s-j1450080.fits"
     },

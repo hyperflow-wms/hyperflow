@@ -1,24 +1,6 @@
 {
   "name": "Comet",
-  "functions": [ {
-    "name": "genXmlCollection",
-    "module": "./workflows/comet/comet.js"
-  }, {
-    "name": "genTimeWindows",
-    "module": "./workflows/comet/comet.js"
-  }, {
-    "name": "partitionData",
-    "module": "./workflows/comet/comet.js"
-  }, {
-    "name": "computeStats",
-    "module": "./workflows/comet/comet.js"
-  }, {
-    "name": "plotData",
-    "module": "./workflows/comet/comet.js"
-  }, {
-    "name": "collectGraphs",
-    "module": "./workflows/comet/comet.js"
-  } ],
+  "functions": [ ],
   "processes": [ {
     "name": "ReadDataSets",
     "function": "genXmlCollection",
@@ -50,7 +32,7 @@
   } ],
   "signals": [ {
     "name": "xmlData",
-    "data": [ { "path": "./workflows/comet/data-big.xml" } ]
+    "data": [ { "path": "data.xml" } ]
   }, {
     "name": "counties"
   }, {
