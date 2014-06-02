@@ -8,7 +8,7 @@
         "name": "CountOut",
 	"type": "dataflow",
         "function": "count",
-        "ins": [ "sig1:3" ],
+        "ins": [ "sig1:2" ],
         "outs": [ "sig2:count1" ]
     }, {
         "name": "CountIn",

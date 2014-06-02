@@ -103,49 +103,50 @@ exports.init = function(redisClient) {
             // - signal with id '1' has count 3
             // - signal with id '2' has count associated with a count signal with id 4
             // For output signal counts only the 'id:xxx' variant is valid (of course)
+            var incounts = {}, outcounts = {};
             for (var i in procs) {
-                var incounts = {};
                 for (var j in procs[i].ins) {
                     if (value(procs[i].ins[j]).typeOf(String)) {
                         var sig = procs[i].ins[j].split(":");
                         if (sig.length > 1) { // there is a 'count' modifier 
                             procs[i].ins[j] = sig[0];
-                            var sigId = +sigKeys[sig[0]]+1;
+                            var sigId = +sigKeys[sig[0]][0]+1;
                             if (parseInt(sig[1])) { // count is a number
                                 sig[1] = +sig[1];
+                                console.log(sigId, "COUNT IS A NUMBER:", sig[1]);
                                 if (sig[1] != 1) {
                                     incounts[+sigId] = +sig[1];
                                 }
                             } else { // count isn't a number, then it must be a signal name
-                                if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                                if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]][0]].control != "count") {
                                     throw(new Error("Signal count modifier in '" + procs[i].outs[j] + 
                                                 "' for process '" + procs[i].name + 
                                                 "' must be a valid control signal name."));
                                 }
-                                var sigCountId = +sigKeys[sig[1]]+1;
+                                var sigCountId = +sigKeys[sig[1]][0]+1;
                                 if (!incounts.rev)
                                     incounts.rev = {};
                                 incounts.rev[+sigCountId] = +sigId; // reverse map (sigCountId => sigId)
-                                incounts[+sigId] = 1; // this count will be set dynamically by the count signal
+                                incounts[+sigId] = "id:"+sigCountId; // this count will be set dynamically by the count signal
                                 procs[i].ins.push(sig[1]); // add the signal to the list of process' inputs
                             }
                         }
                     }
                 }
+                //onsole.log("INCOUNTS", incounts);
                 //onsole.log("PROC", +i+1, "INS", procs[i].ins);
-                var outcounts = {};
                 for (var j in procs[i].outs) {
                     if (value(procs[i].outs[j]).typeOf(String)) {
                         var sig = procs[i].outs[j].split(":");
                         if (sig.length > 1) { // there is a 'count' modifier 
-                            if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                            if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]][0]].control != "count") {
                                 throw(new Error("Signal count modifier in '" + procs[i].outs[j] + "' for process '" + 
                                             procs[i].name + "' must be a valid control signal name."));
                             }
                             procs[i].outs[j] = sig[0];
                             procs[i].outs.push(sig[1]); // add the 'count' signal to process outputs (FIXME: it could result in duplicate signal id if the signal already was on the list -- this should be no harm because of utilizing redis sets; however -- there is also the score)
-                            var sigId = +sigKeys[sig[0]]+1,
-                                sigCountId = +sigKeys[sig[1]]+1;
+                            var sigId = +sigKeys[sig[0]][0]+1,
+                                sigCountId = +sigKeys[sig[1]][0]+1;
                             outcounts[+sigId] = "id:"+sigCountId;
                         }
                     }
@@ -159,6 +160,8 @@ exports.init = function(redisClient) {
                     procs[i].outcounts = outcounts;
                 }
             }
+            //onsole.log(" INCOUNTS: ", incounts);
+            //onsole.log("OUTCOUNTS: ", outcounts);
 
             // convert process' ins, outs and sticky arrays
             for (var i in procs) {
