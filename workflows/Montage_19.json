@@ -1,0 +1,606 @@
+{
+  "functions": [
+    {
+      "name": "command_print",
+      "module": "functions"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "mProjectPP",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mProjectPP",
+          "args": "-X -x 0.90465 2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0880032.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        0,
+        3
+      ],
+      "outs": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "mProjectPP",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mProjectPP",
+          "args": "-X -x 0.90448 2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870244.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        4,
+        3
+      ],
+      "outs": [
+        5,
+        6
+      ]
+    },
+    {
+      "name": "mProjectPP",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mProjectPP",
+          "args": "-X -x 0.90415 2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0870232.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        7,
+        3
+      ],
+      "outs": [
+        8,
+        9
+      ]
+    },
+    {
+      "name": "mProjectPP",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mProjectPP",
+          "args": "-X -x 0.90682 2mass-atlas-001124n-j0860032.fits p2mass-atlas-001124n-j0860032.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        10,
+        3
+      ],
+      "outs": [
+        11,
+        12
+      ]
+    },
+    {
+      "name": "mDiffFit",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mDiffFit",
+          "args": "-s fit.000001.000002.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0870244.fits diff.000001.000002.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        13,
+        14,
+        1,
+        2,
+        5,
+        6,
+        3
+      ],
+      "outs": [
+        15,
+        16
+      ]
+    },
+    {
+      "name": "mDiffFit",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mDiffFit",
+          "args": "-s fit.000001.000003.txt p2mass-atlas-001124n-j0880032.fits p2mass-atlas-001124n-j0870232.fits diff.000001.000003.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        13,
+        14,
+        1,
+        2,
+        8,
+        9,
+        3
+      ],
+      "outs": [
+        17,
+        18
+      ]
+    },
+    {
+      "name": "mDiffFit",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mDiffFit",
+          "args": "-s fit.000002.000003.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0870232.fits diff.000002.000003.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        13,
+        14,
+        5,
+        6,
+        8,
+        9,
+        3
+      ],
+      "outs": [
+        19,
+        20
+      ]
+    },
+    {
+      "name": "mDiffFit",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mDiffFit",
+          "args": "-s fit.000002.000004.txt p2mass-atlas-001124n-j0870244.fits p2mass-atlas-001124n-j0860032.fits diff.000002.000004.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        13,
+        14,
+        5,
+        6,
+        11,
+        12,
+        3
+      ],
+      "outs": [
+        21,
+        22
+      ]
+    },
+    {
+      "name": "mDiffFit",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mDiffFit",
+          "args": "-s fit.000003.000004.txt p2mass-atlas-001124n-j0870232.fits p2mass-atlas-001124n-j0860032.fits diff.000003.000004.fits big_region_20140602_174742_23548.hdr"
+        }
+      },
+      "ins": [
+        13,
+        14,
+        8,
+        9,
+        11,
+        12,
+        3
+      ],
+      "outs": [
+        23,
+        24
+      ]
+    },
+    {
+      "name": "mConcatFit",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mConcatFit",
+          "args": "statfile_20140602_174742_23548.tbl fits.tbl ."
+        }
+      },
+      "ins": [
+        25,
+        15,
+        17,
+        19,
+        21,
+        23
+      ],
+      "outs": [
+        26
+      ]
+    },
+    {
+      "name": "mBgModel",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mBgModel",
+          "args": "-i 100000 pimages_20140602_174742_23548.tbl fits.tbl corrections.tbl"
+        }
+      },
+      "ins": [
+        27,
+        26
+      ],
+      "outs": [
+        28
+      ]
+    },
+    {
+      "name": "mBackground",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mBackground",
+          "args": "-t p2mass-atlas-001124n-j0880032.fits c2mass-atlas-001124n-j0880032.fits pimages_20140602_174742_23548.tbl corrections.tbl"
+        }
+      },
+      "ins": [
+        1,
+        2,
+        27,
+        28
+      ],
+      "outs": [
+        29,
+        30
+      ]
+    },
+    {
+      "name": "mBackground",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mBackground",
+          "args": "-t p2mass-atlas-001124n-j0870244.fits c2mass-atlas-001124n-j0870244.fits pimages_20140602_174742_23548.tbl corrections.tbl"
+        }
+      },
+      "ins": [
+        5,
+        6,
+        27,
+        28
+      ],
+      "outs": [
+        31,
+        32
+      ]
+    },
+    {
+      "name": "mBackground",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mBackground",
+          "args": "-t p2mass-atlas-001124n-j0870232.fits c2mass-atlas-001124n-j0870232.fits pimages_20140602_174742_23548.tbl corrections.tbl"
+        }
+      },
+      "ins": [
+        8,
+        9,
+        27,
+        28
+      ],
+      "outs": [
+        33,
+        34
+      ]
+    },
+    {
+      "name": "mBackground",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mBackground",
+          "args": "-t p2mass-atlas-001124n-j0860032.fits c2mass-atlas-001124n-j0860032.fits pimages_20140602_174742_23548.tbl corrections.tbl"
+        }
+      },
+      "ins": [
+        11,
+        12,
+        27,
+        28
+      ],
+      "outs": [
+        35,
+        36
+      ]
+    },
+    {
+      "name": "mImgtbl",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mImgtbl",
+          "args": "-t cimages_20140602_174742_23548.tbl . newcimages.tbl"
+        }
+      },
+      "ins": [
+        37,
+        29,
+        31,
+        33,
+        35
+      ],
+      "outs": [
+        38
+      ]
+    },
+    {
+      "name": "mAdd",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mAdd",
+          "args": "-e newcimages.tbl region_20140602_174742_23548.hdr mosaic_20140602_174742_23548.fits"
+        }
+      },
+      "ins": [
+        38,
+        39,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36
+      ],
+      "outs": [
+        40,
+        41
+      ]
+    },
+    {
+      "name": "mShrink",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mShrink",
+          "args": "mosaic_20140602_174742_23548.fits shrunken_20140602_174742_23548.fits 1"
+        }
+      },
+      "ins": [
+        40
+      ],
+      "outs": [
+        42
+      ]
+    },
+    {
+      "name": "mJPEG",
+      "function": "command_print",
+      "type": "dataflow",
+      "executor": "syscommand",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "mJPEG",
+          "args": "-ct 1 -gray shrunken_20140602_174742_23548.fits min max gaussianlog -out shrunken_20140602_174742_23548.jpg"
+        }
+      },
+      "ins": [
+        42
+      ],
+      "outs": [
+        43
+      ]
+    }
+  ],
+  "data": [
+    {
+      "name": "2mass-atlas-001124n-j0880032.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0880032.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0880032_area.fits"
+    },
+    {
+      "name": "big_region_20140602_174742_23548.hdr"
+    },
+    {
+      "name": "2mass-atlas-001124n-j0870244.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0870244.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0870244_area.fits"
+    },
+    {
+      "name": "2mass-atlas-001124n-j0870232.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0870232.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0870232_area.fits"
+    },
+    {
+      "name": "2mass-atlas-001124n-j0860032.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0860032.fits"
+    },
+    {
+      "name": "p2mass-atlas-001124n-j0860032_area.fits"
+    },
+    {
+      "name": "mDiff"
+    },
+    {
+      "name": "mFitplane"
+    },
+    {
+      "name": "fit.000001.000002.txt"
+    },
+    {
+      "name": "diff.000001.000002.fits"
+    },
+    {
+      "name": "fit.000001.000003.txt"
+    },
+    {
+      "name": "diff.000001.000003.fits"
+    },
+    {
+      "name": "fit.000002.000003.txt"
+    },
+    {
+      "name": "diff.000002.000003.fits"
+    },
+    {
+      "name": "fit.000002.000004.txt"
+    },
+    {
+      "name": "diff.000002.000004.fits"
+    },
+    {
+      "name": "fit.000003.000004.txt"
+    },
+    {
+      "name": "diff.000003.000004.fits"
+    },
+    {
+      "name": "statfile_20140602_174742_23548.tbl"
+    },
+    {
+      "name": "fits.tbl"
+    },
+    {
+      "name": "pimages_20140602_174742_23548.tbl"
+    },
+    {
+      "name": "corrections.tbl"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0880032.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0880032_area.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0870244.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0870244_area.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0870232.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0870232_area.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0860032.fits"
+    },
+    {
+      "name": "c2mass-atlas-001124n-j0860032_area.fits"
+    },
+    {
+      "name": "cimages_20140602_174742_23548.tbl"
+    },
+    {
+      "name": "newcimages.tbl"
+    },
+    {
+      "name": "region_20140602_174742_23548.hdr"
+    },
+    {
+      "name": "mosaic_20140602_174742_23548.fits"
+    },
+    {
+      "name": "mosaic_20140602_174742_23548_area.fits"
+    },
+    {
+      "name": "shrunken_20140602_174742_23548.fits"
+    },
+    {
+      "name": "shrunken_20140602_174742_23548.jpg"
+    }
+  ],
+  "ins": [
+    0,
+    3,
+    4,
+    7,
+    10,
+    13,
+    14,
+    25,
+    27,
+    37,
+    39
+  ],
+  "outs": [
+    16,
+    18,
+    20,
+    22,
+    24,
+    41,
+    43
+  ]
+}
