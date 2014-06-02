@@ -102,16 +102,20 @@ function store_provenance_info(args, callback) {
                         if (err) {
                             console.log("Query error!", err);
                         } else {
-                            var related_node = results[0]["n"];
-//                            console.log("found:", result.data);
-                            //make relationship
-                            related_node.createRelationshipTo(node, 'depends on', {}, function(err, rel) {
-                                if (err) {
-                                    console.log("Error creating relation!", err);
-                                } else {
-//                                    console.log("created dependency for:", node.id, " and ", related_node.id);
-                                }
-                            });
+                            if(results.length == 1) {
+                                var related_node = results[0]["n"];
+    //                            console.log("found:", result.data);
+                                //make relationship
+                                node.createRelationshipTo(related_node, 'depends on', {}, function(err, rel) {
+                                    if (err) {
+                                        console.log("Error creating relation!", err);
+                                    } else {
+    //                                    console.log("created dependency for:", node.id, " and ", related_node.id);
+                                    }
+                                });
+                            } else {
+                                console.log("Related node not found: p:", procId, state);
+                            }
 
                         }
                     });
