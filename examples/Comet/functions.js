@@ -45,6 +45,8 @@ function partitionData(ins, outs, config, cb) {
         xmlPath = "//Collection[@label='CollectionPoint']",
         nodes = xpath.select(xmlPath, doc);
 
+    //onsole.log("DOC", doc);
+    //onsole.log("INS", JSON.stringify(ins, null, 2));
     var timeWindowLength = 43200; // 12 hours
 
     outs[0].data = [[]];
@@ -57,16 +59,20 @@ function partitionData(ins, outs, config, cb) {
             first = true;
         }
         tref = timestamp;
-        timestamp = Number(xpath.select("Data[@label='timestamps']/text()", node).toString());
+        //onsole.log("NODE", node.toString());
+        timestamp = Number(xpath.select("Data[@label='timestamps']/text()", node)[0].toString());
         if (first) { first = false; tref = timestamp; }
-        humidity = Number(xpath.select("Data[@label='humidity']/text()", node).toString());
+        humidity = Number(xpath.select("Data[@label='humidity']/text()", node)[0].toString());
         t += timestamp - tref;
+        //onsole.log("timestampe:", timestamp);
         if (outs[0].data[0][idx]) {
             outs[0].data[0][idx].push(timestamp, humidity);
         } else {
             outs[0].data[0][idx] = [timestamp, humidity];
         }
     });
+
+    //onsole.log("OUTS", JSON.stringify(outs, null, 2));
 
     cb(null, outs);
 }
@@ -121,7 +127,7 @@ function plotData(ins, outs, config, cb) {
             });
 
             proc.stdout.on('data', function(data) {
-                console.log(data.toString());
+                //console.log(data.toString());
             });
 
             proc.on('exit', function(code) {
