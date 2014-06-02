@@ -3,8 +3,6 @@ var fs = require("fs"),
     dom = require("xmldom").DOMParser,
     spawn = require('child_process').spawn;
 
-
-
 function genXmlCollection(ins, outs, config, cb) {
     var xmlData, xmlPath = ins[1].data[0].xpath;
 
@@ -14,7 +12,22 @@ function genXmlCollection(ins, outs, config, cb) {
 
         data = [];
         nodes.forEach(function(node) {
-            data.push({ "value": node.toString()});
+            /*var cache = [];
+            JSON.stringify(node, function(key, value) {
+                if (typeof value === 'object' && value !== null) {
+                    if (cache.indexOf(value) !== -1) {
+                        // Circular reference found, discard key
+                        return;
+                    }
+                    // Store value in our collection
+                    cache.push(value);
+                }
+                return value;
+            });
+            console.log(cache);
+            */
+            var collection_name = node.attributes[1].nodeValue; // hack
+            data.push({ "collection_name": collection_name, "value": node.toString()});
         });
         //onsole.log("DATA:", data);
         //onsole.log("LENGTH:", data.length);
@@ -41,6 +54,7 @@ function genXmlCollection(ins, outs, config, cb) {
 
 function partitionData(ins, outs, config, cb) {
     var xmlData = ins[0].data[0].value,
+        cname = ins[0].data[0].collection_name,
         doc = new dom().parseFromString(xmlData),
         xmlPath = "//Collection[@label='CollectionPoint']",
         nodes = xpath.select(xmlPath, doc);
@@ -52,6 +66,8 @@ function partitionData(ins, outs, config, cb) {
     outs[0].data = [[]];
     var t = 0, idx = 0, first = true;
     var timestamp, humidity, tref;
+
+    outs[0].collection_name = cname;
 
     nodes.forEach(function(node) {
         if (t >= timeWindowLength) {
@@ -80,6 +96,7 @@ function partitionData(ins, outs, config, cb) {
 function computeStats(ins, outs, config, cb) {
     var tBase = Number(ins.config.data[0].baseTemp),
         dsets = ins.dataParts.data[0],
+        cname = ins.dataParts.collection_name,
         min, max, gdd;
 
     stats = [];
@@ -94,13 +111,15 @@ function computeStats(ins, outs, config, cb) {
         stats.push({"timestamp": t, "min": min, "max": max, "gdd": gdd})
         
     });
+    outs[0].collection_name = cname;
     outs[0].data = [stats];
     cb(null, outs);
 }
 
 function plotData(ins, outs, config, cb) {
-    var hrtime = process.hrtime();
-    var fileName = "data" + hrtime[0] + hrtime[1];
+    var hrtime = process.hrtime(),
+        cname = ins[0].collection_name,
+        fileName = "plot-" + cname + "-" + hrtime[0] + hrtime[1];
     var Rscript = '\n\
         data <- read.csv("' + fileName + '.csv")\n\
         png(filename="' + fileName + '.png")\n\

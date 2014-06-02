@@ -32,13 +32,11 @@
   } ],
   "signals": [ {
     "name": "xmlData",
-    "data": [ { "path": "data.xml" } ]
+    "data": [ { "path": "data-big.xml" } ]
   }, {
     "name": "counties"
   }, {
     "name": "stations"
-  }, {
-    "name": "timeWindow"
   }, {
     "name": "config",
     "data": [ { 
