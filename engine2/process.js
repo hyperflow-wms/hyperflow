@@ -310,6 +310,7 @@ var ProcLogic = function() {
                 proc.sigValues,
                 funcOuts, emul,
                 proc.engine.eventServer,
+                proc.engine.config, 
                 function(err, outs, options) {
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
