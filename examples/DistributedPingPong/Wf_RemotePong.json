@@ -1,9 +1,5 @@
 {
     "name": "Wf_RemotePong",
-    "functions": [ {
-        "name": "count",
-        "module":"functions"
-    } ],
     "processes": [ {
         "name": "Ponger",
 	"type": "dataflow",

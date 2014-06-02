@@ -31,14 +31,14 @@ echo $appfact1
 echo $appfact2
 
 # 1)
-#path1="$HFLOW_ROOT/examples/DistributedPingPong/Wf_RemotePing.json"
+#path1="$HFLOW_PATH/examples/DistributedPingPong/Wf_RemotePing.json"
 path1="./Wf_RemotePing.json"
 echo $path1
 app1=`curl -v -X POST -d @$path1 $appfact1 --header "Content-Type:application/json" 2>&1 | grep Location | cut -f 3 -d' '`
 app1uri="http://localhost:$1"$app1
 
 # 2)
-#path2="$HFLOW_ROOT/examples/DistributedPingPong/Wf_RemotePong.json"
+#path2="$HFLOW_PATH/examples/DistributedPingPong/Wf_RemotePong.json"
 path2="./Wf_RemotePong.json"
 app2=`curl -v -X POST -d @$path2 $appfact2 --header "Content-Type:application/json" 2>&1 | grep Location | cut -f 3 -d' '`
 app2uri="http://localhost:$2"$app2

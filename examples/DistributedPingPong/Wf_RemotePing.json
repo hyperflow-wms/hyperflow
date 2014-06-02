@@ -1,9 +1,5 @@
 {
     "name": "Wf_RemotePing",
-    "functions": [ {
-        "name": "count",
-        "module":"functions"
-    } ],
     "processes": [ {
         "name": "Pinger",
 	"type": "dataflow",
