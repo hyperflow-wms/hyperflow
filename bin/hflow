@@ -40,7 +40,7 @@ function hflow_run() {
   }
 
   var runWf = function(wfId) { 
-    var config = {"emulate":"false", "workdir": wfpath};
+    var config = {"emulate":"false", "workdir": pathtool.resolve(wfpath)};
     var engine = new Engine(config, wflib, wfId, function(err) {
       // This represent custom plugin listening on event from available eventServer
       // engine.eventServer.on('trace.*', function(exec, args) {
