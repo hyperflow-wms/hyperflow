@@ -32,7 +32,7 @@
   } ],
   "signals": [ {
     "name": "xmlData",
-    "data": [ { "path": "data-big.xml" } ]
+    "data": [ { "path": "data.xml" } ]
   }, {
     "name": "counties"
   }, {

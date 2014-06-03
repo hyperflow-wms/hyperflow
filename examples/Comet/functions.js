@@ -12,36 +12,15 @@ function genXmlCollection(ins, outs, config, cb) {
 
         data = [];
         nodes.forEach(function(node) {
-            /*var cache = [];
-            JSON.stringify(node, function(key, value) {
-                if (typeof value === 'object' && value !== null) {
-                    if (cache.indexOf(value) !== -1) {
-                        // Circular reference found, discard key
-                        return;
-                    }
-                    // Store value in our collection
-                    cache.push(value);
-                }
-                return value;
-            });
-            console.log(cache);
-            */
-            var collection_name = node.attributes[1].nodeValue; // hack
+            var collection_name = node.attributes[1].nodeValue; // hack (shortcut)
             data.push({ "collection_name": collection_name, "value": node.toString()});
         });
-        //onsole.log("DATA:", data);
-        //onsole.log("LENGTH:", data.length);
         outs[0].data = data;
-        //onsole.log(nodes[0].localName + ": " + nodes[0].firstChild.data)
-        
-        //onsole.log(nodes[0].toString());
         cb(null, outs);
     }
 
-    //onsole.log("INS", JSON.stringify(ins));
     if (ins[0].data[0].path) {
         fs.readFile(ins[0].data[0].path, { "encoding": "ascii" }, function(err, data) {
-            //console.log(err, data);
             if (err) throw err;
             xmlData = data;
             genCollection();
@@ -59,8 +38,6 @@ function partitionData(ins, outs, config, cb) {
         xmlPath = "//Collection[@label='CollectionPoint']",
         nodes = xpath.select(xmlPath, doc);
 
-    //onsole.log("DOC", doc);
-    //onsole.log("INS", JSON.stringify(ins, null, 2));
     var timeWindowLength = 43200; // 12 hours
 
     outs[0].data = [[]];
@@ -75,20 +52,16 @@ function partitionData(ins, outs, config, cb) {
             first = true;
         }
         tref = timestamp;
-        //onsole.log("NODE", node.toString());
         timestamp = Number(xpath.select("Data[@label='timestamps']/text()", node)[0].toString());
         if (first) { first = false; tref = timestamp; }
         humidity = Number(xpath.select("Data[@label='humidity']/text()", node)[0].toString());
         t += timestamp - tref;
-        //onsole.log("timestampe:", timestamp);
         if (outs[0].data[0][idx]) {
             outs[0].data[0][idx].push(timestamp, humidity);
         } else {
             outs[0].data[0][idx] = [timestamp, humidity];
         }
     });
-
-    //onsole.log("OUTS", JSON.stringify(outs, null, 2));
 
     cb(null, outs);
 }
