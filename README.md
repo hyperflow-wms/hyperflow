@@ -16,6 +16,9 @@ Installation & running:
 * Install the latest node.js (http://nodejs.org)
 * Install the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
 * Start the redis server
+* If provenance storage is to be used:
+  * Install neo4j 2.x server (http://www.neo4j.org/)
+  * Start neo4j on localhost with default access configuration
 * Run example workflows: `node scripts/runwf.js -f workflows/<workflow_file>`
   * Try `Wf_grepfile_simple.json`, `Wf_MapReduce.json`, `Wf_PingPong.json`
 * Also try simulated `Montage` workflows which require the `-s` flag: 
