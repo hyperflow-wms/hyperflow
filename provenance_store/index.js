@@ -36,6 +36,7 @@ function store_provenance_info(args, callback) {
 
     var node = db.createNode(params);
 
+    //TODO: change node.save() to db.query("CREATE") with label assigned to node
     node.save(function (err, node) {
         if (err) {
             console.log("error saving to db!", err);
@@ -62,6 +63,7 @@ function store_provenance_info(args, callback) {
 //                            console.log(">>>>>>>>>>>>>", JSON.stringify(results[i]["n"].id));
                             var related_node = results[i]["n"];
                             //if there are any, create relation
+                            //TODO: change createrelationshipto to explicit query, this should eliminate previous query and result in performance improv
                             related_node.createRelationshipTo(node, 'signal read/write', {}, function (err, rel) {
                                 if (err) {
                                     console.log("Error creating relation!", err);
@@ -106,6 +108,7 @@ function store_provenance_info(args, callback) {
                                 var related_node = results[0]["n"];
     //                            console.log("found:", result.data);
                                 //make relationship
+                                //TODO: change to explicit query
                                 node.createRelationshipTo(related_node, 'depends on', {}, function(err, rel) {
                                     if (err) {
                                         console.log("Error creating relation!", err);
