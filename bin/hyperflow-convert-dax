@@ -6,6 +6,7 @@ var pc;
 
 if (!argv._[0]) {
     console.log("Usage: node dax_convert.js <DAX file path> [command_name]");
+    console.log("   command_name can be: amqpCommand, command_print or command... etc ");
     process.exit();
 }
 
