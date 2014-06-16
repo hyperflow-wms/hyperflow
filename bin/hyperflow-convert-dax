@@ -2,14 +2,19 @@
 
 var PegasusConverter = require('../converters/pegasus_dax.js'),
     argv = require('optimist').argv;
-
-var pc = new PegasusConverter();
+var pc;
 
 if (!argv._[0]) {
-	console.log("Usage: node dax_convert.js <DAX file path>");
-	process.exit();
+    console.log("Usage: node dax_convert.js <DAX file path> [command_name]");
+    process.exit();
 }
 
-pc.convertFromFile(argv._[0], function(err, wfOut) {
-	console.log(JSON.stringify(wfOut, null, 2));
+if (argv._[1]) {
+    pc = new PegasusConverter(argv._[1]);
+} else {
+    pc = new PegasusConverter();
+}
+
+pc.convertFromFile(argv._[0], function (err, wfOut) {
+    console.log(JSON.stringify(wfOut, null, 2));
 });
