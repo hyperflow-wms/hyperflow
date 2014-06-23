@@ -40,7 +40,8 @@ function getLeveeState(ins, outs, config, cb) {
                 //TODO; check for emergencyLevel == undefined, if so fail
                 console.log("getLeveeState: emergencyLevel=", emergencyLevel, ", threatLevel=", threatLevel);
 
-                if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
+//                if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
+                if (emergencyLevel == EmergLevel.HEIGHTENED) {
                     console.log("Setting heightened emergency level");
                     outs[0].condition = "true"; // emit "ELHeightened" signal
                     outs[0].data = [
