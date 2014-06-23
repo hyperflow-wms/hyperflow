@@ -128,7 +128,7 @@ function call_getLeveeState(test, outs_ok) {
             {},
             {}
         ],
-        config = { "levee_id": 1};
+        config = { "leveeId": 1};
 
     functions.getLeveeState(ins, outs, config, function (err, outs) {
         if (!err) {
@@ -171,7 +171,7 @@ function call_computeThreatLevels(test, random_value) {
 
     var ins = [],
         outs = [],
-        config = { "levee_id": 1 };
+        config = { "leveeId": 1 };
 
     functions.computeThreatLevel(ins, outs, config, function (err, outs) {
         if (!err) {
