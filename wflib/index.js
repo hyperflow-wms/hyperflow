@@ -1371,6 +1371,12 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
     var ins = convertSigValuesToFunctionInputs(), outsTmp = [];
 
+    // TODO: for each ins[i].data[j], create a map (i,j) => metadata (for provenance logging)
+    // In functions user-defined provenance could look like:
+    // - options.prov.push(["read", "foo", 0]), where "foo" is sig name, "0" is 'data' array index
+    
+    //onsole.log("FUNC INS", ins);
+
     public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
         if (err) return cb(err); 
 
