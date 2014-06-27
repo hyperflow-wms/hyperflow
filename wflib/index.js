@@ -1424,25 +1424,17 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             rcl.hgetall("wf:"+wfId+":functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
 
-                if (appConfig.workdir) {
-                    process.chdir(appConfig.workdir);
-                }
-
                 var f;
 
-                // load the function; first
-                if (fun && fun.module) {
-                    f = require(fun.module)[taskInfo.fun]; 
-                } else if (appConfig.workdir) {
-                    var path = pathTool.join(appConfig.workdir, "functions.js");
-                    if (fs.existsSync(path)) {
-                        f = require(path)[taskInfo.fun];
-                    }
-                }
+                //was the function declared in wf? is so look only in specified path, otherwise look in a well known location
+                var funModuleName = (fun && fun.module) ? fun.module : "functions.js";
 
-                if (!f) {
-                    var path = pathTool.join(process.env.HFLOW_PATH, "functions");
-                    f = require(path)[taskInfo.fun];
+                var funPath = (appConfig.workdir ? appConfig.workdir + "/" : "") + fun.module;
+
+                try {
+                    f = require(funPath)[taskInfo.fun];
+                } catch (err) {
+                    throw(new Error("Declared function: " + fun + " in module: " + funPath + " not found!"));
                 }
 
                 if (!f) {
