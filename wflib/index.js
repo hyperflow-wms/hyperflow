@@ -1428,22 +1428,33 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                      process.chdir(appConfig.workdir);
                 }
 
-
+                // Load the function trying the following locations, in order:
+                // 1) Module declared in workflow.json (if any)
+                // 2) "functions.js" file in the workflow's directory
+                // 3) HyperFlow core "functions" module
                 var f;
 
-                //was the function declared in wf? is so look only in specified path, otherwise look in a well known location
+                // if the function's module was declared in the workflow file -- use it
+                // otherwise try "functions.js" 
                 var funModuleName = (fun && fun.module) ? fun.module : "functions.js";
-
                 var funPath = (appConfig.workdir ? appConfig.workdir + "/" : "") + funModuleName;
 
                 try {
                     f = require(funPath)[taskInfo.fun];
-                } catch (err) {
-                    throw(new Error("Unable to load declared function: " + fun + " in module: " + funPath + ", exception:  " + err));
+                } catch(err) {
+                    // caught if "functions.js" doesn't exist (no action needed)
                 }
 
+                // if the function could not be loaded, look in the core HyperFlow functions
                 if (!f) {
-                    throw(new Error("Cannot load process function"));
+                    funPath = pathTool.join(process.env.HFLOW_PATH, "functions");
+                    f = require(funPath)[taskInfo.fun];
+                }
+
+                // the function couldn't be found anywhere
+                if (!f) {
+                    throw(new Error("Unable to load the process function: " + 
+                                taskInfo.fun + " in module: " + funPath + ", exception:  " + err));
                 }
 
                 //onsole.log("FUNCTION", taskInfo.fun, module);
@@ -1472,6 +1483,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 function getInitialSignals(wfId, cb) {
     var wfKey = "wf:"+wfId;
     rcl.hgetall(wfKey + ":initialsigs", function(err, sigs) {
+    console.log("INITIAL SIGS", sigs);
         var sigSpec = [];
         for (var sigId in sigs) {
             var sig = JSON.parse(sigs[sigId]);
