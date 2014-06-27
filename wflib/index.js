@@ -1433,7 +1433,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 try {
                     f = require(funPath)[taskInfo.fun];
                 } catch (err) {
-                    throw(new Error("Declared function: " + fun + " in module: " + funPath + " not found!"));
+                    throw(new Error("Unable to load declared function: " + fun + " in module: " + funPath + ", exception:  " + err));
                 }
 
                 if (!f) {
