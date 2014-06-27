@@ -40,6 +40,9 @@
     "request": "",
     "q": "",
     "traverse": "",
-    "istanbul": ""
+    "istanbul": "",
+    "docopt": "",
+    "xpath": "",
+    "xmldom": ""
   }
 }
