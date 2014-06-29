@@ -109,6 +109,7 @@ Engine.prototype.runInstance = function (cb) {
         engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
             if (sigs) {
                 engine.emitSignals(sigs, function(err) {
+                    if (err) console.log(err);
                     cb(err);
                 });
             }
