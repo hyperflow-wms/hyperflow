@@ -113,7 +113,7 @@ exports.init = function(redisClient) {
                             var sigId = +sigKeys[sig[0]][0]+1;
                             if (parseInt(sig[1])) { // count is a number
                                 sig[1] = +sig[1];
-                                console.log(sigId, "COUNT IS A NUMBER:", sig[1]);
+                                //onsole.log(sigId, "COUNT IS A NUMBER:", sig[1]);
                                 if (sig[1] != 1) {
                                     incounts[+sigId] = +sig[1];
                                 }
@@ -1237,7 +1237,7 @@ function public_getWfMap(wfId, cb) {
                 );
             });
 
-            console.log("async tasks: "+asyncTasks.length);
+            //onsole.log("async tasks: "+asyncTasks.length);
             async.parallel(asyncTasks, function done(err, result) {
                 cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo, fullInfo);
             });
@@ -1483,7 +1483,6 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 function getInitialSignals(wfId, cb) {
     var wfKey = "wf:"+wfId;
     rcl.hgetall(wfKey + ":initialsigs", function(err, sigs) {
-    console.log("INITIAL SIGS", sigs);
         var sigSpec = [];
         for (var sigId in sigs) {
             var sig = JSON.parse(sigs[sigId]);
@@ -1879,7 +1878,7 @@ function getTasks1(wfId, from, to, dataNum, cb) {
         })(i);
     }
 
-    console.log("async tasks: "+asyncTasks.length);
+    //onsole.log("async tasks: "+asyncTasks.length);
 
     async.parallel(asyncTasks, function done(err, result) {
         if (err) {
