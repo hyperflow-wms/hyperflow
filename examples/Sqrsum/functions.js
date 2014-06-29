@@ -1,7 +1,9 @@
 function sqr(ins, outs, config, cb) {
     var n = Number(ins.number.data[0]);
     outs.square.data = [n * n];
-    cb(null, outs);
+    setTimeout(function() {
+        cb(null, outs);
+    }, Math.random() * 3000);
 }
 
 function sum(ins, outs, config, cb) {

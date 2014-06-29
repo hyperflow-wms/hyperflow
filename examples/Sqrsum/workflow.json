@@ -4,6 +4,8 @@
         "name": "Sqr",
 	"type": "dataflow",
         "function": "sqr",
+        "parlevel": 0,
+	"ordering": "true",
         "ins": [ "number" ],
         "outs": [ "square" ]
     }, {
@@ -20,7 +22,7 @@
         "name": "square"
     }, {
         "name": "sum"
-    }  ],
+    } ],
     "ins": [ "number" ],
     "outs": [ "sum" ]
 }
