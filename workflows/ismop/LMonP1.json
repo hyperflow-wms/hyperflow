@@ -14,12 +14,11 @@
         "name": "LeveeStateChecker",
         "type": "choice",
         "function": "getLeveeState",
-        "config": { "levee_id": 1},
-        "firingInterval": 5000,
+        "firingInterval": 10000,
         "ins": [ ],
         "outs": [ "ELHeightened", "ELSevere" ],
         "config": {
-            "levee_id": "1"
+            "leveeId": "1"
         }
     }, {
         "name": "ThreatLevelComputation",
@@ -28,7 +27,7 @@
         "ins": [ "ELHeightened" ],
         "outs": [ ],
         "config": {
-            "levee_id": "1"
+            "leveeId": "1"
         }
     }, {
         "name": "SevereEmergency",

@@ -1,76 +1,13 @@
-var request = require('request');
 var http = require('http');
-var traverse = require('traverse');
+var assert = require('assert');
+var rewire = require('rewire');
+var _ = require('underscore');
 
-var functions = require('../functions/ismop/LMonFunctions.js');
+var functions = rewire('../functions/ismop/LMonFunctions.js');
 
 exports.setUp = function (callback) {
-    this.server = createServer();
-    this.server.listen(8080);
-    callback();
-};
 
-exports.tearDown = function (callback) {
-    this.server.close();
-    callback();
-};
-
-exports.call_getLeveeState = function (test) {
-    var ins = [],
-        outs = [],
-        config = { "levee_id": 1};
-
-    functions.getLeveeState(ins, outs, config, function (err, outs) {
-        if (!err) {
-            //TODO: add more assertions?
-//            console.log(JSON.stringify(outs));
-        } else {
-            test.fail("getLeveeState failed!");
-        }
-        test.done();
-    });
-};
-
-exports.call_storeThreatLevels = function (test) {
-    var ins = [],
-        outs = [],
-        config = { "levee_id": 1 };
-
-    functions.computeThreatLevel(ins, outs, config, function (err, outs) {
-        if (!err) {
-        } else {
-            test.fail("computeThreatLevel failed!");
-        }
-        test.done();
-    });
-};
-
-exports.call_severeEmergencyActions = function (test) {
-    var ins = [],
-        outs = [],
-        config = {};
-
-    functions.severeEmergencyActions(ins, outs, config, function (err, outs) {
-        test.ok(!err);
-        test.done();
-    });
-};
-
-//Helper functions
-//get parameter from url encoded parameter list, probably not needed anymore
-function parseParamString(paramString, paramName) {
-    var parts = paramString.split("&");
-    for (i = 0; i < parts.length; i++) {
-        var pair = parts[i].split("=");
-        if (pair[0] == paramName) {
-            return pair[1];
-        }
-    }
-}
-
-function createServer() {
-
-    var getLeveeState_response = {
+    var response_body = {
         "levee": {
             "emergency_level": "none",
             "id": 1,
@@ -114,36 +51,150 @@ function createServer() {
             "threat_level_updated_at": "2014-04-02T14:37:37.276Z"
         }
     };
-    //copy response with changed value for threat_level
-    var storeThreatLevels_response = traverse.clone(getLeveeState_response);
 
-    var threat_level = "none";
-    var emergency_level = "none";
+    //local var is needed for function closures to work
+    this.response_body = response_body;
 
-    //mock of services exposed by DAP
-    return http.createServer(function (req, resp) {
-        if (req.method === "GET" && req.url === "/api/v1/levees/1") {
-            //response for call_getLeveeState
-            resp.writeHead(200, {"Content-Type": "application/json"});
-            resp.write(JSON.stringify(getLeveeState_response));
-            resp.end();
-        } else if (req.method === "PUT" && req.url === "/api/v1/levees/1") {
-            //response for call_storeThreatLevels
-            var body = "";
-            req.on("data", function (data) {
-                body += data;
-            });
-            req.on("end", function () {
-                var threatLevel = JSON.parse(body).levee.threat_level;
-                storeThreatLevels_response.levee["threat_level"] = threatLevel;
-                resp.writeHead(200, {"Content-Type": "application/json"});
-                resp.write(JSON.stringify(storeThreatLevels_response)); //respond with ok
-                resp.end();
-            });
+    var fake_request = function (params, callback) {
+        called = true;
+        var response =
+        {
+            statusCode: 200
+        };
+        var body = JSON.stringify(response_body);
+        callback(false, response, body);
+    };
+
+    fake_request.put = function (params, callback) {
+        var response =
+        {
+            statusCode: 200
+        };
+        var parsed_request = JSON.parse(params["body"]);
+        var requested_thretaLevel = parsed_request.levee["threat_level"];
+        response_body.levee["threat_level"] = requested_thretaLevel;
+        var body = JSON.stringify(response_body);
+        callback(false, response, body);
+
+    };
+
+    functions.__set__("request", fake_request);
+    callback();
+};
+
+//getLeveeState tests
+
+exports.call_getLeveeState_clear_states = function (test) {
+    var outs_ok = function (outs) {
+        if (_.isEmpty(outs[0]) && _.isEmpty(outs[1])) {
+            return true;
         } else {
-            resp.writeHead(404, {"Content-Type": "text/plain"});
-            resp.write("ERROR! Unknown operation or URL.");
-            resp.end();
+            return false;
         }
+    };
+
+    call_getLeveeState(test, outs_ok);
+};
+
+exports.call_getLeveeState_heightened_emergency = function (test) {
+    this.response_body.levee["emergency_level"] = "heightened";
+    var outs_ok = function (outs) {
+        if (outs[0].condition == "true" && _.isEmpty(outs[1])) {
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    call_getLeveeState(test, outs_ok);
+};
+
+exports.call_getLeveeState_severe_emergency = function (test) {
+    this.response_body.levee["emergency_level"] = "severe";
+    var outs_ok = function (outs) {
+        if (_.isEmpty(outs[0]) && outs[1].condition == "true") {
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    call_getLeveeState(test, outs_ok);
+};
+
+function call_getLeveeState(test, outs_ok) {
+    var ins = [],
+        outs = [
+            {},
+            {}
+        ],
+        config = { "leveeId": 1};
+
+    functions.getLeveeState(ins, outs, config, function (err, outs) {
+        if (!err) {
+            if (outs_ok(outs)) {
+                //seems ok
+            } else {
+                test.fail("outs are in unexpected state!");
+            }
+        } else {
+            test.fail("getLeveeState failed!");
+        }
+        test.done();
     });
 }
+
+//computeThreatLevel tests
+
+exports.call_computeThreatLevels_none = function (test) {
+    call_computeThreatLevels(test, 0.1);
+};
+
+exports.call_computeThreatLevels_heightened = function (test) {
+    call_computeThreatLevels(test, 0.8);
+};
+
+exports.call_computeThreatLevels_severe = function (test) {
+    call_computeThreatLevels(test, 0.99);
+};
+
+function call_computeThreatLevels(test, random_value) {
+
+    //TODO: add expectation of fake server to be called
+    var fake_Math = Math;
+    var org_random = Math.random;
+    fake_Math.random = function () {
+        return random_value;
+    };
+
+    functions.__set__("Math", fake_Math);
+
+    var ins = [],
+        outs = [],
+        config = { "leveeId": 1 };
+
+    functions.computeThreatLevel(ins, outs, config, function (err, outs) {
+        if (!err) {
+            //no exception was thrown
+        } else {
+            test.fail("computeThreatLevel failed!");
+        }
+
+        //revert changes done to Math.random
+        Math.random = org_random;
+        test.done();
+    });
+}
+
+//severeEmergencyActions tests
+
+exports.call_severeEmergencyActions = function (test) {
+    var ins = [],
+        outs = [],
+        config = {};
+
+    functions.severeEmergencyActions(ins, outs, config, function (err, outs) {
+        test.ok(!err);
+        test.done();
+    });
+};
