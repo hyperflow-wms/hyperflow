@@ -1,4 +1,4 @@
-#!/bin/env node
+#!/usr/bin/env node
 
 var docopt = require('docopt').docopt,
     spawn = require('child_process').spawn;
