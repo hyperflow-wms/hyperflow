@@ -11,14 +11,24 @@ var redis = require('redis'),
     Engine = require('../engine2'),
     async = require('async'),
     argv = require('optimist').argv,
-    dbId = 0, 
+    dbId = 0,
+    fs = require('fs'),
+    http = require('http'),
     engine;
 
 function createWf(cb) {
+    console.log("Creating wf from file:", argv.f);
+    if (fs.existsSync(argv.f)) {
+        console.log("file exists!");
+    } else {
+        console.log("file not found!");
+    }
+    console.log("CWD:", process.cwd());
     rcl.select(dbId, function(err, rep) {
 	rcl.flushdb(function(err, rep) {
             wflib.createInstanceFromFile(argv.f, '', 
                 function(err, id) {
+                    console.log("Created wf...");
                     cb(err, id); 
 		}
 	    );
@@ -44,7 +54,8 @@ if (argv.d) {
     console.log("DBID", dbId);
 }
 
-var runWf = function(wfId) { 
+var runWf = function(wfId) {
+    console.log("starting wf:", wfId);
     engine = new Engine({"emulate":"false"}, wflib, wfId, function(err) {
         //This represent custom plugin listening on event from available eventServer
 //        engine.eventServer.on('trace.*', function(exec, args) {
@@ -55,7 +66,7 @@ var runWf = function(wfId) {
             if (argv.s) {
                 // Flag -s is present: send all input signals to the workflow -> start execution
                 wflib.getWfIns(wfId, false, function(err, wfIns) {
-                    engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) { 
+                    engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) {
                         engine.emitSignals(sigs);
                         console.log(sigs);
                     });
@@ -63,13 +74,20 @@ var runWf = function(wfId) {
             }
         });
     });
+    http.createServer(function(req, res) {
+        res.writeHead(200, {"Content-Type": "application/json"});
+        var result = {};
+        result.tasksLeft = engine.nTasksLeft.toString();
+        res.end(JSON.stringify(result));
+    }).listen(2000);
 };
 
 if (argv.f) {
     createWf(function(err, wfId) {
+        console.log("Created wf:", wfId, "err:", err);
         runWf(wfId);
     });
 } else if (argv.i) {
     runWf(argv.i);
 }
-    
+

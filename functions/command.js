@@ -27,12 +27,15 @@ function command(ins, outs, config, cb) {
 }
 
 function command_print(ins, outs, config, cb) {
+    //sleep print
     var exec = config.executor.executable,
         args = config.executor.args;
 
     console.log(exec, args);
 
-    cb(null, outs);
+    setTimeout(function () {
+        cb(null, outs);
+    }, 1000);
 }
 
 function command_notifyevents(ins, outs, config, cb) {
