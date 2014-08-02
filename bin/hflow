@@ -1,0 +1,91 @@
+#!/usr/bin/env node
+var docopt = require('docopt').docopt,
+    spawn = require('child_process').spawn,
+    fs = require('fs'), 
+    pathtool = require('path'),
+    redis = require('redis'),
+    rcl = redis.createClient(),
+    wflib = require('../wflib').init(rcl),
+    Engine = require('../engine2'),
+    async = require('async'),
+    dbId = 0;
+
+var doc = "\
+Usage:\n\
+  hflow run <workflow_dir_or_file> [-s]\n\
+  hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
+  hflow -h | --help | --version";
+
+var opts = docopt(doc);
+
+var hfroot = process.env.HFLOW_PATH;
+
+if (opts.run) {
+  hflow_run();
+} else if (opts.send) {
+  hflow_send();
+}
+
+function hflow_run() {
+  var wfpath = opts['<workflow_dir_or_file>'],
+      wfstats = fs.lstatSync(wfpath),
+      wffile;
+  
+  if (wfstats.isDirectory()) {
+    wffile = pathtool.join(wfpath, "workflow.json");
+  } else if (wfstats.isFile()) {
+    wffile = wfpath;
+    wfpath = pathtool.dirname(wfpath);
+  }
+
+  var runWf = function(wfId) { 
+    var config = {"emulate":"false", "workdir": pathtool.resolve(wfpath)};
+    var engine = new Engine(config, wflib, wfId, function(err) {
+      // This represent custom plugin listening on event from available eventServer
+      // engine.eventServer.on('trace.*', function(exec, args) {
+      //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
+      // });
+      engine.runInstance(function(err) {
+        console.log("Wf id="+wfId);
+        if (opts['-s']) {
+          // Flag -s is present: send all input signals to the workflow -> start execution
+          wflib.getWfIns(wfId, false, function(err, wfIns) {
+            engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) { 
+              engine.emitSignals(sigs);
+            });
+          });
+        }
+      });
+    });
+  };
+
+  var createWf = function(cb) {
+    rcl.select(dbId, function(err, rep) {
+      rcl.flushdb(function(err, rep) {
+        wflib.createInstanceFromFile(wffile, '', function(err, id) {
+          cb(err, id); 
+        });
+      });
+    });
+  }
+
+  createWf(function(err, wfId) {
+    runWf(wfId);
+  });
+}
+
+function hflow_send() {
+  console.log("send signal to a workflow: not implemented");
+}
+
+function spawn_proc(exec, args) {
+  var proc = spawn(exec, args);
+
+  proc.stdout.on('data', function(data) {
+    console.log(data.toString().trimRight());
+  });
+
+  proc.stderr.on('data', function(data) {
+    console.log(data.toString().trimRight());
+  });
+}
