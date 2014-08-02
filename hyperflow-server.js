@@ -22,7 +22,7 @@ var redis = require('redis'),
 
 var server = http.createServer(app);
 var wflib = require('./wflib').init(rcl);
-var Engine = require('./engine');
+var Engine = require('./engine2');
 var engine = {}; // engine.i contains the engine object for workflow instance 'i'
 var request = require('request');
 
