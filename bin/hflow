@@ -1,15 +1,4 @@
-<<<<<<< HEAD
 #!/usr/bin/env node
-
-var docopt = require('docopt').docopt,
-    spawn = require('child_process').spawn;
-
-var doc = "\
-Usage:\n\
-  hflow run <workflow_file> [-s]\n\
-=======
-#!/bin/env node
-
 var docopt = require('docopt').docopt,
     spawn = require('child_process').spawn,
     fs = require('fs'), 
@@ -24,7 +13,6 @@ var docopt = require('docopt').docopt,
 var doc = "\
 Usage:\n\
   hflow run <workflow_dir_or_file> [-s]\n\
->>>>>>> feature/npm_package
   hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
   hflow -h | --help | --version";
 
@@ -39,15 +27,6 @@ if (opts.run) {
 }
 
 function hflow_run() {
-<<<<<<< HEAD
-  var args = [hfroot+"/scripts/runwf.js", "-f", opts['<workflow_file>']];
-
-  if (opts['-s']) {
-    args.push("-s");
-  }
-
-  spawn_proc("node", args);
-=======
   var wfpath = opts['<workflow_dir_or_file>'],
       wfstats = fs.lstatSync(wfpath),
       wffile;
@@ -93,7 +72,6 @@ function hflow_run() {
   createWf(function(err, wfId) {
     runWf(wfId);
   });
->>>>>>> feature/npm_package
 }
 
 function hflow_send() {
