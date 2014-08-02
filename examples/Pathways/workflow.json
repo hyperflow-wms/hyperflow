@@ -1,0 +1,52 @@
+{
+    "name": "UnigeneID2KEGGPathways (from Taverna 2)",
+    "processes": [ {
+        "name": "ConvertId",
+	"type": "dataflow",
+        "function": "bconvREST",
+        "ins": [ "gene" ],
+        "outs": [ "geneId" ]
+    }, {
+        "name": "PathWayByGene",
+	"type": "dataflow",
+        "function": "getPathWayByGene",
+        "ins": [ "geneId" ],
+        "outs": [ "pathId", "pathwayId" ]
+    }, {
+        "name": "PathWayEntry",
+	"type": "dataflow",
+        "function": "getPathwayEntry",
+        "ins": [ "pathId" ],
+        "outs": [ "pathwayEntry" ]
+    }, {
+        "name": "PathwayImage",
+	"type": "dataflow",
+        "function": "getPathwayImage",
+        "ins": [ "pathId" ],
+        "outs": [ "pathwayImage" ]
+    }, {
+        "name": "GeneDescription",
+	"type": "dataflow",
+        "function": "btit_REST",
+        "ins": [ "geneId" ],
+        "outs": [ "geneDescription" ]
+    } ],
+    "signals": [ {
+        "name": "gene",
+        "data": [ "Mm.365444", "Mm.1283" ]
+    }, {
+        "name": "geneId"
+    }, {
+        "name": "pathId"
+    }, {
+        "name": "pathwayId"
+    }, {
+        "name": "pathwayEntry"
+    }, {
+        "name": "pathwayImage"
+    }, {
+        "name": "geneDescription"
+    } ],
+    "ins": [ "gene" ],
+    "outs": [ "pathwayEntry", "pathwayImage", "pathwayId" ]
+}

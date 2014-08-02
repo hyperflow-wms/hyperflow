@@ -77,6 +77,9 @@ var ProcLogic = function() {
     this.sigValues = null;
     this.firingId = 0;       // which firing of the process is this?
     this.runningCount = 0;   // how many firings are currently running in parallel (max = parlevel)?
+    this.orderId = 1;   // used if ordering = true to enforce emitting output signals in the order of firingIds
+
+    this.emitStash = {}; // used if ordering = true as a stash of output signals to be emitted in the right order
 
     this.countSigs = {}; // stash for 'count' signals for next firings
 
@@ -310,6 +313,7 @@ var ProcLogic = function() {
                 proc.sigValues,
                 funcOuts, emul,
                 proc.engine.eventServer,
+                proc.engine.config, 
                 function(err, outs, options) {
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
@@ -336,8 +340,16 @@ var ProcLogic = function() {
                 //onsole.log("EMITTING COUNT SIG", sigId);
                 //onsole.log("IN  COUNTS", proc.fullInfo.incounts);
                 //onsole.log("OUT COUNTS", proc.fullInfo.outcounts);
-                proc.engine.emitSignals([{"_id": +sigId, "count": count, "control": "count", data: [{}]}]);
-                // TODO ########################################
+                var sigV = {"_id": +sigId, "count": count, "control": "count", data: [{}]};
+                if (!proc.fullInfo.ordering) {
+                    proc.engine.emitSignals([sigV]);
+                } else {
+                    // TODO: test thouroughly if ordering works correctly with output "count" signals
+                    function Arg() {} // we need an Array-like object
+                    Arg.prototype = Object.create(Array.prototype);
+                    proc.emitStash[firingId] = new Arg;
+                    proc.emitStash[firingId].push(sigV); 
+                }
             }
         }
 
@@ -345,11 +357,46 @@ var ProcLogic = function() {
             outValues.push({"_id": proc.ctrOuts.next, "control": "next" });
         }
 
-        proc.engine.emitSignals(outValues, function(err) {
+        //onsole.log("OUT SIGS", outValues);
+        //onsole.log("firingId:", firingId, proc.firingId);
+
+        if (!proc.fullInfo.ordering) {
+            //onsole.log("OUT SIGS", JSON.stringify(outValues, null, 2));
+            proc.engine.emitSignals(outValues, function(err) {
+                proc.runningCount -= 1;
+                //onsole.log("runningCount (" + proc.fullInfo.name + ")/2:", proc.runningCount);
+                err ? cb(err): cb(null);
+            });
+        } else {
             proc.runningCount -= 1;
-            //onsole.log("runningCount (" + proc.fullInfo.name + ")/2:", proc.runningCount);
-            err ? cb(err): cb(null);
-        });
+            if (!proc.emitStash[firingId]) {
+                proc.emitStash[firingId] = outValues;
+            } else {
+                outValues.forEach(function(v) {
+                    proc.emitStash[firingId].push(v);
+                });
+            }
+        }
+
+        // check if there are stashed signals to be emitted
+        (function emitStashedSigs() {
+            if (!proc.fullInfo.ordering)  {
+                return;
+            }
+            //onsole.log("ORDER!!!!!", proc.orderId, JSON.stringify(proc.emitStash, null, 2));
+            if (proc.emitStash[proc.orderId]) {
+                var outSigs = proc.emitStash[proc.orderId];
+                //onsole.log("EMITTING IN ORDER", outSigs[0].firingId);
+                proc.orderId += 1;
+                //onsole.log("OUT SIGS", JSON.stringify(outSigs, null, 2));
+                proc.engine.emitSignals(outSigs, function(err) {
+                    delete proc.emitStash[proc.orderId-1];
+                    emitStashedSigs();
+                });
+            } else {
+                cb(null);
+            }
+        })();
     }
 
     this.postInvokeTransition = function(asyncInvocation, cb) {
