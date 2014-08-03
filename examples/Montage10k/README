@@ -1,0 +1,4 @@
+This is an emulation of the Montage workflow - it only print outs commands that would be executed. 
+
+Tutorial on how to run Montage with a cloud executor can be found here:
+https://github.com/dice-cyfronet/hyperflow/wiki/TutorialAMQP
