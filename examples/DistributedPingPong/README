@@ -1,0 +1,3 @@
+This example demonstrates a distributed workflow running under the control of two HyperFlow engines. 
+
+See comments in "run.sh" for running instructions.

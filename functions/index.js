@@ -145,7 +145,7 @@ function grepFile(ins, outs, config, cb) {
 
 //var cnt = 0;
 function count(ins, outs, config, cb) {
-    console.log("COUNT  INS:", JSON.stringify(ins));
+    //console.log("COUNT  INS:", JSON.stringify(ins));
     //onsole.log(ins.length);
     //onsole.log("COUNT INS:", ins.length);
     /*ins.forEach(function(input) {

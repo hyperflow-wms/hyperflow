@@ -39,6 +39,7 @@ fsm.registerFSM(ProcSplitterFSM);
 // - config.emulate (true/false) = should engine work in the emulation mode?
 var Engine = function(config, wflib, wfId, cb) {
     this.wflib = wflib;
+    this.config = config;
     this.eventServer = eventServerFactory.createEventServer();
     this.wfId = wfId;
     this.tasks = [];      // array of task FSMs
@@ -108,6 +109,7 @@ Engine.prototype.runInstance = function (cb) {
         engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
             if (sigs) {
                 engine.emitSignals(sigs, function(err) {
+                    if (err) console.log(err);
                     cb(err);
                 });
             }
