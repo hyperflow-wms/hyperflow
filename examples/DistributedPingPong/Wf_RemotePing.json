@@ -1,0 +1,17 @@
+{
+    "name": "Wf_RemotePing",
+    "processes": [ {
+        "name": "Pinger",
+	"type": "dataflow",
+        "function": "count",
+        "ins":  [ "Ping" ],
+        "outs": [ "Pong" ]
+    } ],
+    "signals": [ {
+        "name": "Ping"
+    }, {
+        "name": "Pong"
+    } ],
+    "ins":  [ "Ping" ],
+    "outs": [ "Pong" ]
+}

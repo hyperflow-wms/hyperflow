@@ -103,49 +103,50 @@ exports.init = function(redisClient) {
             // - signal with id '1' has count 3
             // - signal with id '2' has count associated with a count signal with id 4
             // For output signal counts only the 'id:xxx' variant is valid (of course)
+            var incounts = {}, outcounts = {};
             for (var i in procs) {
-                var incounts = {};
                 for (var j in procs[i].ins) {
                     if (value(procs[i].ins[j]).typeOf(String)) {
                         var sig = procs[i].ins[j].split(":");
                         if (sig.length > 1) { // there is a 'count' modifier 
                             procs[i].ins[j] = sig[0];
-                            var sigId = +sigKeys[sig[0]]+1;
+                            var sigId = +sigKeys[sig[0]][0]+1;
                             if (parseInt(sig[1])) { // count is a number
                                 sig[1] = +sig[1];
+                                //onsole.log(sigId, "COUNT IS A NUMBER:", sig[1]);
                                 if (sig[1] != 1) {
                                     incounts[+sigId] = +sig[1];
                                 }
                             } else { // count isn't a number, then it must be a signal name
-                                if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                                if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]][0]].control != "count") {
                                     throw(new Error("Signal count modifier in '" + procs[i].outs[j] + 
                                                 "' for process '" + procs[i].name + 
                                                 "' must be a valid control signal name."));
                                 }
-                                var sigCountId = +sigKeys[sig[1]]+1;
+                                var sigCountId = +sigKeys[sig[1]][0]+1;
                                 if (!incounts.rev)
                                     incounts.rev = {};
                                 incounts.rev[+sigCountId] = +sigId; // reverse map (sigCountId => sigId)
-                                incounts[+sigId] = 1; // this count will be set dynamically by the count signal
+                                incounts[+sigId] = "id:"+sigCountId; // this count will be set dynamically by the count signal
                                 procs[i].ins.push(sig[1]); // add the signal to the list of process' inputs
                             }
                         }
                     }
                 }
+                //onsole.log("INCOUNTS", incounts);
                 //onsole.log("PROC", +i+1, "INS", procs[i].ins);
-                var outcounts = {};
                 for (var j in procs[i].outs) {
                     if (value(procs[i].outs[j]).typeOf(String)) {
                         var sig = procs[i].outs[j].split(":");
                         if (sig.length > 1) { // there is a 'count' modifier 
-                            if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]]].control != "count") {
+                            if (!(sig[1] in sigKeys) || sigs[sigKeys[sig[1]][0]].control != "count") {
                                 throw(new Error("Signal count modifier in '" + procs[i].outs[j] + "' for process '" + 
                                             procs[i].name + "' must be a valid control signal name."));
                             }
                             procs[i].outs[j] = sig[0];
                             procs[i].outs.push(sig[1]); // add the 'count' signal to process outputs (FIXME: it could result in duplicate signal id if the signal already was on the list -- this should be no harm because of utilizing redis sets; however -- there is also the score)
-                            var sigId = +sigKeys[sig[0]]+1,
-                                sigCountId = +sigKeys[sig[1]]+1;
+                            var sigId = +sigKeys[sig[0]][0]+1,
+                                sigCountId = +sigKeys[sig[1]][0]+1;
                             outcounts[+sigId] = "id:"+sigCountId;
                         }
                     }
@@ -159,6 +160,8 @@ exports.init = function(redisClient) {
                     procs[i].outcounts = outcounts;
                 }
             }
+            //onsole.log(" INCOUNTS: ", incounts);
+            //onsole.log("OUTCOUNTS: ", outcounts);
 
             // convert process' ins, outs and sticky arrays
             for (var i in procs) {
@@ -272,7 +275,7 @@ exports.init = function(redisClient) {
             }
             // register workflow functions
             for (var i in wfJson.functions) {
-                multi.hset("wf:functions:"+wfJson.functions[i].name, "module", 
+                multi.hset("wf:"+wfId+":functions:"+wfJson.functions[i].name, "module", 
                         wfJson.functions[i].module, function(err, rep) { });
             }
 
@@ -1234,7 +1237,7 @@ function public_getWfMap(wfId, cb) {
                 );
             });
 
-            console.log("async tasks: "+asyncTasks.length);
+            //onsole.log("async tasks: "+asyncTasks.length);
             async.parallel(asyncTasks, function done(err, result) {
                 cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo, fullInfo);
             });
@@ -1331,8 +1334,9 @@ function public_getRemoteDataSinks(wfId, dataId, cb) {
 
 /*
  * @insValues - array of input signal values as returned by fetchInputs
+ * @appConfig - configuration specific for this workflow instance (the engine.config object), e.g. working directory
  */
-function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, emulate, eventServer, cb) {
+function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, emulate, eventServer, appConfig, cb) {
     function isArray(what) {
         return Object.prototype.toString.call(what) === '[object Array]';
     }
@@ -1366,6 +1370,12 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
     }
 
     var ins = convertSigValuesToFunctionInputs(), outsTmp = [];
+
+    // TODO: for each ins[i].data[j], create a map (i,j) => metadata (for provenance logging)
+    // In functions user-defined provenance could look like:
+    // - options.prov.push(["read", "foo", 0]), where "foo" is sig name, "0" is 'data' array index
+    
+    //onsole.log("FUNC INS", ins);
 
     public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
         if (err) return cb(err); 
@@ -1404,19 +1414,52 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
             }
 
             if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
-                return cb(new Error("No function defined for task."));
+                return cb(new Error("No function defined for the process."));
             }
 
             /////////////////////////
             // INVOKE THE FUNCTION //
             /////////////////////////
 
-            rcl.hgetall("wf:functions:"+taskInfo.fun, function(err, fun) {
+            rcl.hgetall("wf:"+wfId+":functions:"+taskInfo.fun, function(err, fun) {
                 if (err) return cb(err);
-                var module = fun ? fun.module: "functions";
-                //var fpath = pathTool.join(process.cwd(), fun.module);
-                var fpath = pathTool.join(__dirname, "..", module);
-                var f = require(fpath)[taskInfo.fun]; 
+
+                if (appConfig.workdir) {
+                     process.chdir(appConfig.workdir);
+                }
+
+                // Load the function trying the following locations, in order:
+                // 1) Module declared in workflow.json (if any)
+                // 2) "functions.js" file in the workflow's directory
+                // 3) HyperFlow core "functions" module
+                var f;
+
+                // if the function's module was declared in the workflow file -- use it
+                // otherwise try "functions.js" 
+                var funModuleName = (fun && fun.module) ? fun.module : "functions.js";
+                var funPath = (appConfig.workdir ? appConfig.workdir + "/" : "") + funModuleName;
+
+                try {
+                    f = require(funPath)[taskInfo.fun];
+                } catch(err) {
+                    // caught if "functions.js" doesn't exist (no action needed)
+                }
+
+                // if the function could not be loaded, look in the core HyperFlow functions
+                if (!f) {
+                    funPath = pathTool.join(process.env.HFLOW_PATH, "functions");
+                    f = require(funPath)[taskInfo.fun];
+                }
+
+                // the function couldn't be found anywhere
+                if (!f) {
+                    throw(new Error("Unable to load the process function: " + 
+                                taskInfo.fun + " in module: " + funPath + ", exception:  " + err));
+                }
+
+                //onsole.log("FUNCTION", taskInfo.fun, module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
+                //onsole.log("FUNCTION", taskInfo.fun, module);
                 //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
@@ -1699,106 +1742,6 @@ function getStickySigs(wfId, procId, cb) {
     });
 }
 
-// Part of NEW API for continuous processes with FIFO queues
-// @sig format:
-// ... TODO
-function sendSignalSinks(wfId, sig, sinks, cb) {
-    //onsole.log("sendSignal:", sig);
-    var sigId = sig._id;
-    delete sig._id;
-
-    var time = (new Date()).getTime();
-
-    var validateSignal = function(cb) {
-        // get signal information (metadata)
-        var sigKey = "wf:"+wfId+":data:"+sigId;
-        rcl.hgetall(sigKey, function(err, sigInfoStr) {
-            //onsole.log('VALIDATING', typeof sig, sig, "AGAINST", typeof sigInfoStr, sigInfoStr);
-            var sigInfo = sigInfoStr;
-            if (err) { return cb(err, false); }
-            if (!sigInfo.schema) { return cb(null, true); } // no schema to validate signal against
-            rcl.hget("wf:"+wfId+":schemas", sigInfo.schema, function(err, sigSchema) { // retrieve schema
-                if (err) { return cb(err, false); }
-                ZSchema.validate(sig, JSON.parse(sigSchema), function(err, report) {
-                    if (err) { return cb(err, false); }
-                    //onsole.log("REPORT"); 
-                    //onsole.log(sig); 
-                    //onsole.log(sigSchema);
-                    //onsole.log(report);
-                    cb(null, true);
-                });
-            });
-        });
-    }
-
-    //////////////////////////////////////// SENDING THE SIGNAL: /////////////////////////////////////////
-    // create a new instance of this signal (at hash = "wf:{id}:sigs:{sigId}", field = sig instance id) //
-    // (signal with a given id may be emitted multiple times within a workflow execution)               //
-    // (hash is better than a list because of easier cleanup of old signals)                            //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    function p0() {
-        return (new Date()).getTime();
-    }
-
-    function p1(start, name) {
-        var end = (new Date()).getTime();
-        console.log(name, "TOOK", end - start + "ms");
-        return end;
-    }
-
-    async.waterfall([
-        // 1. validate the signal
-        function(cb) {
-            validateSignal(function(err, isValid) {
-                cb(err);
-            });
-        },
-        // 2. get unique id for the signal instance
-        function(cb) {
-            rcl.incr("wf:"+wfId+":sigs:"+sigId+":nextId", function(err, sigIdx) {
-                err ? cb(err): cb(null, sigIdx);
-            });
-        },
-        // 3. save instance of the signal to redis
-        function(sigIdx, cb) {
-            var idx = sigIdx.toString();
-            var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
-            rcl.hset(sigInstanceKey, idx, JSON.stringify(sig), function(err, rep) {
-                err ? cb(err): cb(null, idx);
-            });
-        },
-        // 4. put the signal in the queues of all its sinks
-        function(idx, cb) {
-            //var t = p0();
-            // insert the signal (its index in the hash) in the queues of its sinks
-            async.each(sinks, function iterator(taskId, doneIter) {
-                pushInput(wfId, taskId, sigId, idx, function(err) {
-                    doneIter(err);
-                });
-                //var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
-                //rcl.rpush(queueKey, idx, function(err, rep) {
-                //   doneIter(err);
-                //});
-            }, function doneAll(err) {
-                //p1(t, "PUSH ALL SIGS");
-                err ? cb(err): cb(null, sinks);
-            });
-        }],
-        // 5. all done
-        function(err, sinks) {
-            time -= (new Date()).getTime();
-            //onsole.log("SENDING SIGNAL Y", sigId, "TOOK", -time+"ms");
-            sendSignalTime -= time;
-            if (err) {
-                console.log(err.toString(), err.stack);
-            }
-            err ? cb(err): cb(null, sinks);
-        }
-    );
-}
-
-
 
 // Part of NEW API for continuous processes with FIFO queues
 // Creates a new signal group to wait for.
@@ -1939,7 +1882,7 @@ function getTasks1(wfId, from, to, dataNum, cb) {
         })(i);
     }
 
-    console.log("async tasks: "+asyncTasks.length);
+    //onsole.log("async tasks: "+asyncTasks.length);
 
     async.parallel(asyncTasks, function done(err, result) {
         if (err) {
@@ -1996,7 +1939,6 @@ return {
     fetchInputs: fetchInputs,
     getInitialSigs: getInitialSignals,
     sendSignalLua: sendSignalLua,
-    sendSignalSinks: sendSignalSinks,
     getSigByName: getSigByName,
     getSigRemoteSinks: getSigRemoteSinks,
     setSigRemoteSinks: setSigRemoteSinks

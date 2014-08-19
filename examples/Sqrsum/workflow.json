@@ -1,0 +1,28 @@
+{
+    "name": "Wf_SumSquares",
+    "processes": [ {
+        "name": "Sqr",
+	"type": "dataflow",
+        "function": "sqr",
+        "parlevel": 0,
+	"ordering": "true",
+        "ins": [ "number" ],
+        "outs": [ "square" ]
+    }, {
+        "name": "Sum",
+	"type": "dataflow",
+        "function": "sum",
+        "ins": [ "square:3" ],
+        "outs": [ "sum" ]
+    } ],
+    "signals": [ {
+        "name": "number",
+        "data": [ 1, 2, 3, 4, 5, 6 ]
+    }, {
+        "name": "square"
+    }, {
+        "name": "sum"
+    } ],
+    "ins": [ "number" ],
+    "outs": [ "sum" ]
+}
