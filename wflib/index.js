@@ -1437,11 +1437,13 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 // if the function's module was declared in the workflow file -- use it
                 // otherwise try "functions.js" 
                 var funModuleName = (fun && fun.module) ? fun.module : "functions.js";
-                var funPath = (appConfig.workdir ? appConfig.workdir + "/" : "") + funModuleName;
+                var funPath = pathTool.join(appConfig.workdir ? appConfig.workdir : "", funModuleName);
 
                 try {
                     f = require(funPath)[taskInfo.fun];
                 } catch(err) {
+                    //console.log(err);
+                    //console.log("functions.js doesn't exist, trying default 'functions' module...");
                     // caught if "functions.js" doesn't exist (no action needed)
                 }
 
