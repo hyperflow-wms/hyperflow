@@ -41,9 +41,10 @@ function amqpCommand(ins, outs, config, cb) {
       });
 
       ok = ok.then(function(queue) {
+        var queue_name = typeof config.executor.queue_name !== 'undefined' ? config.executor.queue : "hyperflow.jobs";
         taskCount += 1;
         console.log("[AMQP][" + corrId + "][" + taskCount + "] Publishing job " + JSON.stringify(jobMessage));
-        ch.sendToQueue('hyperflow.jobs', new Buffer(JSON.stringify(jobMessage)), {replyTo: queue, contentType: 'application/json', correlationId: corrId});
+        ch.sendToQueue(queue_name, new Buffer(JSON.stringify(jobMessage)), {replyTo: queue, contentType: 'application/json', correlationId: corrId});
         return answer.promise;
       }); 
 
