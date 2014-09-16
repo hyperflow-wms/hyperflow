@@ -43,6 +43,7 @@
     "istanbul": "",
     "docopt": "",
     "xpath": "",
-    "xmldom": ""
+    "xmldom": "",
+    "readline": ""
   }
 }
