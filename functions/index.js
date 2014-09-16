@@ -1,7 +1,8 @@
 var fsp = require('./fileSplitter.js'), 
     cmd = require('./command.js'),
     amqpCmd = require('./amqpCommand.js'),
-    scanDir = require('./DirScanner').scanDir;
+    scanDir = require('./DirScanner').scanDir,
+    wfgen = require('./wfgen.js');
 
 function print(ins, outs, config, cb) {
     //console.log("PRINT", JSON.stringify(ins));
@@ -215,3 +216,5 @@ exports.echoWithDelay = echoWithDelay;
 exports.count = count;
 exports.match = match;
 exports.genCollection = genCollection;
+exports.computeScenarioRanks = wfgen.computeScenarioRanks;
+exports.computeThreatLevel = wfgen.computeThreatLevel;
