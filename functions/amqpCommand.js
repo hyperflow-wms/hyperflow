@@ -14,7 +14,10 @@ connection.then(function(conn) {
 
 var taskCount = 0;
 
+
 function amqpCommand(ins, outs, config, cb) {
+  var queue_name = typeof config.executor.queue_name !== 'undefined' ? config.executor.queue_name : "hyperflow.jobs";
+
   connection.then(function(connection) {
     return when(connection.createChannel().then(function(ch) {
       var jobMessage = {
@@ -41,7 +44,7 @@ function amqpCommand(ins, outs, config, cb) {
       });
 
       ok = ok.then(function(queue) {
-        var queue_name = typeof config.executor.queue_name !== 'undefined' ? config.executor.queue_name : "hyperflow.jobs";
+        ch.assertQueue(queue_name);
         taskCount += 1;
         console.log("[AMQP][" + corrId + "][" + taskCount + "] Publishing job " + JSON.stringify(jobMessage));
         ch.sendToQueue(queue_name, new Buffer(JSON.stringify(jobMessage)), {replyTo: queue, contentType: 'application/json', correlationId: corrId});
