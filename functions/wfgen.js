@@ -20,7 +20,7 @@ function computeThreatLevel(ins, outs, config, cb) {
         process.exit();
     }
 
-    outs.JobsCount.data = [ cuontLeft-1 ];
+    outs.JobsCount.data = [ countLeft-1 ];
 
     cb(null, outs);
 }
