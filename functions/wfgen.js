@@ -10,7 +10,7 @@ function computeScenarioRanks(ins, outs, config, cb) {
 
 function computeThreatLevel(ins, outs, config, cb) {
     console.log("Computing threat level...");
-    console.log("   ranks:", ins.Ranks.data[0]);
+    console.log("   ranks:", ins.Ranks);
     console.log("   jobscount:", ins.JobsCount.data[0]);
 
     var countLeft = ins.JobsCount.data[0];
