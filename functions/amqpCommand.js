@@ -55,6 +55,7 @@ function amqpCommand(ins, outs, config, cb) {
         var parsed = JSON.parse(message);
         ch.close();
         if (parsed.exit_status == "0") {
+          outs[0].data = [ message ];
           console.log("[AMQP][" + corrId + "] Job finished! job[" + JSON.stringify(jobMessage) + "] msg[" + message + "]", outs);
           cb(null, outs);
         } else {
