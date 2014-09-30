@@ -18,7 +18,7 @@ function computeThreatLevel(ins, outs, config, cb) {
     console.log("   ranks:", ins.Ranks.data);
     console.log("   jobscount:", ins.JobsCount.data[0]);
 
-    calculateThreatLevel(JSON.parse(ins.Ranks.data.replace("=>", ":")));
+    calculateThreatLevel(JSON.parse(ins.Ranks.data[0].replace("=>", ":")));
 
     var countLeft = ins.JobsCount.data[0];
 
