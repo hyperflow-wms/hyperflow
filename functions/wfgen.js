@@ -1,3 +1,5 @@
+var request = require('request')
+
 var ThreatLevel = {
     NONE: "none",
     HEIGHTENED: "heightened",
@@ -34,6 +36,28 @@ function calculateThreatLevel(ranksData) {
     return threatLevel;
 }
 
+function completeExperiment(experimentId, dapToken, cb) {
+    request(
+        {
+            "url": "https://dap.moc.ismop.edu.pl/", //point this at proper experiment
+            "strictSSL": false,
+            "timeout": 1000,
+            "body": JSON.stringify({}), //put completion state struct here
+            "headers": {
+                "PRIVATE-TOKEN": rest_config.AUTH_TOKEN,
+                "Content-Type": "application/json"
+            }
+        },
+        function (error, response, body) {
+            if(!error) {
+                cb();
+            } else {
+                cb();
+            }
+        }
+    );
+}
+
 function computeThreatLevel(ins, outs, config, cb) {
     console.log("Computing threat level...");
     console.log("   ranks:", ins.Ranks.data);
@@ -47,8 +71,10 @@ function computeThreatLevel(ins, outs, config, cb) {
     var countLeft = ins.JobsCount.data[0];
 
     if (countLeft == 1) {
-        console.log("Finishing!");
-        process.exit();
+        completeExperiment(config.experiment.id, config.experiment.dap_token, function () {
+            console.log("Finishing!");
+            process.exit();
+        });
     }
 
     outs.JobsCount.data = [ countLeft - 1 ];
