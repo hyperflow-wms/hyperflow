@@ -41,9 +41,9 @@ function completeExperiment(experimentId, dapToken, cb) {
         "id": experimentId,
         "status": "finished"
     };
-    request(
+    request.put(
         {
-            "url": "https://dap.moc.ismop.edu.pl/experiments/" + experimentId, //point this at proper experiment
+            "url": "https://dap.moc.ismop.edu.pl/api/v1/experiments/" + experimentId, //point this at proper experiment
             "strictSSL": false,
             "timeout": 1000,
             "body": JSON.stringify(payload), //put completion state struct here
