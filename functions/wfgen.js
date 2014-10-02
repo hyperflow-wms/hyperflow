@@ -37,12 +37,17 @@ function calculateThreatLevel(ranksData) {
 }
 
 function completeExperiment(experimentId, dapToken, cb) {
+    var payload = {
+        "id": experimentId,
+        "end_date": (new Date()).toJSON(),
+        "status": "finished"
+    };
     request(
         {
-            "url": "https://dap.moc.ismop.edu.pl/", //point this at proper experiment
+            "url": "https://dap.moc.ismop.edu.pl/experiments/" + experimentId, //point this at proper experiment
             "strictSSL": false,
             "timeout": 1000,
-            "body": JSON.stringify({}), //put completion state struct here
+            "body": JSON.stringify(payload), //put completion state struct here
             "headers": {
                 "PRIVATE-TOKEN": rest_config.AUTH_TOKEN,
                 "Content-Type": "application/json"
@@ -52,6 +57,8 @@ function completeExperiment(experimentId, dapToken, cb) {
             if(!error) {
                 cb();
             } else {
+                console.log("Error!");
+                console.log(error);
                 cb();
             }
         }
