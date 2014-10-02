@@ -39,7 +39,6 @@ function calculateThreatLevel(ranksData) {
 function completeExperiment(experimentId, dapToken, cb) {
     var payload = {
         "id": experimentId,
-        "end_date": (new Date()).toJSON(),
         "status": "finished"
     };
     request(
