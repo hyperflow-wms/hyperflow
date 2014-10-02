@@ -26,7 +26,7 @@ function calculateThreatLevel(ranksData) {
     });
     console.log(ranks);
 
-    threatLevel = NONE;
+    threatLevel = ThreatLevel.NONE;
     ranks.forEach(function (entry) {
         //let's assume that scenarios below 55 represent threatening situations
         if (parseInt(entry.scenario_id) < 55) {
