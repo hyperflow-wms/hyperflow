@@ -48,7 +48,7 @@ function completeExperiment(experimentId, dapToken, cb) {
             "timeout": 1000,
             "body": JSON.stringify(payload), //put completion state struct here
             "headers": {
-                "PRIVATE-TOKEN": rest_config.AUTH_TOKEN,
+                "PRIVATE-TOKEN": dapToken,
                 "Content-Type": "application/json"
             }
         },
