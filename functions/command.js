@@ -6,7 +6,8 @@ function command(ins, outs, config, cb) {
 
     console.log("Executing:", exec, args);
 
-    var proc = spawn(exec, [ args ]);
+//    var proc = spawn(exec, [ args ]);
+    var proc = spawn(exec,  args );
 
     proc.stdout.on('data', function(data) {
         console.log(exec, 'stdout:' + data);
