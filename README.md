@@ -11,12 +11,10 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 The latest release of HyperFlow is 1.0.0
 
 ###Installation
-* Download the package: https://github.com/dice-cyfronet/hyperflow/archive/1.0.0.zip
 * Install the latest node.js (http://nodejs.org)
 * Install dependencies (in `hyperflow` directory): `npm install -d`
 * Install the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
-* Set an environment variable `HFLOW_PATH` to point to your hyperflow root directory.
-* Add `$HFLOW_PATH/bin` to your `PATH`.
+* `npm install https://github.com/dice-cyfronet/hyperflow/archive/1.0.0.tar.gz`
 
 ###Running
 * Start the redis server
