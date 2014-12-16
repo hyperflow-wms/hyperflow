@@ -1449,7 +1449,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
 
                 // if the function could not be loaded, look in the core HyperFlow functions
                 if (!f) {
-                    funPath = pathTool.join(process.env.HFLOW_PATH, "functions");
+                    funPath = pathTool.join(require('path').dirname(require.main.filename), "..", "functions");
                     f = require(funPath)[taskInfo.fun];
                 }
 

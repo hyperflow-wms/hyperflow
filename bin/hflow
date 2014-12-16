@@ -18,8 +18,7 @@ Usage:\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
-
-var hfroot = process.env.HFLOW_PATH;
+var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
 
 if (opts.run) {
   hflow_run();
