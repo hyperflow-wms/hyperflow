@@ -11,10 +11,13 @@ var connection = null;
 
 function connect() {
     connection = amqplib.connect(executor_config.amqp_url);
-    console.log("[AMQP] Starting connection!");
+    console.log("[AMQP] Starting connection to " + executor_config.amqp_url);
 
     connection.then(function(conn) {
-      connection.once('SIGINT', function() { connection.close(); });
+        console.log("[AMQP] Connected!");
+        connection.once('SIGINT', function() { connection.close(); });
+    }, function(err) {
+        console.error('[AMQP] Connect failed: %s', err);
     })
 }
 var taskCount = 0;
