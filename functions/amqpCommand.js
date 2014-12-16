@@ -6,17 +6,22 @@ var executor_config = require('./amqpCommand.config.js');
 
 var identity = function(e) {return e};
 
-//TODO: initialize @ first use, or module.init()
-console.log("[AMQP] Starting connection!");
-var connection      = amqplib.connect(executor_config.amqp_url);
 
-connection.then(function(conn) {
-  connection.once('SIGINT', function() { connection.close(); });
-})
+var connection = null;
 
+function connect() {
+    connection = amqplib.connect(executor_config.amqp_url);
+    console.log("[AMQP] Starting connection!");
+
+    connection.then(function(conn) {
+      connection.once('SIGINT', function() { connection.close(); });
+    })
+}
 var taskCount = 0;
 
 function amqpCommand(ins, outs, config, cb) {
+  if(!connection) connect();
+  
   connection.then(function(connection) {
     return when(connection.createChannel().then(function(ch) {
       var jobMessage = {
