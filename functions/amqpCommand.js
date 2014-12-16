@@ -4,6 +4,8 @@ var defer = when.defer;
 var amqplib = require('amqplib');
 var executor_config = require('./amqpCommand.config.js');
 
+var identity = function(e) {return e};
+
 //TODO: initialize @ first use, or module.init()
 console.log("[AMQP] Starting connection!");
 var connection      = amqplib.connect(executor_config.amqp_url);
@@ -20,10 +22,11 @@ function amqpCommand(ins, outs, config, cb) {
       var jobMessage = {
         "executable": config.executor.executable,
         "args": config.executor.args,
-        "inputs": ins,
-        "outputs": outs,
+        "inputs": ins.map(identity),
+        "outputs": outs.map(identity),
         "options": executor_config.options
       };
+      
       var answer = defer();
       var corrId = uuid.v4();
       function maybeAnswer(msg) {
