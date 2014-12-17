@@ -43,6 +43,7 @@
     "istanbul": "",
     "docopt": "",
     "xpath": "",
-    "xmldom": ""
+    "xmldom": "",
+    "shell-quote": "1.4.2"
   }
 }
