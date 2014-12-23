@@ -1,0 +1,113 @@
+{
+  "processes": [
+    {
+      "name": "run-cmd-openmp-0.5",
+      "function": "command",
+      "type": "dataflow",
+      "config": {
+        "executor": {
+          "executable": "./run-cmd-openmp.sh",
+          "args": [
+            1000,
+            0.5,
+            0.5
+          ]
+        }
+      },
+      "ins": [
+        "start"
+      ],
+      "outs": [
+        "psp-output-0.5.tgz"
+      ]
+    },
+    {
+      "name": "run-cmd-openmp-0.6",
+      "function": "command",
+      "type": "dataflow",
+      "config": {
+        "executor": {
+          "executable": "./run-cmd-openmp.sh",
+          "args": [
+            1000,
+            0.5,
+            0.6
+          ]
+        }
+      },
+      "ins": [
+        "start"
+      ],
+      "outs": [
+        "psp-output-0.6.tgz"
+      ]
+    },
+    {
+      "name": "make-movie-0.5",
+      "function": "command",
+      "type": "dataflow",
+      "config": {
+        "executor": {
+          "executable": "./make-movie.sh",
+          "args": [
+            "psp-output-0.5.tgz",
+            "psp-output-0.5.avi"
+          ]
+        }
+      },
+      "ins": [
+        "psp-output-0.5.tgz"
+      ],
+      "outs": [
+        "psp-output-0.5.avi"
+      ]
+    },
+    {
+      "name": "make-movie-0.6",
+      "function": "command",
+      "type": "dataflow",
+      "config": {
+        "executor": {
+          "executable": "./make-movie.sh",
+          "args": [
+            "psp-output-0.6.tgz",
+            "psp-output-0.6.avi"
+          ]
+        }
+      },
+      "ins": [
+        "psp-output-0.6.tgz"
+      ],
+      "outs": [
+        "psp-output-0.6.avi"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "name": "start",
+      "data": [
+        "start"
+      ]
+    },
+    {
+      "name": "psp-output-0.5.tgz"
+    },
+    {
+      "name": "psp-output-0.5.avi"
+    },
+    {
+      "name": "psp-output-0.6.tgz"
+    },
+    {
+      "name": "psp-output-0.6.avi"
+    }
+  ],
+  "ins": [
+    "start"
+  ],
+  "outs": [
+    "psp-output-0.5.avi",
+    "psp-output-0.6.avi"
+  ]
+}
