@@ -58,6 +58,7 @@ function hflow_run() {
       //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
       if(opts['--log-provenance']) {
+          engine.logProvenance = true;
           engine.eventServer.on('prov', function() {
               var provenance_output = opts['--provenance-output'];
               if (provenance_output == false) {
