@@ -12,7 +12,7 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] \n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>]\n\
   hflow start-server\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
   hflow -h | --help | --version";
@@ -42,7 +42,7 @@ function hflow_run() {
   if (opts['--with-server']) {
       hflow_start(); // start the HTTP server
   }
-  
+
   if (wfstats.isDirectory()) {
     wffile = pathtool.join(wfpath, "workflow.json");
   } else if (wfstats.isFile()) {
@@ -57,6 +57,17 @@ function hflow_run() {
       // engine.eventServer.on('trace.*', function(exec, args) {
       //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
+      if(opts['--log-provenance']) {
+          engine.eventServer.on('prov', function() {
+              var provenance_output = opts['--provenance-output'];
+              if (provenance_output == false) {
+                  console.log(arguments);
+              } else {
+                //TODO: Write provenance data to file named output_file
+                  fs.appendFile(provenance_output, JSON.stringify(arguments) + "\n");
+              }
+          });
+      }
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
         if (opts['-s']) {
@@ -81,9 +92,27 @@ function hflow_run() {
     });
   }
 
-  createWf(function(err, wfId) {
-    runWf(wfId);
-  });
+   var startWf = function() {
+       createWf(function (err, wfId) {
+           runWf(wfId);
+       });
+   };
+
+    //dirty file truncate
+    if (opts['--log-provenance'] && opts['--provenance-output']) {
+        var provenance_output = opts['--provenance-output'];
+        fs.exists(provenance_output, function (exists) {
+            if (exists) {
+                fs.truncate(provenance_output, function () {
+                    startWf();
+                });
+            } else {
+                startWf();
+            }
+        });
+    } else {
+        startWf();
+    }
 }
 
 function hflow_send() {
