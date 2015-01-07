@@ -12,24 +12,36 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s]\n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] \n\
+  hflow start-server\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
-
-var hfroot = process.env.HFLOW_PATH;
+var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
 
 if (opts.run) {
   hflow_run();
 } else if (opts.send) {
   hflow_send();
+} else if (opts['start-server']) {
+  hflow_start();
+}
+
+function hflow_start() {
+    var server = require('../server/hyperflow-server.js')(rcl, wflib);
+    server.listen(process.env.PORT, function() { });
+    console.log("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }
 
 function hflow_run() {
   var wfpath = opts['<workflow_dir_or_file>'],
       wfstats = fs.lstatSync(wfpath),
       wffile;
+
+  if (opts['--with-server']) {
+      hflow_start(); // start the HTTP server
+  }
   
   if (wfstats.isDirectory()) {
     wffile = pathtool.join(wfpath, "workflow.json");

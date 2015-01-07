@@ -4,26 +4,37 @@ var defer = when.defer;
 var amqplib = require('amqplib');
 var executor_config = require('./amqpCommand.config.js');
 
-//TODO: initialize @ first use, or module.init()
-console.log("[AMQP] Starting connection!");
-var connection      = amqplib.connect(executor_config.amqp_url);
+var identity = function(e) {return e};
 
-connection.then(function(conn) {
-  connection.once('SIGINT', function() { connection.close(); });
-})
 
+var connection = null;
+
+function connect() {
+    connection = amqplib.connect(executor_config.amqp_url);
+    console.log("[AMQP] Starting connection to " + executor_config.amqp_url);
+
+    connection.then(function(conn) {
+        console.log("[AMQP] Connected!");
+        connection.once('SIGINT', function() { connection.close(); });
+    }, function(err) {
+        console.error('[AMQP] Connect failed: %s', err);
+    })
+}
 var taskCount = 0;
 
 function amqpCommand(ins, outs, config, cb) {
+  if(!connection) connect();
+  
   connection.then(function(connection) {
     return when(connection.createChannel().then(function(ch) {
       var jobMessage = {
         "executable": config.executor.executable,
         "args": config.executor.args,
-        "inputs": ins,
-        "outputs": outs,
+        "inputs": ins.map(identity),
+        "outputs": outs.map(identity),
         "options": executor_config.options
       };
+      
       var answer = defer();
       var corrId = uuid.v4();
       function maybeAnswer(msg) {
