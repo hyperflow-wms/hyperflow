@@ -188,6 +188,10 @@ function genCollection(ins, outs, config, cb) {
     cb(null, outs);
 }
 
+function noop(ins, outs, config, cb) {
+    cb(null, outs);
+}
+
 /*
 function montage_mProjectPP(ins, outs, config, cb) {
     var execName = "mProjectPP";
@@ -214,4 +218,5 @@ exports.echo = echo;
 exports.echoWithDelay = echoWithDelay;
 exports.count = count;
 exports.match = match;
+exports.noop = noop;
 exports.genCollection = genCollection;
