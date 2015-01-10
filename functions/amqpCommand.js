@@ -15,7 +15,6 @@ function connect() {
 
     connection.then(function(conn) {
         console.log("[AMQP] Connected!");
-        process.on('SIGINT', function() { connection.close(); });
     }, function(err) {
         console.error('[AMQP] Connect failed: %s', err);
     })
