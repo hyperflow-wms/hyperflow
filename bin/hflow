@@ -28,6 +28,17 @@ if (opts.run) {
   hflow_start();
 }
 
+function append_file(data, cb) {
+    fs.appendFile(data["filename"], JSON.stringify(data["args"]) + "\n", function (err) {
+        if (err) {
+            console.log("Error appending to file! " + err);
+        }
+        cb();
+    });
+}
+
+var queue = async.queue(append_file, 1);
+
 function hflow_start() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib);
     server.listen(process.env.PORT, function() { });
@@ -65,7 +76,11 @@ function hflow_run() {
                   console.log(arguments);
               } else {
                 //TODO: Write provenance data to file named output_file
-                  fs.appendFile(provenance_output, JSON.stringify(arguments) + "\n");
+                  queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
+                      if(err) {
+                          console.log("queue errror! " + err);
+                      }
+                  });
               }
           });
       }
@@ -102,9 +117,10 @@ function hflow_run() {
     //dirty file truncate
     if (opts['--log-provenance'] && opts['--provenance-output']) {
         var provenance_output = opts['--provenance-output'];
-        fs.exists(provenance_output, function (exists) {
+        fs.exists(pathtool.resolve(wfpath) + "/" + provenance_output, function (exists) {
             if (exists) {
-                fs.truncate(provenance_output, function () {
+                console.log("truncate: " + pathtool.resolve(wfpath) + "/" + provenance_output);
+                fs.truncate(pathtool.resolve(wfpath) + "/" + provenance_output, function () {
                     startWf();
                 });
             } else {
