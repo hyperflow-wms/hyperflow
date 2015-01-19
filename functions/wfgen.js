@@ -36,14 +36,14 @@ function calculateThreatLevel(ranksData) {
     return threatLevel;
 }
 
-function completeExperiment(experimentId, dapToken, cb) {
+function completeExperiment(experimentId, dapToken, dapLocation, cb) {
     var payload = {
         "id": experimentId,
         "status": "finished"
     };
     request.put(
         {
-            "url": "https://dap.moc.ismop.edu.pl/api/v1/experiments/" + experimentId, //point this at proper experiment
+            "url": dapLocation + "/api/v1/experiments/" + experimentId, //point this at proper experiment
             "strictSSL": false,
             "timeout": 1000,
             "body": JSON.stringify(payload), //put completion state struct here
@@ -77,7 +77,7 @@ function computeThreatLevel(ins, outs, config, cb) {
     var countLeft = ins.JobsCount.data[0];
 
     if (countLeft == 1) {
-        completeExperiment(config.experiment.id, config.experiment.dap_token, function () {
+        completeExperiment(config.experiment.id, config.experiment.dap_token, config.dap_location, function () {
             console.log("Finishing!");
             process.exit();
         });
