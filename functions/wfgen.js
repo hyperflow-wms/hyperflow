@@ -77,10 +77,13 @@ function computeThreatLevel(ins, outs, config, cb) {
     var countLeft = ins.JobsCount.data[0];
 
     if (countLeft == 1) {
-        completeExperiment(config.experiment.id, config.experiment.dap_token, config.experiment.dap_location, function () {
-            console.log("Finishing!");
-            process.exit();
-        });
+        //completeExperiment(config.experiment.id, config.experiment.dap_token, config.experiment.dap_location, function () {
+        //});
+        console.log("Finishing!");
+        console.log(JSON.stringify({
+            "status": "ok"
+        }));
+        process.exit();
     }
 
     outs.JobsCount.data = [ countLeft - 1 ];
