@@ -35,7 +35,7 @@ if (opts.run) {
 
 function load_plugin(plugin_name) {
     try {
-        var plugin = require(plugin_name)(rcl, wflib);
+        var plugin = require(plugin_name)();
         plugins.push(plugin);
     } catch (err) {
         console.log("Plugin module:", plugin_name, "not found!");
@@ -73,7 +73,7 @@ function hflow_run() {
       //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
       plugins.forEach(function(plugin) {
-          plugin.init_engine(engine);
+          plugin.init(rcl, wflib, engine);
       });
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
