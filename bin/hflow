@@ -39,6 +39,7 @@ function load_plugin(plugin_name) {
         plugins.push(new Plugin());
     } catch (err) {
         console.log("Plugin module:", plugin_name, "not found!");
+        console.log(err);
         process.exit(1);
     }
 }
