@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 # Copyright 2013 University of Stuttgart, Germany
 # Author: Anthony Sulistio (HLRS)
 # Modified by Maciej Malawski (AGH)
