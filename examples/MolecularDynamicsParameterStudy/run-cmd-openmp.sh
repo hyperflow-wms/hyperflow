@@ -1,4 +1,4 @@
-#!/bin/sh
+!/bin/bash
 # Copyright 2013 University of Stuttgart, Germany
 # Author: Anthony Sulistio (HLRS)
 # Modified by Maciej Malawski (AGH)
@@ -10,11 +10,15 @@
 # ./run.sh 1000 2 0.8
 
 
+BASEDIR=$(dirname $BASH_SOURCE)
+
+
 MYDIR=$(mktemp -d --tmpdir=.)
 
-cp -vf pov-template.inc $MYDIR/psp-header.inc
+cp -vf $BASEDIR/pov-template.inc $MYDIR/psp-header.inc
 
-cp src/main $MYDIR
+cp $BASEDIR/src/main $MYDIR
+
 
 cd $MYDIR
 rm -f *.pov *.dat *.xyz
