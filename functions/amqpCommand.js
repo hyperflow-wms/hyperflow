@@ -37,10 +37,11 @@ function amqpCommand(ins, outs, config, cb) {
       }
       var jobMessage = {
         "executable": config.executor.executable,
-        "args": config.executor.args,
-        "inputs": ins.map(identity),
-        "outputs": outs.map(identity),
-        "options": options
+        "args":       config.executor.args,
+        "env":        (config.executor.env || {}),
+        "inputs":     ins.map(identity),
+        "outputs":    outs.map(identity),
+        "options":    options
       };
 
       var answer = defer();
