@@ -11,11 +11,17 @@ var fs = require('fs'),
     Q = require('q'),
     pathTool = require('path'),
     //toobusy = require('toobusy'),
+    uuid = require('uuid'),
     rcl;
+
 
 // for profiling
 var fetchInputsTime = 0;
 var sendSignalTime = 0;
+
+
+var global_hfid = 0; // global UUID of this HF engine instance (used for logging)
+var globalInfo = {}; // object holding global information for a given HF engine instance 
 
 function p0() {
     return (new Date()).getTime();
@@ -33,7 +39,19 @@ exports.init = function(redisClient) {
     // optional passing of client could be possible);
     if (redisClient) {
         rcl = redisClient;
+	if (global_hfid == 0) {
+	  global_hfid = uuid.v1();
+
+	  // this object holds global information about this HF engine instance
+	  // written to redis as a hash map with key "globalinfo:<uuid>"
+	  // TODO: add more attributes
+	  globalInfo.hf_version = "???";
+
+	  rcl.hmset("hflow:"+global_hfid, globalInfo, function(err, ret) { });
+	}
     }
+
+   console.log("hfid:", global_hfid);
     /*rcl.on("error", function (err) {
       console.log("redis error: " + err);
       });*/
@@ -1336,7 +1354,7 @@ function public_getRemoteDataSinks(wfId, dataId, cb) {
  * @insValues - array of input signal values as returned by fetchInputs
  * @appConfig - configuration specific for this workflow instance (the engine.config object), e.g. working directory
  */
-function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, emulate, eventServer, appConfig, cb) {
+function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, outsIds_, emulate, eventServer, appConfig, cb) {
     function isArray(what) {
         return Object.prototype.toString.call(what) === '[object Array]';
     }
@@ -1377,7 +1395,7 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
     
     //onsole.log("FUNC INS", ins);
 
-    public_getTaskInfo(wfId, taskId, function(err, taskInfo) {
+    public_getTaskInfo(wfId, procId, function(err, taskInfo) {
         if (err) return cb(err); 
 
         var asyncTasks = [];
@@ -1473,6 +1491,12 @@ function public_invokeTaskFunction2(wfId, taskId, insIds_, insValues, outsIds_, 
                 if (eventServer !== 'undefined') {
                     conf['eventServer'] = eventServer;
                 }
+
+		// Pass identifiers to the function
+		conf.hfId = global_hfid;
+		conf.appId = wfId;
+		conf.procId = procId;
+		conf.firingId = firingId;
 
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
@@ -1930,7 +1954,7 @@ return {
     getRemoteDataSinks: public_getRemoteDataSinks,
     getWfMap: public_getWfMap,
     getTaskMap: public_getTaskMap,
-    invokeTaskFunction2: public_invokeTaskFunction2,
+    invokeProcFunction: public_invokeProcFunction,
     //sendSignal: public_sendSignal,
     sendSignal: sendSignalLua,
     getSignalInfo: getSignalInfo,
@@ -1941,7 +1965,9 @@ return {
     sendSignalLua: sendSignalLua,
     getSigByName: getSigByName,
     getSigRemoteSinks: getSigRemoteSinks,
-    setSigRemoteSinks: setSigRemoteSinks
+    setSigRemoteSinks: setSigRemoteSinks,
+
+    hfid: global_hfid
 };
 
 };
