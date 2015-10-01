@@ -100,11 +100,11 @@ function hflow_run() {
 
   var createWf = function(cb) {
     rcl.select(dbId, function(err, rep) {
-      rcl.flushdb(function(err, rep) {
+      //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
         wflib.createInstanceFromFile(wffile, '', function(err, id) {
           cb(err, id); 
         });
-      });
+      //});
     });
   }
 

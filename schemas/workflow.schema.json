@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "http://dice.cyfronet.pl/hyperflow",
+  "type": "object",
+  "properties": {
+    "name": {
+      "id": "http://dice.cyfronet.pl/hyperflow/name",
+      "type": "string"
+    },
+    "processes": {
+      "id": "http://dice.cyfronet.pl/hyperflow/processes",
+      "type": "array",
+      "items": [
+        {
+          "id": "http://dice.cyfronet.pl/hyperflow/processes/0",
+          "type": "object",
+          "properties": {
+            "name": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/name",
+              "type": "string"
+            },
+            "type": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/type",
+              "type": "string"
+            },
+            "function": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/function",
+              "type": "string"
+            },
+            "parlevel": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/parlevel",
+              "type": "integer"
+            },
+            "ordering": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/ordering",
+              "type": "string"
+            },
+            "ins": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/ins",
+              "type": "array",
+              "items": {
+                "id": "http://dice.cyfronet.pl/hyperflow/processes/0/ins/0",
+                "type": "string"
+              }
+            },
+            "outs": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/0/outs",
+              "type": "array",
+              "items": {
+                "id": "http://dice.cyfronet.pl/hyperflow/processes/0/outs/0",
+                "type": "string"
+              }
+            }
+          }
+        }, {
+          "id": "http://dice.cyfronet.pl/hyperflow/processes/1",
+          "type": "object",
+          "properties": {
+            "name": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/1/name",
+              "type": "string"
+            },
+            "type": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/1/type",
+              "type": "string"
+            },
+            "function": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/1/function",
+              "type": "string"
+            },
+            "ins": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/1/ins",
+              "type": "array",
+              "items": {
+                "id": "http://dice.cyfronet.pl/hyperflow/processes/1/ins/0",
+                "type": "string"
+              }
+            },
+            "outs": {
+              "id": "http://dice.cyfronet.pl/hyperflow/processes/1/outs",
+              "type": "array",
+              "items": {
+                "id": "http://dice.cyfronet.pl/hyperflow/processes/1/outs/0",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "signals": {
+      "id": "http://dice.cyfronet.pl/hyperflow/signals",
+      "type": "array",
+      "items": [
+        {
+          "id": "http://dice.cyfronet.pl/hyperflow/signals/0",
+          "type": "object",
+          "properties": {
+            "name": {
+              "id": "http://dice.cyfronet.pl/hyperflow/signals/0/name",
+              "type": "string"
+            },
+            "data": {
+              "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data",
+              "type": "array",
+              "items": [
+                {
+                  "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data/0",
+                  "type": "integer"
+                }, {
+                  "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data/1",
+                  "type": "integer"
+                }, {
+                  "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data/2",
+                  "type": "integer"
+                }, {
+                  "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data/3",
+                  "type": "integer"
+                }, {
+                  "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data/4",
+                  "type": "integer"
+                }, {
+                  "id": "http://dice.cyfronet.pl/hyperflow/signals/0/data/5",
+                  "type": "integer"
+                }
+              ]
+            }
+          }
+        }, {
+          "id": "http://dice.cyfronet.pl/hyperflow/signals/1",
+          "type": "object",
+          "properties": {
+            "name": {
+              "id": "http://dice.cyfronet.pl/hyperflow/signals/1/name",
+              "type": "string"
+            }
+          }
+        }, {
+          "id": "http://dice.cyfronet.pl/hyperflow/signals/2",
+          "type": "object",
+          "properties": {
+            "name": {
+              "id": "http://dice.cyfronet.pl/hyperflow/signals/2/name",
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "ins": {
+      "id": "http://dice.cyfronet.pl/hyperflow/ins",
+      "type": "array",
+      "items": {
+        "id": "http://dice.cyfronet.pl/hyperflow/ins/0",
+        "type": "string"
+      }
+    },
+    "outs": {
+      "id": "http://dice.cyfronet.pl/hyperflow/outs",
+      "type": "array",
+      "items": {
+        "id": "http://dice.cyfronet.pl/hyperflow/outs/0",
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "processes",
+    "signals",
+    "ins",
+    "outs"
+  ]
+}

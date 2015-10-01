@@ -2,17 +2,15 @@
   "name": "hyperflow",
   "version": "1.0.0-beta-2",
   "engines": {
-    "node": "0.10.x"
+    "node": ">= 0.10"
   },
   "bin": {
-    "hyperflow": "./bin/hyperflow",
-    "hyperflow-convert-dax": "./bin/hyperflow-convert-dax",
-    "hyperflow-convert-dax-amqp": "./bin/hyperflow-convert-dax-amqp",
-    "hyperflow-create-workflow": "./bin/hyperflow-create-workflow"
+    "hflow": "./bin/hflow",
+    "hflow-convert-dax": "./bin/hflow-convert-dax"
   },
   "dependencies": {
     "express": "3.x",
-    "consolidate": "0.9.1",
+    "consolidate": "0.10.x",
     "cradle": "0.6.6",
     "ejs": "0.8.4",
     "eyes": "0.1.8",
@@ -45,5 +43,22 @@
     "xpath": "",
     "xmldom": "",
     "shell-quote": "1.4.2"
-  }
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "SPEC.md",
+    "bin",
+    "converters",
+    "engine2",
+    "eventlog",
+    "examples",
+    "functions",
+    "package.json",
+    "public",
+    "server",
+    "tests",
+    "views",
+    "wflib"
+  ]
 }

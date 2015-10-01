@@ -306,9 +306,10 @@ var ProcLogic = function() {
             }
         }
 
-        proc.wflib.invokeTaskFunction2(
+        proc.wflib.invokeProcFunction(
                 proc.appId,
                 proc.procId,
+		proc.firingId, 
                 funcIns,
                 proc.sigValues,
                 funcOuts, emul,
