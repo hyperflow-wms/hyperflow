@@ -205,7 +205,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
                 // at this point "s" contains unique 'sigIdx' set in 'sendSignal' => we can emit "write" 
                 // provenance events (for signals which have "source", i.e. were written by a process)
                 if (s.source && engine.logProvenance) { 
-                    engine.eventServer.emit("prov", ["write", +engine.wfId, s.source, s.firingId, s._id, s.sigIdx]);
+                    engine.eventServer.emit("prov", ["write", +engine.wfId, +s.source, +s.firingId, +s._id, +s.sigIdx]);
                 }
 
                 if (!err) {

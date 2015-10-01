@@ -286,7 +286,7 @@ var ProcLogic = function() {
                 proc.sigValues.forEach(function(sigs) {
                     sigs.forEach(function(sig) {
                         proc.engine.eventServer.emit("prov", 
-                            ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]
+                            ["read", +proc.appId, +proc.procId, +proc.firingId, +sig._id, +sig.sigIdx]
                         );
                     });
 
