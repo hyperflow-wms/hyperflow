@@ -71,17 +71,12 @@ function hflow_run() {
       if(opts['--log-provenance']) {
           engine.logProvenance = true;
           engine.eventServer.on('prov', function() {
-              var provenance_output = opts['--provenance-output'];
-              if (provenance_output == false) {
-                  console.log(arguments);
-              } else {
-                //TODO: Write provenance data to file named output_file
-                  queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
-                      if(err) {
-                          console.log("queue errror! " + err);
-                      }
-                  });
-              }
+              var provenance_output = opts['--provenance-output'] || 'provenance_log.txt';
+              queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
+                  if(err) {
+                      console.log("queue errror! " + err);
+                  }
+              });
           });
       }
       engine.runInstance(function(err) {
