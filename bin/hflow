@@ -70,8 +70,11 @@ function hflow_run() {
       // });
       if(opts['--log-provenance']) {
           engine.logProvenance = true;
+          var provenance_output = opts['--provenance-output'] || 'provenance_log.txt';
+          if (!pathtool.isAbsolute(provenance_output)) {
+              provenance_output = pathtool.join(process.cwd(), provenance_output);
+          }
           engine.eventServer.on('prov', function() {
-              var provenance_output = opts['--provenance-output'] || 'provenance_log.txt';
               queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
                   if(err) {
                       console.log("queue errror! " + err);
