@@ -114,22 +114,7 @@ function hflow_run() {
        });
    };
 
-    //dirty file truncate
-    if (opts['--log-provenance'] && opts['--provenance-output']) {
-        var provenance_output = opts['--provenance-output'];
-        fs.exists(pathtool.resolve(wfpath) + "/" + provenance_output, function (exists) {
-            if (exists) {
-                console.log("truncate: " + pathtool.resolve(wfpath) + "/" + provenance_output);
-                fs.truncate(pathtool.resolve(wfpath) + "/" + provenance_output, function () {
-                    startWf();
-                });
-            } else {
-                startWf();
-            }
-        });
-    } else {
-        startWf();
-    }
+    startWf();
 }
 
 function hflow_send() {
