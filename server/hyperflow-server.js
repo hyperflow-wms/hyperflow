@@ -1,7 +1,7 @@
 /*
 ** HyperFlow engine
 ** Author: Bartosz Balis (2012-2014)
-** 
+**
 ** HyperFlow server implementing the REST API for HyperFlow workflows.
 */
 
@@ -11,6 +11,8 @@
  * Module dependencies.
  */
 
+
+var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : {};
 // for express
 var express = require('express'),
     cons = require('consolidate'),
@@ -18,7 +20,7 @@ var express = require('express'),
     app = express();
 
 var redis = require('redis'),
-    rcl = redis.createClient();
+    rcl = redis.createClient(redisURL);
 
 var server = http.createServer(app);
 var wflib = require('../wflib').init(rcl);
@@ -91,15 +93,15 @@ app.post('/apps', function(req, res) {
     var wfJson = req.body;
     var baseUrl = '';
     //onsole.log(wfJson);
-    
+
     // FIXME: validate workflow description
     // FIXME: add proper/more detailed error info instead of "badRequest(res)"
     wflib.createInstance(wfJson, baseUrl, function(err, appId) {
-        if (err) return badRequest(res); 
+        if (err) return badRequest(res);
         engine[appId] = new Engine({"emulate": "false"}, wflib, appId, function(err) {
-            if (err) return badRequest(res); 
+            if (err) return badRequest(res);
             engine[appId].runInstance(function(err) {
-                if (err) return badRequest(res); 
+                if (err) return badRequest(res);
                 res.header('Location', req.url + '/' + appId);
                 res.send(201, null);
                 //res.redirect(req.url + '/' + appId, 302);
@@ -129,7 +131,7 @@ app.get('/apps/:i', function(req, res) {
             wfname: "Application",
             wfins: appIns,
             wfouts: appOuts,
-            stat: wfInstanceStatus, 
+            stat: wfInstanceStatus,
             now: (new Date()).getTime(),
             submit_inputs_uri: '/apps/'+appId
         }, function(err, html) {
@@ -161,7 +163,7 @@ app.get('/apps/:i', function(req, res) {
 
 // emits a signal to a workflow
 // body must be a valid signal representation, such as:
-// { 
+// {
 //   "name": <signame>
 //   <attr>: <value>
 //   "data": [ sig(s) data ]
