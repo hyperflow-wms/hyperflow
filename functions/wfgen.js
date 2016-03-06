@@ -66,11 +66,11 @@ function completeExperiment(experimentId, dapToken, dapLocation, cb) {
 
 function computeThreatLevel(ins, outs, config, cb) {
     console.log("Computing threat level...");
-    console.log("   ranks:", ins.Ranks.data);
+//    console.log("   ranks:", ins.Ranks.data);
     console.log("   jobscount:", ins.JobsCount.data[0]);
 
-    ranks = ins.Ranks.data[0].stdout.replace(/=>/g, ":").trim().split("\n");
-    var threatLevel = calculateThreatLevel(ranks);
+//    ranks = ins.Ranks.data[0].stdout.replace(/=>/g, ":").trim().split("\n");
+//    var threatLevel = calculateThreatLevel(ranks);
 
     //TODO: update threat level for this
 
