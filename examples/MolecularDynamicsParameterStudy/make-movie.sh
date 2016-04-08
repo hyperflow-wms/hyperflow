@@ -17,6 +17,9 @@ if [ -n "$2" ]; then
     MOVIE=$2
 fi
 
+BASEDIR=$(dirname $BASH_SOURCE)
+cp -vf $BASEDIR/pov-template.inc pov-template.inc
+
 DIR=$(mktemp -d --tmpdir=.)
 
 

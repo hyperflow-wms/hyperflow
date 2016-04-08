@@ -26,6 +26,8 @@ function print2(ins, outs, config, cb) {
             console.log(input.data);
         }
     });
+    console.log("CONFIG");
+    console.log(config);
     cb(null, outs);
 }
 

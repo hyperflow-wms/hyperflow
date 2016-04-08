@@ -1,10 +1,14 @@
 #!/usr/bin/env node
+
+var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : {};
+
+
 var docopt = require('docopt').docopt,
     spawn = require('child_process').spawn,
     fs = require('fs'),
     pathtool = require('path'),
     redis = require('redis'),
-    rcl = redis.createClient(),
+    rcl = redis.createClient(redisURL),
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
@@ -92,11 +96,11 @@ function hflow_run() {
 
   var createWf = function(cb) {
     rcl.select(dbId, function(err, rep) {
-      rcl.flushdb(function(err, rep) {
+      //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
         wflib.createInstanceFromFile(wffile, '', function(err, id) {
           cb(err, id);
         });
-      });
+      //});
     });
   }
 

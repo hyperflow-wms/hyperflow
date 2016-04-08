@@ -15,6 +15,10 @@ function connect() {
 
     connection.then(function(conn) {
         console.log("[AMQP] Connected!");
+
+        return when(conn.createChannel().then(function(ch) {
+          var ok = ch.assertQueue('hyperflow.jobs', {durable: true}).then(function(qok) { return qok.queue; });
+        }));
     }, function(err) {
         console.error('[AMQP] Connect failed: %s', err);
     })
@@ -23,17 +27,27 @@ var taskCount = 0;
 
 function amqpCommand(ins, outs, config, cb) {
   if(!connection) connect();
-  
+
   connection.then(function(connection) {
     return when(connection.createChannel().then(function(ch) {
+      var options = executor_config.options;
+      if(config.executor.hasOwnProperty('options')) {
+          var executorOptions = config.executor.options;
+          for (var opt in executorOptions) {
+              if(executorOptions.hasOwnProperty(opt)) {
+                  options[opt] = executorOptions[opt];
+              }
+          }
+      }
       var jobMessage = {
         "executable": config.executor.executable,
-        "args": config.executor.args,
-        "inputs": ins.map(identity),
-        "outputs": outs.map(identity),
-        "options": executor_config.options
+        "args":       config.executor.args,
+        "env":        (config.executor.env || {}),
+        "inputs":     ins.map(identity),
+        "outputs":    outs.map(identity),
+        "options":    options
       };
-      
+
       var answer = defer();
       var corrId = uuid.v4();
       function maybeAnswer(msg) {
@@ -55,7 +69,7 @@ function amqpCommand(ins, outs, config, cb) {
         // console.log("[AMQP][" + corrId + "][" + taskCount + "] Publishing job " + JSON.stringify(jobMessage));
         ch.sendToQueue('hyperflow.jobs', new Buffer(JSON.stringify(jobMessage)), {replyTo: queue, contentType: 'application/json', correlationId: corrId});
         return answer.promise;
-      }); 
+      });
 
       return ok.then(function(message) {
         var parsed = JSON.parse(message);
@@ -71,7 +85,7 @@ function amqpCommand(ins, outs, config, cb) {
       });
     }))
   }).then(null, function(err) { console.trace(err.stack); });
-} 
+}
 
 
 exports.amqpCommand = amqpCommand;
