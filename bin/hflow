@@ -12,17 +12,22 @@ var docopt = require('docopt').docopt,
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
-    dbId = 0;
+    dbId = 0,
+    plugins = [];
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] \n\
-  hflow start-server\n\
-  hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] [-p <plugin_module_name> ...]\n\
+  hflow start-server [-p <plugin_module_name> ...]\n\
+  hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
+
+if (opts['-p']) {
+    opts['<plugin_module_name>'].forEach(load_plugin);
+}
 
 if (opts.run) {
   hflow_run();
@@ -30,6 +35,17 @@ if (opts.run) {
   hflow_send();
 } else if (opts['start-server']) {
   hflow_start();
+}
+
+function load_plugin(plugin_name) {
+    try {
+        var Plugin = require(plugin_name);
+        plugins.push(new Plugin());
+    } catch (err) {
+        console.log("Plugin module:", plugin_name, "not found!");
+        console.log(err);
+        process.exit(1);
+    }
 }
 
 function hflow_start() {
@@ -61,6 +77,9 @@ function hflow_run() {
       // engine.eventServer.on('trace.*', function(exec, args) {
       //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
+      plugins.forEach(function(plugin) {
+          plugin.init(rcl, wflib, engine);
+      });
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
         if (opts['-s']) {
