@@ -316,6 +316,9 @@ var ProcLogic = function() {
                 proc.engine.eventServer,
                 proc.engine.config, 
                 function(err, outs, options) {
+		    //console.log("FUNC INVOKED");
+		    //console.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
+		    //console.log("OUTS: ", outs);
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );
