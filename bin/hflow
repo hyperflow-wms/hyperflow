@@ -1,24 +1,33 @@
 #!/usr/bin/env node
+
+var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : {};
+
+
 var docopt = require('docopt').docopt,
     spawn = require('child_process').spawn,
-    fs = require('fs'), 
+    fs = require('fs'),
     pathtool = require('path'),
     redis = require('redis'),
-    rcl = redis.createClient(),
+    rcl = redis.createClient(redisURL),
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
-    dbId = 0;
+    dbId = 0,
+    plugins = [];
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] \n\
-  hflow start-server\n\
-  hflow send <wf_id> ( <signal_file> | -d <signal_data> )\n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] [-p <plugin_module_name> ...]\n\
+  hflow start-server [-p <plugin_module_name> ...]\n\
+  hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
+
+if (opts['-p']) {
+    opts['<plugin_module_name>'].forEach(load_plugin);
+}
 
 if (opts.run) {
   hflow_run();
@@ -26,6 +35,17 @@ if (opts.run) {
   hflow_send();
 } else if (opts['start-server']) {
   hflow_start();
+}
+
+function load_plugin(plugin_name) {
+    try {
+        var Plugin = require(plugin_name);
+        plugins.push(new Plugin());
+    } catch (err) {
+        console.log("Plugin module:", plugin_name, "not found!");
+        console.log(err);
+        process.exit(1);
+    }
 }
 
 function hflow_start() {
@@ -42,7 +62,7 @@ function hflow_run() {
   if (opts['--with-server']) {
       hflow_start(); // start the HTTP server
   }
-  
+
   if (wfstats.isDirectory()) {
     wffile = pathtool.join(wfpath, "workflow.json");
   } else if (wfstats.isFile()) {
@@ -50,19 +70,22 @@ function hflow_run() {
     wfpath = pathtool.dirname(wfpath);
   }
 
-  var runWf = function(wfId) { 
+  var runWf = function(wfId) {
     var config = {"emulate":"false", "workdir": pathtool.resolve(wfpath)};
     var engine = new Engine(config, wflib, wfId, function(err) {
       // This represent custom plugin listening on event from available eventServer
       // engine.eventServer.on('trace.*', function(exec, args) {
       //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
+      plugins.forEach(function(plugin) {
+          plugin.init(rcl, wflib, engine);
+      });
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
         if (opts['-s']) {
           // Flag -s is present: send all input signals to the workflow -> start execution
           wflib.getWfIns(wfId, false, function(err, wfIns) {
-            engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) { 
+            engine.wflib.getSignalInfo(wfId, wfIns, function(err, sigs) {
               engine.emitSignals(sigs);
             });
           });
@@ -75,7 +98,7 @@ function hflow_run() {
     rcl.select(dbId, function(err, rep) {
       //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
         wflib.createInstanceFromFile(wffile, '', function(err, id) {
-          cb(err, id); 
+          cb(err, id);
         });
       //});
     });

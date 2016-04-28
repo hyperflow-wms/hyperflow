@@ -15,6 +15,10 @@ function connect() {
 
     connection.then(function(conn) {
         console.log("[AMQP] Connected!");
+
+        return when(conn.createChannel().then(function(ch) {
+          var ok = ch.assertQueue('hyperflow.jobs', {durable: true}).then(function(qok) { return qok.queue; });
+        }));
     }, function(err) {
         console.error('[AMQP] Connect failed: %s', err);
     })
