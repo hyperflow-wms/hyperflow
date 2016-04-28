@@ -1,6 +1,6 @@
 /* HyperFlow workflow engine
  ** API over redis-backed workflow instance
- ** Author: Bartosz Balis (2013-2014)
+ ** Author: Bartosz Balis (2013-2015)
  */
 var fs = require('fs'),
     redis = require('redis'),
@@ -79,6 +79,7 @@ exports.init = function(redisClient) {
     function public_createInstance(wfJson, baseUrl, cb) { 
         var wfId, procs, sigs, funs, schemas, ins, outs;
         var start, finish; 
+        var recoveryMode = false;
 
         // preprocessing: converts signal names to array indexes, etc.
         var preprocess = function() {
@@ -201,12 +202,12 @@ exports.init = function(redisClient) {
                     "status", "waiting", 
                     function(err, ret) { });
 
-            var multi = rcl.multi(); // FIXME: change this to async.parallel
+           var multi = rcl.multi(); // FIXME: change this to async.parallel
 
             var addSigInfo = function(sigId) {
                 var score = -1;
                 var sigObj = sigs[sigId-1];
-                sigObj.status = "not_ready"; // FIXME: remove (deprecated)
+                //sigObj.status = "not_ready"; // FIXME: remove (deprecated)
                 sigKey = wfKey+":data:"+sigId;
                 if (sigObj.control) { // this is a control signal
                     sigObj.type = "control";
@@ -215,7 +216,8 @@ exports.init = function(redisClient) {
                 } else {              // this is a data signal
                     score = 0;
                 }
-                sigObj.uri = baseUri + '/sigs/' + sigId; 
+                // FIXME: signal uri removed temporarily (currently unused)
+                //sigObj.uri = baseUri + '/sigs/' + sigId; 
 
                 if (sigObj.schema && value(sigObj.schema).typeOf(Object)) { // this is an inline schema 
                     //onsole.log("INLINE SCHEMA", sigObj.schema);
@@ -401,12 +403,25 @@ exports.init = function(redisClient) {
 
         rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
             if (err) { return cb(err); }
+
+            // FIXME: "setnx" should be done synchronously, before moving to createWfInstance 
+            // (but a race is probably impossible such that "recoveryMode" is set incorrectly)
+            if (wfJson.persistenceId) {
+                rcl.setnx("wftrace:" + wfJson.persistenceId, "1", function(err, ret) {
+                    console.log(err, ret);
+                    if (ret == 0) { // the persistence key already exists in redis --- we go to recovery mode
+                        recoveryMode = true;
+                    }
+                });
+            }
+ 
             wfId = ret.toString();
             //onsole.log("wfId="+wfId);
             preprocess();
             //onsole.log(JSON.stringify(wfJson, null, 2));
             createWfInstance(function(err) {
-                cb(null, wfId);
+                console.log("RECOVERY MODE:", recoveryMode);
+                cb(null, wfId, recoveryMode); // FIXME: is race with 'setnx' above impossible?
             });
         });
     }
@@ -775,6 +790,7 @@ exports.init = function(redisClient) {
     }
 
     function popInput(wfId, taskId, sigId, cb) {
+        //onsole.log("POP INPUT", wfId, taskId, sigId);
         var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
         var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
         var isStickyKey = "wf:"+wfId+":task:"+taskId+":sticky";
@@ -1940,7 +1956,7 @@ return {
     getWfTasks: public_getWfTasks,
     getWfIns: public_getWfIns,
     getWfOuts: public_getWfOuts,
-    getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
+    //getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
     getTaskInfo: public_getTaskInfo,
     //getTaskInfoFull: public_getTaskInfoFull,
     //getTaskIns: public_getTaskIns,

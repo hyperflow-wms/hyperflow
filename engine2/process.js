@@ -285,8 +285,9 @@ var ProcLogic = function() {
             if (proc.sigValues) {
                 proc.sigValues.forEach(function(sigs) {
                     sigs.forEach(function(sig) {
+                        // FIXME: remove "sig" at the end of event (for debugging only)
                         proc.engine.eventServer.emit("prov", 
-                            ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]
+                            ["read", +proc.appId, +proc.procId, +proc.firingId, +sig._id, +sig.sigIdx, sig]
                         );
                     });
 
@@ -319,6 +320,7 @@ var ProcLogic = function() {
 		    //console.log("FUNC INVOKED");
 		    //console.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
 		    //console.log("OUTS: ", outs);
+                    proc.engine.eventServer.emit("persist", [proc.appId, proc.procId, proc.firingId, funcIns, proc.sigValues, funcOuts, outs]);
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );
@@ -326,6 +328,10 @@ var ProcLogic = function() {
 
     this.postInvoke = function(outs, asyncInvocation, funcIns, funcOuts, firingId, firingSigs, cb) {
         var proc = this;
+
+        // the function can return 'null' in order not to emit any signals (e.g. the process can
+        // be stateful and emit an output for every three firings). 
+        if (outs == null) return cb();
 
         var outValues = outs;
         for (var i=0; i<funcOuts.length; ++i) {

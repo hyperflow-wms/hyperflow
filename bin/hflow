@@ -17,7 +17,7 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...]\n\
   hflow start-server [-p <plugin_module_name> ...]\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
@@ -48,6 +48,17 @@ function load_plugin(plugin_name) {
     }
 }
 
+function append_file(data, cb) {
+    fs.appendFile(data["filename"], JSON.stringify(data["args"]) + "\n", function (err) {
+        if (err) {
+            console.log("Error appending to file! " + err);
+        }
+        cb();
+    });
+}
+
+var queue = async.queue(append_file, 1);
+
 function hflow_start() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib);
     server.listen(process.env.PORT, function() { });
@@ -77,9 +88,36 @@ function hflow_run() {
       // engine.eventServer.on('trace.*', function(exec, args) {
       //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
+
       plugins.forEach(function(plugin) {
           plugin.init(rcl, wflib, engine);
       });
+
+      if (opts['--log-provenance']) {
+          engine.logProvenance = true;
+          var provenance_output = opts['--provenance-output'] || 'provenance_log.txt';
+          if (!pathtool.isAbsolute(provenance_output)) {
+              provenance_output = pathtool.join(process.cwd(), provenance_output);
+          }
+          engine.eventServer.on('prov', function() {
+              queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
+                  if(err) {
+                      console.log("queue errror! " + err);
+                  }
+              });
+          });
+      }
+
+      // FIXME: for debugging
+      engine.eventServer.on('persist', function() {
+              queue.push( { "filename": "persist_log.txt", "args": arguments}, function(err) {
+                  if(err) {
+                  console.log("queue errror! " + err);
+                  }
+                  });
+              });
+
+
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
         if (opts['-s']) {
@@ -104,9 +142,13 @@ function hflow_run() {
     });
   }
 
-  createWf(function(err, wfId) {
-    runWf(wfId);
-  });
+   var startWf = function() {
+       createWf(function (err, wfId) {
+           runWf(wfId);
+       });
+   };
+
+    startWf();
 }
 
 function hflow_send() {

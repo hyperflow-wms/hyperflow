@@ -54,12 +54,8 @@ var Engine = function(config, wflib, wfId, cb) {
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
 
     this.logProvenance = false;
-                          
-    this.eventServer.on('prov', function(data) {
-        console.log(arguments[1]);
-    });
 
-    this.emulate = config.emulate == "true" ? true: false;       
+    this.emulate = config.emulate == "true" ? true: false;
 
     this.startTime = (new Date()).getTime(); // the start time of this engine (workflow)
 
@@ -208,9 +204,16 @@ Engine.prototype.emitSignals = function(sigs, cb) {
             engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
                 // at this point "s" contains unique 'sigIdx' set in 'sendSignal' => we can emit "write" 
                 // provenance events (for signals which have "source", i.e. were written by a process)
+                // FIXME: remove "sig" at the end of event (for debugging only)
                 if (s.source && engine.logProvenance) { 
-                    engine.eventServer.emit("prov", ["write", +engine.wfId, s.source, s.firingId, s._id, s.sigIdx]);
+                    engine.eventServer.emit("prov", ["write", +engine.wfId, +s.source, +s.firingId, +s._id, +s.sigIdx, sig]);
                 }
+
+                // log signal payload in the provenance log
+                if (engine.logProvenance) {
+                    engine.eventServer.emit("prov", ["sig", s]);
+                }
+
 
                 if (!err) {
                     // notify sinks that the signals have arrived
