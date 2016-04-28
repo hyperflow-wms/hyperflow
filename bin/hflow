@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : {};
+var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined
 
 
 var docopt = require('docopt').docopt,
@@ -8,7 +8,7 @@ var docopt = require('docopt').docopt,
     fs = require('fs'),
     pathtool = require('path'),
     redis = require('redis'),
-    rcl = redis.createClient(redisURL),
+    rcl = redisURL ? redis.createClient(redisURL): redis.createClient(),
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
