@@ -204,9 +204,16 @@ Engine.prototype.emitSignals = function(sigs, cb) {
             engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
                 // at this point "s" contains unique 'sigIdx' set in 'sendSignal' => we can emit "write" 
                 // provenance events (for signals which have "source", i.e. were written by a process)
+                // FIXME: remove "sig" at the end of event (for debugging only)
                 if (s.source && engine.logProvenance) { 
-                    engine.eventServer.emit("prov", ["write", +engine.wfId, +s.source, +s.firingId, +s._id, +s.sigIdx]);
+                    engine.eventServer.emit("prov", ["write", +engine.wfId, +s.source, +s.firingId, +s._id, +s.sigIdx, sig]);
                 }
+
+                // log signal payload in the provenance log
+                if (engine.logProvenance) {
+                    engine.eventServer.emit("prov", ["sig", s]);
+                }
+
 
                 if (!err) {
                     // notify sinks that the signals have arrived
