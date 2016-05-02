@@ -317,10 +317,23 @@ var ProcLogic = function() {
                 proc.engine.eventServer,
                 proc.engine.config, 
                 function(err, outs, options) {
-		    //console.log("FUNC INVOKED");
-		    //console.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
-		    //console.log("OUTS: ", outs);
-                    proc.engine.eventServer.emit("persist", [proc.appId, proc.procId, proc.firingId, funcIns, proc.sigValues, funcOuts, outs]);
+		    //onsole.log("FUNC INVOKED");
+		    //onsole.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
+		    //onsole.log("OUTS: ", outs);
+                    var outsArray = [];
+                    if (outs == null) {
+                       outsArray = null; 
+                    } else {
+                        outs.forEach(function(out) {
+                            outsArray.push(out);
+                        });
+                    }
+
+                    // persist outputs (but only if we're not just recovering!)
+                    if (!options || !options.recovered) {
+                        proc.engine.eventServer.emit("persist", 
+                            ["fired", proc.appId, proc.procId, proc.firingId, outsArray]);
+                    }
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );

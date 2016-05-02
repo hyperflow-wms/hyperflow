@@ -406,6 +406,10 @@ exports.init = function(redisClient) {
 
             // FIXME: "setnx" should be done synchronously, before moving to createWfInstance 
             // (but a race is probably impossible such that "recoveryMode" is set incorrectly)
+            // FIXME: probably to be removed, recovery mode will be set via option to 'hflow' 
+            // NOTE: we probably don't need persistent IDs because there are no persistent objects:
+            //       we recover state of the workflow which is no longer needed after the workflow
+            //       is finished executing. (IOW, workflow apps are different than business apps)
             if (wfJson.persistenceId) {
                 rcl.setnx("wftrace:" + wfJson.persistenceId, "1", function(err, ret) {
                     console.log(err, ret);
@@ -420,7 +424,7 @@ exports.init = function(redisClient) {
             preprocess();
             //onsole.log(JSON.stringify(wfJson, null, 2));
             createWfInstance(function(err) {
-                console.log("RECOVERY MODE:", recoveryMode);
+                //onsole.log("RECOVERY MODE:", recoveryMode);
                 cb(null, wfId, recoveryMode); // FIXME: is race with 'setnx' above impossible?
             });
         });
@@ -1381,6 +1385,22 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
     isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
     isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
 
+    // convert an array of signals to an object-array 
+    var convertSigs2ObjArray = function(sigs) {
+        if (sigs == null) return null;
+        function Arg() {} 
+        Arg.prototype = Object.create(Array.prototype);
+        var outSigs = new Arg;
+        sigs.forEach(function(s) {
+            outSigs.push(s);
+        });
+        outSigs.forEach(function(s, idx) {
+            outSigs[s.name] = outSigs[idx];
+        });
+        return outSigs;
+    }
+
+    // TODO: reuse convertSigs2ObjArray
     var convertSigValuesToFunctionInputs = function() {
         function Arg() {} // arguments will be an Array-like object
         Arg.prototype = Object.create(Array.prototype);
@@ -1403,7 +1423,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
         return funcIns;
     }
 
-    var ins = convertSigValuesToFunctionInputs(), outsTmp = [];
+    var ins = convertSigValuesToFunctionInputs();
 
     // TODO: for each ins[i].data[j], create a map (i,j) => metadata (for provenance logging)
     // In functions user-defined provenance could look like:
@@ -1411,14 +1431,27 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
     
     //onsole.log("FUNC INS", ins);
 
-    public_getTaskInfo(wfId, procId, function(err, taskInfo) {
+    public_getTaskInfo(wfId, procId, function(err, procInfo) {
         if (err) return cb(err); 
 
-        var asyncTasks = [];
+        var prepareFuncOutputs = function(callback) {
+            // if in recovery mode, use recovery data --> pass outputs that were produced
+            // during the previous run. The function will decide if re-execution is needed.
+            if (appConfig.recovery) {
+                var key = procId + "_" + firingId;
+                // if outputs from this firing have been persisted in the previous execution, we reuse them!
+                if (key in appConfig.recoveryData.outputs) {
+                    var outs = convertSigs2ObjArray(appConfig.recoveryData.outputs[key]);
+                    console.log("RECOVERY DATA FOUND!!!", outs);
+                    return callback(outs, true);
+                }
+            }
 
-        // retrieve task outputs given in 'outsIds'
-        for (i=0; i<outsIds.length; ++i) {
-            (function(idx) {
+            var asyncTasks = [], outsTmp = [];
+
+            // retrieve task outputs given in 'outsIds'
+            for (i=0; i<outsIds.length; ++i) {
+                var idx = i;
                 asyncTasks.push(function(callback) {
                     var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
                     rcl.hgetall(dataKey, function(err, dataInfo) {
@@ -1426,28 +1459,35 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                         callback(err, dataInfo);
                     });
                 })
-            })(i);
+            }
+
+            /*function Arg() {} // make 'outs' an Array-like object
+            Arg.prototype = Object.create(Array.prototype);
+            var outs = new Arg;*/
+
+            async.parallel(asyncTasks, function done(err, result) {
+                if (err) return cb(err);
+
+                // convert 'outsTmp' array to array-like object 'outs'
+                var outs = convertSigs2ObjArray(outsTmp);
+                //console.log("OUTS", outs);
+
+                /*for (var i=0; i<outsTmp.length; i++) {
+                    outs.push(outsTmp[i]);
+                    outs[outsTmp[i].name] = outs[i];
+                }*/
+                callback(outs, false);
+            });
         }
 
-        function Arg() {} // make 'outs' an Array-like object
-        Arg.prototype = Object.create(Array.prototype);
-        var outs = new Arg;
-
-        async.parallel(asyncTasks, function done(err, result) {
-            if (err) return cb(err);
-
-            // convert 'outsTmp' array to array-like object 'outs'
-            for (var i=0; i<outsTmp.length; i++) {
-                outs.push(outsTmp[i]);
-                outs[outsTmp[i].name] = outs[i];
-            }
+        prepareFuncOutputs(function(outs, recovered) {
             if (emulate) {
-                setTimeout(function() {
-                    return cb(null, outs);
+                return setTimeout(function() {
+                    cb(null, outs);
                 }, 100);
             }
 
-            if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
+            if ((procInfo.fun == "null") || (!procInfo.fun)) {
                 return cb(new Error("No function defined for the process."));
             }
 
@@ -1455,7 +1495,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
             // INVOKE THE FUNCTION //
             /////////////////////////
 
-            rcl.hgetall("wf:"+wfId+":functions:"+taskInfo.fun, function(err, fun) {
+            rcl.hgetall("wf:"+wfId+":functions:"+procInfo.fun, function(err, fun) {
                 if (err) return cb(err);
 
                 if (appConfig.workdir) {
@@ -1474,7 +1514,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 var funPath = pathTool.join(appConfig.workdir ? appConfig.workdir : "", funModuleName);
 
                 try {
-                    f = require(funPath)[taskInfo.fun];
+                    f = require(funPath)[procInfo.fun];
                 } catch(err) {
                     //console.log(err);
                     //console.log("functions.js doesn't exist, trying default 'functions' module...");
@@ -1484,24 +1524,24 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // if the function could not be loaded, look in the core HyperFlow functions
                 if (!f) {
                     funPath = pathTool.join(require('path').dirname(require.main.filename), "..", "functions");
-                    f = require(funPath)[taskInfo.fun];
+                    f = require(funPath)[procInfo.fun];
                 }
 
                 // the function couldn't be found anywhere
                 if (!f) {
                     throw(new Error("Unable to load the process function: " + 
-                                taskInfo.fun + " in module: " + funPath + ", exception:  " + err));
+                                procInfo.fun + " in module: " + funPath + ", exception:  " + err));
                 }
 
-                //onsole.log("FUNCTION", taskInfo.fun, module);
-                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
-                //onsole.log("FUNCTION", taskInfo.fun, module);
-                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
+                //onsole.log("FUNCTION", procInfo.fun, module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", procInfo.fun);
+                //onsole.log("FUNCTION", procInfo.fun, module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", procInfo.fun);
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
-                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
-                var conf = taskInfo.config ? JSON.parse(taskInfo.config): {}; 
-                //var executor = taskInfo.executor ? taskInfo.executor: null;
+                //onsole.log(JSON.stringify(procInfo.config));  //DEBUG
+                var conf = procInfo.config ? JSON.parse(procInfo.config): {}; 
+                //var executor = procInfo.executor ? procInfo.executor: null;
 
                 //onsole.log("INS VALUES", insValues);
                 if (eventServer !== 'undefined') {
@@ -1514,8 +1554,12 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
 		conf.procId = procId;
 		conf.firingId = firingId;
 
+                if (recovered) { conf.recovered = true; }
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
+                    if (recovered) { 
+                        if (!options) { options = { recovered: true } }
+                    }
                     cb(null, outs, options);
                 });
             });

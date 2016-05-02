@@ -2,7 +2,6 @@
 
 var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined
 
-
 var docopt = require('docopt').docopt,
     spawn = require('child_process').spawn,
     fs = require('fs'),
@@ -13,11 +12,12 @@ var docopt = require('docopt').docopt,
     Engine = require('../engine2'),
     async = require('async'),
     dbId = 0,
-    plugins = [];
+    plugins = [],
+    recoveryData = { 'input': [], 'outputs': {} };
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [--recover <persistence-log>] [-p <plugin_module_name> ...]\n\
   hflow start-server [-p <plugin_module_name> ...]\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
@@ -83,6 +83,35 @@ function hflow_run() {
 
   var runWf = function(wfId) {
     var config = {"emulate":"false", "workdir": pathtool.resolve(wfpath)};
+    
+    if (opts['--recover']) {
+        var recoveryFile = opts['<persistence-log>'];
+        var persistLog = fs.readFileSync(recoveryFile, 'utf8').toString().trim().split('\n');
+        persistLog.forEach(function(entry, index) {
+                persistLog[index] = JSON.parse(entry)['1'];
+        });
+
+        persistLog.forEach(function(entry) {
+            if (entry[0] == 'input') {
+                var sigData = entry[2];
+                delete sigData.sigIdx;
+                recoveryData['input'].push(sigData);
+            } else if (entry[0] == 'fired') {
+                var procId = entry[2], 
+                firingId = entry[3], 
+                outs = entry[4],
+                key = procId + '_' + firingId;
+                recoveryData.outputs[key] = outs;
+            }
+       });
+
+       config.recoveryData = recoveryData;
+       config.recovery = true;
+
+       //console.log(JSON.stringify(recoveryData, null, 2));
+       //process.exit(1);
+    }
+
     var engine = new Engine(config, wflib, wfId, function(err) {
       // This represent custom plugin listening on event from available eventServer
       // engine.eventServer.on('trace.*', function(exec, args) {
@@ -101,22 +130,24 @@ function hflow_run() {
           }
           engine.eventServer.on('prov', function() {
               queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
-                  if(err) {
+                  if (err) {
                       console.log("queue errror! " + err);
                   }
               });
           });
       }
 
-      // FIXME: for debugging
+      // FIXME: generate unique persist-log file name
+      // FIXME: implement a plugin for different persistence backends
+      var logFileName = "persist_log.txt";
+      var persistlog=pathtool.join(process.cwd(), logFileName);
       engine.eventServer.on('persist', function() {
-              queue.push( { "filename": "persist_log.txt", "args": arguments}, function(err) {
-                  if(err) {
+          queue.push( { "filename": persistlog, "args": arguments }, function(err) {
+              if (err) {
                   console.log("queue errror! " + err);
-                  }
-                  });
-              });
-
+              }
+          });
+      });
 
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
