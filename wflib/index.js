@@ -1449,14 +1449,15 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
 
             // retrieve task outputs given in 'outsIds'
             for (i=0; i<outsIds.length; ++i) {
-                var idx = i;
-                asyncTasks.push(function(callback) {
-                    var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
-                    rcl.hgetall(dataKey, function(err, dataInfo) {
-                        outsTmp[+idx] = dataInfo;
-                        callback(err, dataInfo);
-                    });
-                })
+                (function(idx) {
+                    asyncTasks.push(function(callback) {
+                        var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
+                        rcl.hgetall(dataKey, function(err, dataInfo) {
+                            outsTmp[+idx] = dataInfo;
+                            callback(err, dataInfo);
+                        });
+                    })
+                })(i);
             }
 
             /*function Arg() {} // make 'outs' an Array-like object
