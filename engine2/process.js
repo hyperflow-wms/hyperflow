@@ -329,11 +329,13 @@ var ProcLogic = function() {
                         });
                     }
 
-                    // persist outputs (but only if we're not just recovering!)
-                    if (!options || !options.recovered) {
+                    // persist outputs (originally persistence was disabled DURING recovery, 
+                    // but it's probably wrong: currently even when recovering from a previous log, 
+                    // workflow execution is persisted normally to a new log
+                    //if (!options || !options.recovered) {
                         proc.engine.eventServer.emit("persist", 
                             ["fired", proc.appId, proc.procId, proc.firingId, outsArray]);
-                    }
+                    //}
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );

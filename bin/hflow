@@ -13,11 +13,13 @@ var docopt = require('docopt').docopt,
     async = require('async'),
     dbId = 0,
     plugins = [],
-    recoveryData = { 'input': [], 'outputs': {} };
+    recoveryMode = false, recoveryData = { 'input': [], 'outputs': {} },
+    wfDirFull; // logged in the persistence journal
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [--recover <persistence-log>] [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...]\n\
+  hflow recover <persistence-log> [-p <plugin_module_name> ...]\n\
   hflow start-server [-p <plugin_module_name> ...]\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
@@ -35,6 +37,8 @@ if (opts.run) {
   hflow_send();
 } else if (opts['start-server']) {
   hflow_start();
+} else if (opts.recover) {
+  hflow_recover();
 }
 
 function load_plugin(plugin_name) {
@@ -66,7 +70,7 @@ function hflow_start() {
 }
 
 function hflow_run() {
-  var wfpath = opts['<workflow_dir_or_file>'],
+  var wfpath = recoveryMode ? wfDirFull: opts['<workflow_dir_or_file>'], // if this is recovery, full wf dir path was already read from the journal, otherwise it will be resolved
       wfstats = fs.lstatSync(wfpath),
       wffile;
 
@@ -81,36 +85,29 @@ function hflow_run() {
     wfpath = pathtool.dirname(wfpath);
   }
 
-  var runWf = function(wfId) {
-    var config = {"emulate":"false", "workdir": pathtool.resolve(wfpath)};
+  wfDirFull = pathtool.resolve(wfpath);
+
+  var runWf = function(wfId, wfName) {
+
+    /*function makeId() {
+        var id = [];
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        for( var i=0; i < 5; i++ )
+            id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
+
+        return id.join("");
+    }*/
+
+    var config = {"emulate":"false", "workdir": wfDirFull};
     
-    if (opts['--recover']) {
-        var recoveryFile = opts['<persistence-log>'];
-        var persistLog = fs.readFileSync(recoveryFile, 'utf8').toString().trim().split('\n');
-        persistLog.forEach(function(entry, index) {
-                persistLog[index] = JSON.parse(entry)['1'];
-        });
-
-        persistLog.forEach(function(entry) {
-            if (entry[0] == 'input') {
-                var sigData = entry[2];
-                delete sigData.sigIdx;
-                recoveryData['input'].push(sigData);
-            } else if (entry[0] == 'fired') {
-                var procId = entry[2], 
-                firingId = entry[3], 
-                outs = entry[4],
-                key = procId + '_' + firingId;
-                recoveryData.outputs[key] = outs;
-            }
-       });
-
-       config.recoveryData = recoveryData;
-       config.recovery = true;
-
-       //console.log(JSON.stringify(recoveryData, null, 2));
-       //process.exit(1);
+    if (recoveryMode) {
+        config.recoveryData = recoveryData;
+        config.recovery = true;
     }
+
+    //console.log(JSON.stringify(recoveryData, null, 2));
+    //process.exit(1);
 
     var engine = new Engine(config, wflib, wfId, function(err) {
       // This represent custom plugin listening on event from available eventServer
@@ -137,9 +134,11 @@ function hflow_run() {
           });
       }
 
+      // TODO: implement a plugin for different persistence backends
       // FIXME: generate unique persist-log file name
-      // FIXME: implement a plugin for different persistence backends
-      var logFileName = "persist_log.txt";
+      var date = new Date().toISOString().replace(new RegExp('[T:.]', 'g'), '-').replace('Z', '');
+      var logFileName = (wfName ? wfName: 'wf').concat('.' + date + ".log");
+      console.log("Persistence log:", logFileName);
       var persistlog=pathtool.join(process.cwd(), logFileName);
       engine.eventServer.on('persist', function() {
           queue.push( { "filename": persistlog, "args": arguments }, function(err) {
@@ -148,6 +147,9 @@ function hflow_run() {
               }
           });
       });
+
+      // we persist the full workflow directory path and execution options used to run the workflow
+      engine.eventServer.emit('persist', ["info", wfDirFull, JSON.stringify(opts)]);
 
       engine.runInstance(function(err) {
         console.log("Wf id="+wfId);
@@ -166,20 +168,49 @@ function hflow_run() {
   var createWf = function(cb) {
     rcl.select(dbId, function(err, rep) {
       //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
-        wflib.createInstanceFromFile(wffile, '', function(err, id) {
-          cb(err, id);
+        wflib.createInstanceFromFile(wffile, '', function(err, id, wfJson) {
+          cb(err, id, wfJson.name);
         });
       //});
     });
   }
 
    var startWf = function() {
-       createWf(function (err, wfId) {
-           runWf(wfId);
+       createWf(function (err, wfId, wfName) {
+           runWf(wfId, wfName);
        });
    };
 
-    startWf();
+   startWf();
+}
+
+function hflow_recover() {
+    var recoveryFile = opts['<persistence-log>'];
+    var persistLog = fs.readFileSync(recoveryFile, 'utf8').toString().trim().split('\n');
+    persistLog.forEach(function(entry, index) {
+            persistLog[index] = JSON.parse(entry)['1'];
+    });
+
+    persistLog.forEach(function(entry) {
+        if (entry[0] == 'info') { // full wf dir path and command line options
+            wfDirFull = entry[1]; 
+            opts = JSON.parse(entry[2]); // we recover command line options used to run the workflow
+        } else if (entry[0] == 'input') {
+            var sigData = entry[2];
+            delete sigData.sigIdx;
+            recoveryData['input'].push(sigData);
+        } else if (entry[0] == 'fired') {
+            var procId = entry[2], 
+            firingId = entry[3], 
+            outs = entry[4],
+            key = procId + '_' + firingId;
+            recoveryData.outputs[key] = outs;
+        }
+    });
+
+    recoveryMode = true;
+
+    hflow_run();
 }
 
 function hflow_send() {

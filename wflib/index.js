@@ -43,7 +43,7 @@ exports.init = function(redisClient) {
 	  global_hfid = uuid.v1();
 
 	  // this object holds global information about this HF engine instance
-	  // written to redis as a hash map with key "globalinfo:<uuid>"
+	  // written to redis as a hash map with key "hflow:<uuid>"
 	  // TODO: add more attributes
 	  globalInfo.hf_version = "???";
 
@@ -51,7 +51,7 @@ exports.init = function(redisClient) {
 	}
     }
 
-   console.log("hfid:", global_hfid);
+    console.log("hfid:", global_hfid);
     /*rcl.on("error", function (err) {
       console.log("redis error: " + err);
       });*/
@@ -63,14 +63,12 @@ exports.init = function(redisClient) {
     function public_createInstanceFromFile(filename, baseUrl, cb) {
         fs.readFile(filename, 'utf8', function(err, data) {
             if (err) { return cb(err); }
-            var wfname = filename.split('.')[0];
-            rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
-                var start = (new Date()).getTime(), finish;
-                public_createInstance(JSON.parse(data), baseUrl, function(err, wfId) {
-                    finish = (new Date()).getTime();
-                    console.log("createInstance time: "+(finish-start)+"ms");
-                    err ? cb(err): cb(null, wfId);
-                });
+            var start = (new Date()).getTime(), finish;
+            var wfJson = JSON.parse(data);
+            public_createInstance(wfJson, baseUrl, function(err, wfId) {
+                finish = (new Date()).getTime();
+                console.log("createInstance time: "+(finish-start)+"ms");
+                err ? cb(err): cb(null, wfId, wfJson);
             });
         });
     }
@@ -1442,7 +1440,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // if outputs from this firing have been persisted in the previous execution, we reuse them!
                 if (key in appConfig.recoveryData.outputs) {
                     var outs = convertSigs2ObjArray(appConfig.recoveryData.outputs[key]);
-                    console.log("RECOVERY DATA FOUND!!!", outs);
+                    //onsole.log("RECOVERY DATA FOUND!!!", outs);
                     return callback(outs, true);
                 }
             }
@@ -1558,7 +1556,11 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
                     if (recovered) { 
-                        if (!options) { options = { recovered: true } }
+                        if (!options) { 
+                            options = { recovered: true } 
+                        } else {
+                            options.recovered = true;
+                        }
                     }
                     cb(null, outs, options);
                 });
