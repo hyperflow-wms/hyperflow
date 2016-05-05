@@ -195,6 +195,7 @@ function hflow_recover() {
         if (entry[0] == 'info') { // full wf dir path and command line options
             wfDirFull = entry[1]; 
             opts = JSON.parse(entry[2]); // we recover command line options used to run the workflow
+            opts.s = false; // option 's' shold never be true when recovering (to be removed altogether)
         } else if (entry[0] == 'input') {
             var sigData = entry[2];
             delete sigData.sigIdx;
