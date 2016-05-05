@@ -139,7 +139,7 @@ function hflow_run() {
       var date = new Date().toISOString().replace(new RegExp('[T:.]', 'g'), '-').replace('Z', '');
       var logFileName = (wfName ? wfName: 'wf').concat('.' + date + ".log");
       console.log("Persistence log:", logFileName);
-      var persistlog=pathtool.join(process.cwd(), logFileName);
+      var persistlog=pathtool.join(wfDirFull, logFileName);
       engine.eventServer.on('persist', function() {
           queue.push( { "filename": persistlog, "args": arguments }, function(err) {
               if (err) {
