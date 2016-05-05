@@ -1,0 +1,5 @@
+Sum of squares -- HyperFlow's "Hello World" workflow. 
+
+Given a sequence of numbers, produces the sum of squares of every three of them. 
+
+The squares are computed in parallel by the "Sqr" process. The "ordering" property enforces that the results are produced in the correct order (try running without it). 
