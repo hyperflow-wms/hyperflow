@@ -77,7 +77,7 @@ exports.init = function(redisClient) {
     function public_createInstance(wfJson, baseUrl, cb) { 
         var wfId, procs, sigs, funs, schemas, ins, outs;
         var start, finish; 
-        var recoveryMode = false;
+        //var recoveryMode = false;
 
         // preprocessing: converts signal names to array indexes, etc.
         var preprocess = function() {
@@ -408,22 +408,19 @@ exports.init = function(redisClient) {
             // NOTE: we probably don't need persistent IDs because there are no persistent objects:
             //       we recover state of the workflow which is no longer needed after the workflow
             //       is finished executing. (IOW, workflow apps are different than business apps)
-            if (wfJson.persistenceId) {
+            /*if (wfJson.persistenceId) {
                 rcl.setnx("wftrace:" + wfJson.persistenceId, "1", function(err, ret) {
                     console.log(err, ret);
                     if (ret == 0) { // the persistence key already exists in redis --- we go to recovery mode
                         recoveryMode = true;
                     }
                 });
-            }
+            }*/
  
             wfId = ret.toString();
-            //onsole.log("wfId="+wfId);
             preprocess();
-            //onsole.log(JSON.stringify(wfJson, null, 2));
             createWfInstance(function(err) {
-                //onsole.log("RECOVERY MODE:", recoveryMode);
-                cb(null, wfId, recoveryMode); // FIXME: is race with 'setnx' above impossible?
+                cb(null, wfId); // FIXME: is race with 'setnx' above impossible? (EDIT: pending removal)
             });
         });
     }
@@ -1484,6 +1481,12 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 return setTimeout(function() {
                     cb(null, outs);
                 }, 100);
+            }
+
+            // when this is a recovered firing, unless the process has set flag "executeWhenRecovering",
+            // we don't invoke the function, just immediately return the recovered outputs!
+            if (recovered && !procInfo.executeWhenRecovering) {
+                return cb(null, outs, {"recovered": "true"});
             }
 
             if ((procInfo.fun == "null") || (!procInfo.fun)) {
