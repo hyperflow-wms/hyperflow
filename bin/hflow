@@ -95,7 +95,7 @@ function handle_writes(entries, cb) {
     });
 }
 
-var cargo = async.cargo(handle_writes, 5000000000);
+var cargo = async.cargo(handle_writes, 5000);
 
 function hflow_start() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib);
