@@ -52,16 +52,50 @@ function load_plugin(plugin_name) {
     }
 }
 
-function append_file(data, cb) {
-    fs.appendFile(data["filename"], JSON.stringify(data["args"]) + "\n", function (err) {
+function append_file(filename, contents, cb) {
+    fs.appendFile(filename, contents, function (err) {
         if (err) {
             console.log("Error appending to file! " + err);
+            cb(err);
         }
         cb();
     });
 }
 
-var queue = async.queue(append_file, 1);
+function handle_writes(entries, cb) {
+    var data = {};
+    var writes = [];
+
+    entries.forEach(function (entry) {
+        var filename = entry["filename"];
+        var contents = entry["args"];
+
+        if (filename in data) {
+            data[filename] += contents + '\n';
+        } else {
+            data[filename] = contents + '\n';
+        }
+    });
+
+    for (var filename in data) {
+        if (data.hasOwnProperty(filename)) {
+            writes.push(function (cb) {
+                    append_file(filename, data[filename], cb);
+                }
+            );
+        }
+    }
+
+    async.parallel(writes, function (err) {
+        if (err) {
+            cb(err);
+            return;
+        }
+        cb();
+    });
+}
+
+var cargo = async.cargo(handle_writes, 5000000000);
 
 function hflow_start() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib);
@@ -126,9 +160,9 @@ function hflow_run() {
               provenance_output = pathtool.join(process.cwd(), provenance_output);
           }
           engine.eventServer.on('prov', function() {
-              queue.push( { "filename": provenance_output, "args": arguments}, function(err) {
+              cargo.push( { "filename": provenance_output, "args": JSON.stringify(arguments)}, function(err) {
                   if (err) {
-                      console.log("queue errror! " + err);
+                      console.log("cargo errror! " + err);
                   }
               });
           });
@@ -141,9 +175,9 @@ function hflow_run() {
       console.log("Persistence log:", logFileName);
       var persistlog=pathtool.join(wfDirFull, logFileName);
       engine.eventServer.on('persist', function() {
-          queue.push( { "filename": persistlog, "args": arguments }, function(err) {
+          cargo.push( { "filename": persistlog, "args": JSON.stringify(arguments) }, function(err) {
               if (err) {
-                  console.log("queue errror! " + err);
+                  console.log("cargo errror! " + err);
               }
           });
       });
