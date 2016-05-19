@@ -42,7 +42,8 @@
     "docopt": "",
     "xpath": "",
     "xmldom": "",
-    "shell-quote": "1.4.2"
+    "shell-quote": "1.4.2",
+    "adm-zip": ""
   },
   "files": [
     "LICENSE",

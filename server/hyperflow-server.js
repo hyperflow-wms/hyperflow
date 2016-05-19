@@ -12,15 +12,19 @@
  */
 
 
-var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : {};
+var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined;
 // for express
 var express = require('express'),
     cons = require('consolidate'),
     http = require('http'),
+    os = require('os'),
+    fs = require('fs'),
+    pathtool = require('path'),
+    AdmZip = require('adm-zip'),
     app = express();
 
 var redis = require('redis'),
-    rcl = redis.createClient(redisURL);
+    rcl = redisURL ? redis.createClient(redisURL): redis.createClient();
 
 var server = http.createServer(app);
 var wflib = require('../wflib').init(rcl);
@@ -88,27 +92,114 @@ app.get('/apps', function(req, res) {
 });
 
 // creates a new workflow instance ('app')
-// body must be a valid workflow description in JSON
+// body can be:
+// - a valid workflow description in JSON
+// - or a complete workflow directory packed as zip
+// FIXME: validate workflow description
+// FIXME: add proper/more detailed error info instead of "badRequest(res)"
 app.post('/apps', function(req, res) {
-    var wfJson = req.body;
-    var baseUrl = '';
-    //onsole.log(wfJson);
+    var ctype = req.headers["content-type"];
 
-    // FIXME: validate workflow description
-    // FIXME: add proper/more detailed error info instead of "badRequest(res)"
-    wflib.createInstance(wfJson, baseUrl, function(err, appId) {
-        if (err) return badRequest(res);
-        engine[appId] = new Engine({"emulate": "false"}, wflib, appId, function(err) {
-            if (err) return badRequest(res);
-            engine[appId].runInstance(function(err) {
-                if (err) return badRequest(res);
-                res.header('Location', req.url + '/' + appId);
-                res.send(201, null);
-                //res.redirect(req.url + '/' + appId, 302);
-                // TODO: implement sending all input signals (just like -s flag in runwf.js)
-            });
-        });
-    });
+    function makeId6() {
+	var id = [];
+	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+	for (var i=0; i<6; i++ ) {
+	    id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
+	}
+
+	return id.join("");
+    }
+
+    var runWorkflow = function(wfDir, appId) {
+	var config = {"emulate":"false", "workdir": wfDir};
+	engine[appId] = new Engine(config, wflib, appId, function(err) {
+	    if (err) return badRequest(res);
+	    engine[appId].runInstance(function(err) {
+		if (err) return badRequest(res);
+		res.header('Location', req.url + '/' + appId);
+		res.send(201, null);
+		//res.redirect(req.url + '/' + appId, 302);
+		// TODO: implement sending all input signals (just like -s flag in runwf.js)
+	    });
+	});
+    }
+
+    // 1. Workflow can be sent as a zipped directory
+    if (ctype == "application/zip") { 
+	var hfid = wflib.hfid, zipData = [], size = 0;
+
+	req.on('data', function (data) {
+	    zipData.push(data);
+	    size += data.length;
+	    console.log('Got chunk: ' + data.length + ' total: ' + size);
+	});
+
+	req.on('end', function () {
+	    var tmpdir = pathtool.join(os.tmpdir(), "HF-" + hfid);
+	    if (!fs.existsSync(tmpdir)){
+		fs.mkdirSync(tmpdir);
+	    }
+
+	    var wfDir = pathtool.join(tmpdir, makeId6());
+	    fs.mkdirSync(wfDir);
+
+	    var wffile;
+	    console.log("total size = " + size);
+
+	    var buf = new Buffer(size);
+	    for (var i=0, len = zipData.length, pos = 0; i < len; i++) { 
+		zipData[i].copy(buf, pos); 
+		pos += zipData[i].length; 
+	    } 
+
+	    var zip = new AdmZip(buf);
+	    var zipEntries = zip.getEntries();
+	    console.log("ZIP ENTRIES:", zipEntries.length);
+	    zip.extractAllTo(wfDir);
+
+	    // Make sure this works correctly both when the zip contains a directory, or just files
+	    process.chdir(wfDir);
+	    var files = fs.readdirSync(wfDir);
+	    if (files.length == 1) {
+		var fstats = fs.lstatSync(files[0]);
+		if (fstats.isDirectory()) {
+		    wfDir = pathtool.join(wfDir, files[0]); 
+		} 
+	    } 
+	    wffile = pathtool.join(wfDir, "workflow.json");
+	    console.log("WF FILE:", wffile);
+
+	    wflib.createInstanceFromFile(wffile, '', function(err, appId, wfJson) {
+		runWorkflow(wfDir, appId);
+	    });
+
+	}); 
+
+	req.on('error', function(e) {
+	    console.log("ERROR ERROR: " + e.message);
+	});
+
+	return;
+
+	// TODO: switch to "mkdtemp" after migrating to Node 6.x
+	/*fs.mkdtemp(tmpdir, (err, dir) => {
+	  console.log(dir);
+	  return res.send(201, null);
+	  });*/
+    }
+
+    // 2. Workflow can also be sent as a JSON
+    if (ctype == "application/json") { 
+	var wfJson = req.body, baseUrl = '';
+	//onsole.log(wfJson);
+	var hfid = wflib.hfid, zipData = [], size = 0;
+	wflib.createInstance(wfJson, baseUrl, function(err, appId) {
+	    if (err) return badRequest(res);
+	    runWorkflow(wfDir, appId);
+	});
+    }
+
 });
 
 // returns workflow instance ('app') info
