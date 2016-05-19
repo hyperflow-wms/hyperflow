@@ -165,21 +165,22 @@ function hflow_run() {
     });
   };
 
-  var createWf = function(cb) {
-    rcl.select(dbId, function(err, rep) {
-      //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
-        wflib.createInstanceFromFile(wffile, '', function(err, id, wfJson) {
-          cb(err, id, wfJson.name);
+    var createWf = function(cb) {
+        rcl.select(dbId, function(err, rep) {
+          //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
+            wflib.createInstanceFromFile(wffile, '', function(err, id, wfJson) {
+              cb(err, id, wfJson.name);
+            });
+          //});
         });
-      //});
-    });
-  }
+    }
 
-   var startWf = function() {
+    var startWf = function() {
        createWf(function (err, wfId, wfName) {
+           if (err) throw err;
            runWf(wfId, wfName);
        });
-   };
+    };
 
    startWf();
 }
