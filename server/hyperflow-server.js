@@ -127,27 +127,29 @@ app.post('/apps', function(req, res) {
 	});
     }
 
+    var hfid = wflib.hfid, tmpdir = pathtool.join(os.tmpdir(), "HF-" + hfid);
+    if (!fs.existsSync(tmpdir)){
+        fs.mkdirSync(tmpdir);
+    }
+
+    var wfDir = pathtool.join(tmpdir, makeId6());
+    fs.mkdirSync(wfDir);
+    console.log("WF DIR:", wfDir);
+
+
     // 1. Workflow can be sent as a zipped directory
     if (ctype == "application/zip") { 
-	var hfid = wflib.hfid, zipData = [], size = 0;
+        var zipData = [], size = 0;
 
 	req.on('data', function (data) {
 	    zipData.push(data);
 	    size += data.length;
-	    console.log('Got chunk: ' + data.length + ' total: ' + size);
+	    //onsole.log('Got chunk: ' + data.length + ' total: ' + size);
 	});
 
 	req.on('end', function () {
-	    var tmpdir = pathtool.join(os.tmpdir(), "HF-" + hfid);
-	    if (!fs.existsSync(tmpdir)){
-		fs.mkdirSync(tmpdir);
-	    }
-
-	    var wfDir = pathtool.join(tmpdir, makeId6());
-	    fs.mkdirSync(wfDir);
-
 	    var wffile;
-	    console.log("total size = " + size);
+	    //onsole.log("total size = " + size);
 
 	    var buf = new Buffer(size);
 	    for (var i=0, len = zipData.length, pos = 0; i < len; i++) { 
@@ -157,7 +159,7 @@ app.post('/apps', function(req, res) {
 
 	    var zip = new AdmZip(buf);
 	    var zipEntries = zip.getEntries();
-	    console.log("ZIP ENTRIES:", zipEntries.length);
+	    //onsole.log("ZIP ENTRIES:", zipEntries.length);
 	    zip.extractAllTo(wfDir);
 
 	    // Make sure this works correctly both when the zip contains a directory, or just files
@@ -171,7 +173,7 @@ app.post('/apps', function(req, res) {
 		} 
 	    } 
 	    wffile = pathtool.join(wfDir, "workflow.json");
-	    console.log("WF FILE:", wffile);
+	    //onsole.log("WF FILE:", wffile);
 
             // if there is a "package.json" file, install dependencies (npm install -d)
             // TODO: improve error checking etc.
