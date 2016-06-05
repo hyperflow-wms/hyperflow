@@ -49,7 +49,7 @@ function load_plugin(plugin_name) {
 }
 
 function hflow_start() {
-    var server = require('../server/hyperflow-server.js')(rcl, wflib);
+    var server = require('../server/hyperflow-server.js')(rcl, wflib, plugins);
     server.listen(process.env.PORT, function() { });
     console.log("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }
