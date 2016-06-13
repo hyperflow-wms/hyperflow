@@ -119,7 +119,7 @@ app.post('/apps', function(req, res) {
 	engine[appId] = new Engine(config, wflib, appId, function(err) {
 	    if (err) return badRequest(res);
 		plugins.forEach(function(plugin) {
-			plugin.init(rcl, wflib, engine);
+			plugin.init(rcl, wflib, engine[appId]);
 		});
 	    engine[appId].runInstance(function(err) {
 		if (err) return badRequest(res);
