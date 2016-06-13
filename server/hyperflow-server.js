@@ -30,6 +30,7 @@ var redis = require('redis'),
 
 var server = http.createServer(app);
 var wflib = require('../wflib').init(rcl);
+var plugins = [];
 var Engine = require('../engine2');
 var engine = {}; // engine.i contains the engine object for workflow instance 'i'
 var request = require('request');
@@ -117,6 +118,9 @@ app.post('/apps', function(req, res) {
 	var config = {"emulate":"false", "workdir": wfDir};
 	engine[appId] = new Engine(config, wflib, appId, function(err) {
 	    if (err) return badRequest(res);
+		plugins.forEach(function(plugin) {
+			plugin.init(rcl, wflib, engine[appId]);
+		});
 	    engine[appId].runInstance(function(err) {
 		if (err) return badRequest(res);
 		res.header('Location', req.url + '/' + appId);
@@ -655,8 +659,9 @@ function clone(obj) {
 	console.log("HyperFlow server. App factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }*/
 
-module.exports = function(rcl_, wflib_) {
+module.exports = function(rcl_, wflib_, plugins_) {
     rcl = rcl_;
     wflib = wflib_;
+	plugins = plugins_;
     return server;
 }
