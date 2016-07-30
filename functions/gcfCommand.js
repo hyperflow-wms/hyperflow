@@ -52,17 +52,4 @@ function gcfCommand(ins, outs, config, cb) {
 }
 
 
-
-// testing call
-//var ins = ["newcimages.tbl", "region_20130212_013030_8881.hdr"]
-//var outs = ["mosaic_20130212_013030_8881.fits"]
-//var config = {
-//        "executor": {
-//          "executable": "mAdd",
-//          "args": "-e newcimages.tbl region_20130212_013030_8881.hdr mosaic_20130212_013030_8881.fits"
-//        }
-//      }
-//
-//gcfCommand(ins, outs, config, null)
-
 exports.gcfCommand = gcfCommand;
