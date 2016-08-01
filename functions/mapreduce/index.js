@@ -11,7 +11,8 @@ var walk = require('walk'),
     deltaLink,
     options, 
     walker, 
-    twit;
+    twit,
+    logger = require('winston').loggers.get('workflow');
 
 
 function twitterSource(ins, outs, config, cb) {
@@ -39,17 +40,17 @@ function twitterSource(ins, outs, config, cb) {
     }
 
     twit.get('/search/tweets', options, function(err, data, response) {
-        console.log("TWIT GET, query:", options);
+        logger.info("TWIT GET, query: %s", options);
         if (err) {
-            console.log(err);
+            logger.error(err);
             return cb(err);
         } else {
             deltaLink = data.search_metadata.refresh_url;
             outs[0].data = [];
-            console.log("TWEETS retrieved:", data.statuses.length);
+            logger.info("TWEETS retrieved: %d", data.statuses.length);
             data.statuses.forEach(function(t) {
                 outs[0].data.push(t);
-                //console.log(JSON.stringify(parsedTweet, null, 2))
+                logger.debug(JSON.stringify(parsedTweet, null, 2))
             });
             cb(null, outs);
         }
@@ -59,8 +60,8 @@ function twitterSource(ins, outs, config, cb) {
 
 function partitionTweets(ins, outs, config, cb) {
     if (ins[0].data.length == 0)
-        return cb(null, outs); 
-    console.log("Partitioning tweets:", ins[0].data.length);
+        return cb(null, outs);
+    logger.info("Partitioning tweets: %d", ins[0].data.length);
     var tweet = ins[0].data[0];
     var n = (crc.crc32(tweet.text)>>>0) % (outs.length);
     outs[n].condition = "true"; // this tweet will be forwarded to n-th output port (mapper)
@@ -96,9 +97,9 @@ function generateTweetStats(ins, outs, config, cb) {
 }
 
 function aggregateTweetStats(ins, outs, config, cb) {
-    //console.log(JSON.stringify(ins, null, 2));
+    logger.debug(JSON.stringify(ins, null, 2));
     var tweet = ins[0].data[0];
-    console.log("Aggregating:", tweet);
+    logger.info("Aggregating: %s", tweet);
     outs[0].data = [ tweet ];
     cb(null, outs);
 }
@@ -134,7 +135,7 @@ function partitionFiles(ins, outs, config, cb) {
 function wordCounter(ins, outs, config, cb) {
     var words = ins[0].value.match(/\w+/g);
     words = _.countBy(words, function(x) { return x; });
-    console.log(words);
+    logger.info(words);
 }
 */
 

@@ -1,5 +1,6 @@
 var request = require('request'); // http client
 var rest_config = require('./LMonFunctions.config.js');
+var logger = require('winston').loggers.get('workflow');
 
 var EmergLevel = {
     NONE: "none",
@@ -38,11 +39,11 @@ function getLeveeState(ins, outs, config, cb) {
                 var threatLevel = ThreatLevel[result.levee.threat_level.toUpperCase()];
 
                 //TODO; check for emergencyLevel == undefined, if so fail
-                console.log("getLeveeState: emergencyLevel=", emergencyLevel, ", threatLevel=", threatLevel);
+                logger.info("getLeveeState: emergencyLevel= %s, threatLevel: %s", emergencyLevel, threatLevel);
 
 //                if (emergencyLevel == EmergLevel.HEIGHTENED && threatLevel == ThreatLevel.NONE) {
                 if (emergencyLevel == EmergLevel.HEIGHTENED) {
-                    console.log("Setting heightened emergency level");
+                    logger.info("Setting heightened emergency level");
                     outs[0].condition = "true"; // emit "ELHeightened" signal
                     outs[0].data = [
                         { }
@@ -50,7 +51,7 @@ function getLeveeState(ins, outs, config, cb) {
                 }
 
                 if (emergencyLevel == EmergLevel.SEVERE) {
-                    console.log("Setting severe emergency level");
+                    logger.info("Setting severe emergency level");
                     outs[1].condition = "true"; // emit "ELSevere" signal
                     outs[1].data = [
                         { }
@@ -59,8 +60,8 @@ function getLeveeState(ins, outs, config, cb) {
 
                 cb(null, outs);
             } else {
-                console.log("Error reading response from getLeveeState!");
-                console.log("error:", error, ", response:", response);
+                logger.info("Error reading response from getLeveeState!");
+                logger.info("error: %s, response: %s", error, response);
                 cb(new Error("Error reading response from getLeveeState!"), outs);
             }
         });
@@ -87,15 +88,15 @@ function storeThreatLevel(leveeId, threatLevel, cb) {
             if (!error && response.statusCode == 200) {
                 var parsedResponse = JSON.parse(body);
                 if (parsedResponse.levee.threat_level == threatLevel) {
-                    console.log("computeThreatLevel: threat level=", threatLevel);
+                    logger.info("computeThreatLevel: threat level= %s", threatLevel);
                     cb(null);
                 } else {
-                    console.log("Error storing threatLevel!");
+                    logger.error("Error storing threatLevel!");
                     cb(new Error("Error storing threatLevel!"));
                 }
             } else {
-                console.log("Error reading response from storeThreatLevel!");
-                console.log("error:", error, ", response:", response);
+                logger.error("Error reading response from storeThreatLevel!");
+                logger.error("error:", error, ", response:", response);
                 cb(new Error("Error reading response from storeThreatLevel!"));
             }
         }
@@ -122,7 +123,7 @@ function computeThreatLevel(ins, outs, config, cb) {
 
 // Step 2b: perform actions in the severe emergency level
 function severeEmergencyActions(ins, outs, config, cb) {
-    console.log("severeEmergencyActions: firing!");
+    logger.info("severeEmergencyActions: firing!");
     cb(null, outs);
 }
 

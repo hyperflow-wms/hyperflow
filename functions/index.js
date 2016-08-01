@@ -1,39 +1,40 @@
 var fsp = require('./fileSplitter.js'), 
     cmd = require('./command.js'),
     amqpCmd = require('./amqpCommand.js'),
-    scanDir = require('./DirScanner').scanDir;
+    scanDir = require('./DirScanner').scanDir,
+    logger = require('winston').loggers.get('workflow');
 
 function print(ins, outs, config, cb) {
-    //console.log("PRINT", JSON.stringify(ins));
+    //logger.info("PRINT %s", JSON.stringify(ins));
         ins.forEach(function(input) {
-                //console.log("sigId=", input.sigId + ":", input.data[0])
-		//console.log(JSON.stringify(input, null, 2));
+                //logger.info("sigId= %d:%s", input.sigId input.data[0])
+		//logger.debug(JSON.stringify(input, null, 2));
 		if (input.data && input.data[0].value) {
-                    console.log(input.data[0].value);
+                    logger.info(input.data[0].value);
 		} else {
-                    console.log(JSON.stringify(input, null, 2));
+                    logger.info(JSON.stringify(input, null, 2));
                 }
         });
         cb(null, outs);
 }
 
 function print2(ins, outs, config, cb) {
-    console.log("PRINT2");
+    logger.info("PRINT2");
     ins.forEach(function(input) {
         if (input.data.length == 1) {
-            console.log(input.data[0]);
+            logger.info(input.data[0]);
         } else {
-            console.log(input.data);
+            logger.info(input.data);
         }
     });
-    console.log("CONFIG");
-    console.log(config);
+    logger.info("CONFIG");
+    logger.info(config);
     cb(null, outs);
 }
 
 function echo(ins, outs, config, cb) {
     var data = JSON.stringify(ins[0].data);
-    //console.log(data);
+    //logger.info(data);
     outs[0].data = [ins[0].data];
     //onsole.log("ECHO", JSON.stringify(ins, null, 2));
 
@@ -41,12 +42,12 @@ function echo(ins, outs, config, cb) {
      //   data = JSON.stringify(data);
 
     //process.stdout.write(data[2]);
-    //console.log(data);
+    //logger.info(data);
     cb(null, outs);
 }
 
 function echoWithDelay(ins, outs, config, cb) {
-    //console.log(ins, outs);
+    //logger.info(ins, outs);
     outs[0].data = [ins[0].data];
     setTimeout(function() {
         cb(null, outs);
@@ -90,7 +91,7 @@ function match(ins, outs, config, cb) {
     var regex = new RegExp(tmp[1], tmp[2]);
     var str = ins[1].data[0].value;
     var s = str.search(regex);
-    //console.log(regex, str, s);
+    //logger.debug(regex, str, s);
     if (str.search(regex) != -1) {
         outs[0].condition = "true";
         outs[0].data = [ str ];
@@ -100,7 +101,7 @@ function match(ins, outs, config, cb) {
 
 function chooseEvenOdd(ins, outs, config, cb) {
     var sum=0;
-    //console.log("choose INS=", ins);
+    //logger.debug("choose INS=", ins);
     for (var i=0; i<ins.length; ++i) {
         if ("data" in ins[i] && "value" in ins[i].data[0]) {
             sum += parseInt(ins[i].data[0].value);
@@ -140,29 +141,29 @@ function grepFile(ins, outs, config, cb) {
         cb(new Error("grepFile: input file path not provided."));
         return;
     }
-    console.log("grepFile: '"+ ins[1].value+"'", outs[0].value);
+    logger.info("grepFile: '"+ ins[1].value+"'", outs[0].value);
     cb(null, outs); 
 }
 
 
 //var cnt = 0;
 function count(ins, outs, config, cb) {
-    //console.log("COUNT  INS:", JSON.stringify(ins));
-    //onsole.log(ins.length);
-    //onsole.log("COUNT INS:", ins.length);
+    //logger.debug("COUNT  INS:", JSON.stringify(ins));
+    //logger.debug(ins.length);
+    //logger.debug("COUNT INS:", ins.length);
     /*ins.forEach(function(input) {
-      console.log(input); 
+     logger.debug(input);
     });*/
-    /*console.log("COUNT OUTS:", outs.length);
+    /*logger.debug("COUNT OUTS:", outs.length);
     outs.forEach(function(output) {
-      console.log(output); 
+     logger.debug(output);
     });*/
  
     outs[0].data = [];
     ins[0].data.forEach(function(cnt) {
         outs[0].data.push(cnt+1);
-        if (cnt % 1000 == 0) { 
-            console.log("count:", cnt);
+        if (cnt % 1000 == 0) {
+            logger.info("count:", cnt);
         }
         if (cnt == 5000) {
             process.exit();
@@ -172,7 +173,7 @@ function count(ins, outs, config, cb) {
 }
 
 function exit(ins, outs, config, cb) {
-  console.log("Exiting\n\n");
+  logger.info("Exiting\n\n");
   process.exit(0);
 }
 
@@ -185,7 +186,7 @@ function genCollection(ins, outs, config, cb) {
         outs[0].data.push(i+1);
     }
 
-    console.log("GEN COLLECTION", outs[0].data);
+    logger.info("GEN COLLECTION %s", outs[0].data);
 
     cb(null, outs);
 }

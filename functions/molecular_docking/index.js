@@ -1,4 +1,5 @@
 var spawn = require('child_process').spawn;
+var logger = require('winston').loggers.get('workflow');
 
 function md_preprocess(ins, outs, config, cb) {
     var exec = config.executor.executable,
@@ -7,26 +8,26 @@ function md_preprocess(ins, outs, config, cb) {
     var dir_uuid = createUUID();  // create a new UUID before invoking preprocessing program
     args += " --dir " + dir_uuid; // add dir uuid as another parameter to program arguments
 
-    console.log("Executing:", exec, args);
+    logger.info("Executing: %s %s", exec, args);
 
     var proc = spawn(exec, [ args ]);
 
     proc.stdout.on('data', function(data) {
-        console.log(exec, 'stdout:' + data);
+        logger.info("%s stdout: %s", exec, data);
     });
 
     proc.stderr.on('data', function(data) {
-        console.log(exec, 'stderr:' + data);
+        logger.info("%s stderr: %s", exec, data);
     });
 
     proc.on('exit', function(code) {
-        console.log(exec, 'exiting with code:' + code);
+        logger.info("%s exiting with code: %s", exec, code);
 	outs[1].data = [ { "dir_uuid": dir_uuid } ] // emit uuid as a signal
         cb(null, outs);
     });
 
     proc.on('close', function (code, signal) {
-        console.log(exec, 'terminated due to receipt of signal '+signal);
+        logger.info("%s terminated due to receipt of signal %s", exec, signal);
     });
 }
 
@@ -37,25 +38,25 @@ function md_run(ins, outs, config, cb) {
     var dir_uuid = ins[1].data[0].dir_uuid; // read the uuid passed from preprocessing
     args += " --dir " + dir_uuid; // add dir uuid as another parameter to program arguments
 
-    console.log("Executing:", exec, args);
+    logger.info("Executing: %s %s", exec, args);
 
     var proc = spawn(exec, [ args ]);
 
     proc.stdout.on('data', function(data) {
-        console.log(exec, 'stdout:' + data);
+        logger.info("%s stdout: %s", exec, data);
     });
 
     proc.stderr.on('data', function(data) {
-        console.log(exec, 'stderr:' + data);
+        logger.info("%s stderr: %s", exec, data);
     });
 
     proc.on('exit', function(code) {
-        console.log(exec, 'exiting with code:' + code);
+        logger.info("%s exiting with code: %s", exec, code);
         cb(null, outs);
     });
 
     proc.on('close', function (code, signal) {
-        console.log(exec, 'terminated due to receipt of signal '+signal);
+        logger.info("%s terminated due to receipt of signal %s", exec, signal);
     });
 }
 
@@ -66,25 +67,25 @@ function md_postprocess(ins, outs, config, cb) {
     var dir_uuid = ins[1].data[0].dir_uuid; // read the uuid passed from preprocessing
     args += " --dir " + dir_uuid; // add dir uuid as another parameter to program arguments
 
-    console.log("Executing:", exec, args);
+    logger.info("Executing: %s %s", exec, args);
 
     var proc = spawn(exec, [ args ]);
 
     proc.stdout.on('data', function(data) {
-        console.log(exec, 'stdout:' + data);
+        logger.info("%s stdout: %s", exec, data);
     });
 
     proc.stderr.on('data', function(data) {
-        console.log(exec, 'stderr:' + data);
+        logger.info("%s stderr: %s", exec, data);
     });
 
     proc.on('exit', function(code) {
-        console.log(exec, 'exiting with code:' + code);
+        logger.info("%s exiting with code: %s", exec, code);
         cb(null, outs);
     });
 
     proc.on('close', function (code, signal) {
-        console.log(exec, 'terminated due to receipt of signal '+signal);
+        logger.info("%s terminated due to receipt of signal %s", exec, signal);
     });
 }
 
