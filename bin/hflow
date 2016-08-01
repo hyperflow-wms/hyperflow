@@ -78,8 +78,8 @@ function load_plugin(plugin_name) {
         var Plugin = require(plugin_name);
         plugins.push(new Plugin());
     } catch (err) {
-        console.log("Plugin module:", plugin_name, "not found!");
-        console.log(err);
+        logger.error("Plugin module:", plugin_name, "not found!");
+        logger.error(err);
         process.exit(1);
     }
 }
@@ -87,7 +87,7 @@ function load_plugin(plugin_name) {
 function hflow_start() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib, plugins);
     server.listen(process.env.PORT, function() { });
-    console.log("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
+    console.info("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }
 
 function hflow_run() {
@@ -111,13 +111,13 @@ function hflow_run() {
     var engine = new Engine(config, wflib, wfId, function(err) {
       // This represent custom plugin listening on event from available eventServer
       // engine.eventServer.on('trace.*', function(exec, args) {
-      //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
+      //   logger.log('Event captured: ' + exec + ' ' + args + ' job done');
       // });
       plugins.forEach(function(plugin) {
           plugin.init(rcl, wflib, engine);
       });
       engine.runInstance(function(err) {
-        console.log("Wf id="+wfId);
+        logger.info("Wf id="+wfId);
         if (opts['-s']) {
           // Flag -s is present: send all input signals to the workflow -> start execution
           wflib.getWfIns(wfId, false, function(err, wfIns) {
@@ -146,17 +146,17 @@ function hflow_run() {
 }
 
 function hflow_send() {
-  console.log("send signal to a workflow: not implemented");
+  logger.error("send signal to a workflow: not implemented");
 }
 
 function spawn_proc(exec, args) {
   var proc = spawn(exec, args);
 
   proc.stdout.on('data', function(data) {
-    console.log(data.toString().trimRight());
+    logger.info(data.toString().trimRight());
   });
 
   proc.stderr.on('data', function(data) {
-    console.log(data.toString().trimRight());
+    logger.info(data.toString().trimRight());
   });
 }
