@@ -16,7 +16,8 @@ var fs = require('fs'),
     xml2js = require('xml2js'),
     fsm = require('./automata.js'),
     async = require('async'),
-    eventServerFactory = require('../eventlog');
+    eventServerFactory = require('../eventlog'),
+    logger = require('winston').loggers.get('hyperflow');
 
 
 var ProcDataflowFSM = require('./ProcDataflowFSM.js');
@@ -56,7 +57,7 @@ var Engine = function(config, wflib, wfId, cb) {
     this.logProvenance = false;
                           
     this.eventServer.on('prov', function(data) {
-        console.log(arguments[1]);
+        logger.info(arguments[1]);
     });
 
     this.emulate = config.emulate == "true" ? true: false;       
@@ -109,7 +110,7 @@ Engine.prototype.runInstance = function (cb) {
         engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
             if (sigs) {
                 engine.emitSignals(sigs, function(err) {
-                    if (err) console.log(err);
+                    if (err) logger.error(err);
                     cb(err);
                 });
             }
@@ -152,7 +153,7 @@ Engine.prototype.taskFinished = function(taskId) {
 }
 
 Engine.prototype.workflowFinished = function() {
-    console.log("Workflow ["+this.wfId+"] finished. Exec trace:", this.trace+"." );
+    logger.info("Workflow ["+this.wfId+"] finished. Exec trace:", this.trace+"." );
     //onsole.log(this.syncCb);
     if (this.syncCb) {
         this.syncCb();

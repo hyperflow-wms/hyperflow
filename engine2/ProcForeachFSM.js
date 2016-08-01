@@ -5,6 +5,8 @@
  ** Author: Bartosz Balis (2013)
  */
 
+var logger = require('winston').loggers.get('hyperflow');
+
 var TaskForeachFSM = {
     name: "foreach",
     logic: TaskLogic,
@@ -77,7 +79,7 @@ function TaskLogic() {
         var msg = obj.message, task = obj.session.logic;
         obj.session.logic.insReady[msg.inId] = true;
         if (obj.session.getCurrentState().name == "ready" && task.insReady[task.cnt]) {
-            //console.log('Firing ReRu from state: '+obj.session.getCurrentState().name, msg);
+            //logger.debug('Firing ReRu from state: '+obj.session.getCurrentState().name, msg);
             msg.msgId = "ReRu";
             obj.session.processMessage(msg);
         }
@@ -99,29 +101,29 @@ function TaskLogic() {
             contextCreated      : function( obj ) {    },
             contextDestroyed    : function( obj ) {    },
             finalStateReached   : function( obj ) {    },
-            stateChanged        : function( obj ) { 
-                console.log("state changed: "+obj.session.getCurrentState().name);
+            stateChanged        : function( obj ) {
+                logger.debug("state changed: "+obj.session.getCurrentState().name);
             },
             customEvent: this.fireInput
         });
     };
 
     this.ready_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state ready");
+        logger.debug("Enter state ready");
 	if (this.insReady[this.cnt]) {
 	    session.dispatch( {msgId: "ReRu"} );
 	}
     };
 
     this.running_onEnter = function(session, state, transition, msg) {
-        console.log("Enter state running: "+this.id+session.getCurrentState().name);
+        logger.debug("Enter state running: "+this.id+session.getCurrentState().name);
 	(function(task) {
 	    task.wflib.setTaskState(task.wfId, task.id, { "status": "running" }, function(err, rep) {
 		if (err) { throw err; }
 
                 var ins = task.ins[task.cnt-1], outs = task.outs[task.cnt-1]; 
-                //console.log(task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
-                //console.log("ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
+                //logger.debug("%s %s", task.ins[task.cnt-1], task.outs[task.cnt-1]);  // DEBUG
+                //logger.debug("%s %s", "ins="+ins, "outs="+outs, "cnt="+task.cnt); // DEBUG
                 var emul = task.engine.emulate;
                 task.wflib.invokeTaskFunction(task.wfId, task.id, ins, outs, emul, function(err, fOuts) {
                     if (err) {
@@ -130,10 +132,10 @@ function TaskLogic() {
                         // function? E.g. Does it affect the state machine of the task?
                         // Should there be an error state and transitions from it, e.g. retry? 
                     } else {
-                        //console.log("invoke reply="+JSON.stringify(rep)); // DEBUG
+                        //logger.debug("invoke reply="+JSON.stringify(rep)); // DEBUG
                         task.cnt++;
-                        //console.log("Marking ready: "+JSON.stringify(task.outs[task.cnt-2]));
-                        console.log("Marking ready: "+JSON.stringify(fOuts));
+                        //logger.debug("Marking ready: "+JSON.stringify(task.outs[task.cnt-2]));
+                        logger.debug("Marking ready: "+JSON.stringify(fOuts));
                         //task.engine.markDataReady(task.outs[task.cnt-2], function() {
                         task.engine.fireSignals(fOuts, function() {
                             if (task.cnt <= task.n) {
@@ -149,7 +151,7 @@ function TaskLogic() {
     };
 
     this.running_onExit = function(session, state, transition, msg) {
-        //console.log("Exit state running");
+        //logger.debug("Exit state running");
     };
 
     this.finished_onEnter = function(session, state, transition, msg) {
@@ -158,7 +160,7 @@ function TaskLogic() {
 		if (err) {
 		    throw err;
 		}
-		console.log("Enter state finished: "+task.id);
+            logger.debug("Enter state finished: "+task.id);
 		task.engine.taskFinished(task.id);
 	    });
 	})(this);
@@ -169,11 +171,11 @@ function TaskLogic() {
     };
 
     this.trReRu = function(session, state, transition, msg) {
-        //console.log("Transition ReRu, task "+this.id);
+        //logger.debug("Transition ReRu, task "+this.id);
     };
 
     this.trRuRe = function(session, state, transition, msg) {
-        //console.log("Transition RuRe, task "+this.id);
+        //logger.debug("Transition RuRe, task "+this.id);
     };
 
     this.trRuFi = function(session, state, transition, msg) {

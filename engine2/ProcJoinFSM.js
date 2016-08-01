@@ -38,7 +38,8 @@
 var async = require('async'),
     ProcLogic = require('./process.js').ProcLogic,
     fireInput = require('./process.js').fireInput,
-    extend = require('./process.js').extend;
+    extend = require('./process.js').extend,
+    logger = require('winston').loggers.get('hyperflow');
 
 function JoinLogic() {
     ProcLogic.call(this);
@@ -188,7 +189,7 @@ function JoinLogic() {
             proc.ready = true;
             proc.firingSigsH.shift();
             if (proc.ctrIns.merge) {
-                console.log("RESET Nb="+proc.paramsH[0].Nb+", Nj="+proc.paramsH[0].Nj);
+                logger.debug("RESET Nb="+proc.paramsH[0].Nb+", Nj="+proc.paramsH[0].Nj);
                 proc.paramsH.shift();
             }
             cb();
@@ -215,7 +216,7 @@ function JoinLogic() {
                     // but without emitting output signals? Or should we allow to define
                     // "function2" (optionally) to be called for the additional signals?
                 } else {
-                    console.error("Join: should not happen!"); // FIXME: throw error
+                    logger.error("Join: should not happen!"); // FIXME: throw error
                 }
                 reset();
             });
@@ -299,7 +300,7 @@ function fireInputJoin(obj) {
         // algorithm which places a new sig in the appropriate "set" and determines
         // whether the signal will be fired or discarded, and in which firing
         var qsigs = function(idx) {
-            //console.log("QSIG", idx, proc.firingSigsH);
+            //logger.debug("QSIG %d %s", idx, proc.firingSigsH);
             Nb = proc.ctrIns.merge ? proc.paramsH[idx].Nb: proc.Nb;
             Nj = proc.ctrIns.merge ? proc.paramsH[idx].Nj: proc.Nj;
             if (proc.firingSigsH[idx]) {
