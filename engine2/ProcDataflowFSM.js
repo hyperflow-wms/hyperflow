@@ -17,14 +17,9 @@
  */
 
 var async = require('async'),
-    log4js = require('log4js'),
     ProcLogic = require('./process.js').ProcLogic,
     fireInput = require('./process.js').fireInput,
     extend = require('./process.js').extend;
-
-    //log4js.configure('log4js.json');
-
-    //var logger = log4js.getLogger('hf-default-logger');
 
 
 var DataflowLogic = function() {

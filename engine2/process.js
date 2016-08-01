@@ -5,8 +5,7 @@
  ** 
  */
 
-var async = require('async'),
-    log4js = require('log4js');
+var async = require('async')
 
 // This function is invoked on arrival of an input signal.
 // 'obj.message' is a JSON object which should contain:
@@ -227,7 +226,7 @@ var ProcLogic = function() {
             }
         }
 
-        //logger.debug(funcIns, funcOuts);
+        //console.log(funcIns, funcOuts);
         
         var isSticky = function(sigId) { 
             return proc.fullInfo.sticky && (sigId in proc.fullInfo.stickySigs);

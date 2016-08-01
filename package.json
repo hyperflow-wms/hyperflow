@@ -23,7 +23,6 @@
     "file": "0.2.x",
     "form-data": "",
     "istanbul": "",
-    "log4js": "0.6.9",
     "mtwitter": "1.5.2",
     "nconf": "0.6.8",
     "nodeunit": "",

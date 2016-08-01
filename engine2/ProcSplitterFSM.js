@@ -21,12 +21,7 @@
  ** Author: Bartosz Balis (2013)
  */
 
-var async = require('async'),
-    log4js = require('log4js');
-
-    //log4js.configure('log4js.json');
-
-    //var logger = log4js.getLogger('hf-default-logger');
+var async = require('async')
 
 var TaskSplitterFSM = {
     name: "splitter",
