@@ -1,4 +1,5 @@
 var spawn = require('child_process').spawn;
+var logger = require('winston').loggers.get('workflow');
 
 function command(ins, outs, config, cb) {
     var exec = config.executor.executable,
@@ -31,7 +32,8 @@ function command_print(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 
-    console.log(exec, args);
+    // console.log(exec, args);
+    logger.info('%s %s', exec, args);
 
     cb(null, outs);
 }

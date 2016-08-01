@@ -12,6 +12,7 @@ var docopt = require('docopt').docopt,
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
+    winston = require('winston'),
     dbId = 0,
     plugins = [];
 
@@ -25,6 +26,12 @@ Usage:\n\
 var opts = docopt(doc);
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
 
+initialize_logging();
+
+var logger = winston.loggers.get('hyperflow');
+
+logger.debug('Logging initialized');
+
 if (opts['-p']) {
     opts['<plugin_module_name>'].forEach(load_plugin);
 }
@@ -35,6 +42,35 @@ if (opts.run) {
   hflow_send();
 } else if (opts['start-server']) {
   hflow_start();
+}
+
+// { error: 0, warn: 1, info: 2, verbose: 3, debug: 4, silly: 5 }
+
+function initialize_logging(verbose) {
+
+    var colorize = true;
+    var logLevel = 'info';
+
+    // logger for engine, wflib, hflow stuff
+    if (verbose != null && verbose) {
+        logLevel = 'silly';
+    }
+
+    winston.loggers.add('hyperflow', {
+        console: {
+            level: logLevel,
+            colorize: colorize,
+            label: 'hyperflow'
+        }
+    });
+    //logger for workflow functions
+    winston.loggers.add('workflow', {
+        console: {
+            level: logLevel,
+            colorize: colorize,
+            label: 'workflow'
+        }
+    });
 }
 
 function load_plugin(plugin_name) {
