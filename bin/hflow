@@ -22,8 +22,6 @@ Usage:\n\
 
 var opts = docopt(doc);
 
-console.log(opts);
-
 initialize_logging(opts['--verbose']);
 var logger = winston.loggers.get('hyperflow');
 logger.debug('Logging initialized');
@@ -54,7 +52,7 @@ if (opts.run) {
 function initialize_logging(verbose) {
 
     var colorize = true;
-    var logLevel = 'verbose';
+    var logLevel = 'info';
 
     // logger for engine, wflib, hflow stuff
     if (verbose != null && verbose) {
