@@ -15,16 +15,16 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--verbose] [--with-server] [-p <plugin_module_name> ...]\n\
-  hflow start-server [--verbose] [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--verbose] [--log-file=<logfile>] [--with-server] [-p <plugin_module_name> ...]\n\
+  hflow start-server [--verbose] [--log-file=<logfile>] [-p <plugin_module_name> ...]\n\
   hflow send [--verbose] <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
 
-initialize_logging(opts['--verbose']);
+initialize_logging(opts['--verbose'], opts['--log-file']);
 var logger = winston.loggers.get('hyperflow');
-logger.debug('Logging initialized');
+logger.verbose('Logging initialized');
 
 //initialize HF
 
@@ -49,7 +49,7 @@ if (opts.run) {
 
 // { error: 0, warn: 1, info: 2, verbose: 3, debug: 4, silly: 5 }
 
-function initialize_logging(verbose) {
+function initialize_logging(verbose, logfile) {
 
     var colorize = true;
     var logLevel = 'info';
@@ -59,21 +59,35 @@ function initialize_logging(verbose) {
         logLevel = 'silly';
     }
 
-    winston.loggers.add('hyperflow', {
+    var hyperflowTransports = {
         console: {
             level: logLevel,
             colorize: colorize,
             label: 'hyperflow'
         }
-    });
-    //logger for workflow functions
-    winston.loggers.add('workflow', {
+    };
+    var workflowTransports = {
         console: {
             level: logLevel,
             colorize: colorize,
             label: 'workflow'
         }
-    });
+    };
+
+    if (logfile != null) {
+        var fileTransport = {
+            filename: logfile,
+            level: logLevel,
+            tailable: true,
+            json: false
+        };
+        hyperflowTransports['file'] = fileTransport;
+        workflowTransports['file'] = fileTransport;
+    }
+
+    winston.loggers.add('hyperflow', hyperflowTransports);
+    //logger for workflow functions
+    winston.loggers.add('workflow', workflowTransports);
 }
 
 function load_plugin(plugin_name) {

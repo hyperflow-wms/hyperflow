@@ -32,7 +32,7 @@ function command_print(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 
-    logger.verbose('%s %s', exec, args);
+    logger.info('%s %s', exec, args);
 
     cb(null, outs);
 }
