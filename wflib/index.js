@@ -12,7 +12,8 @@ var fs = require('fs'),
     pathTool = require('path'),
     //toobusy = require('toobusy'),
     uuid = require('uuid'),
-    rcl;
+    rcl,
+    logger = require('winston').loggers.get('hyperflow');
 
 
 // for profiling
@@ -29,7 +30,7 @@ function p0() {
 
 function p1(start, name) {
     var end = (new Date()).getTime();
-    console.log(name, "TOOK", end - start + "ms");
+    logger.debug(name, "TOOK", end - start + "ms");
     return end;
 }
 
@@ -51,9 +52,9 @@ exports.init = function(redisClient) {
 	}
     }
 
-   console.log("hfid:", global_hfid);
+    logger.info("hfid:", global_hfid);
     /*rcl.on("error", function (err) {
-      console.log("redis error: " + err);
+     logger.error("redis error: " + err);
       });*/
 
     //////////////////////////////////////////////////////////////////////////
@@ -68,7 +69,7 @@ exports.init = function(redisClient) {
                 var start = (new Date()).getTime(), finish;
                 public_createInstance(JSON.parse(data), baseUrl, function(err, wfId) {
                     finish = (new Date()).getTime();
-                    console.log("createInstance time: "+(finish-start)+"ms");
+                    logger.info("createInstance time: "+(finish-start)+"ms");
                     err ? cb(err): cb(null, wfId);
                 });
             });
@@ -298,7 +299,7 @@ exports.init = function(redisClient) {
             }
 
             multi.exec(function(err, replies) {
-                console.log('Done processing workflow JSON.'); 
+                logger.info('Done processing workflow JSON.');
                 cb(err);
             });
         }
@@ -1460,8 +1461,8 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 try {
                     f = require(funPath)[taskInfo.fun];
                 } catch(err) {
-                    //console.log(err);
-                    //console.log("functions.js doesn't exist, trying default 'functions' module...");
+                    //logger.warn(err);
+                    //logger.warn("functions.js doesn't exist, trying default 'functions' module...");
                     // caught if "functions.js" doesn't exist (no action needed)
                 }
 
@@ -1593,7 +1594,7 @@ function sendSignalLua(wfId, sigValue, cb) {
                             url:     sinkUri,
                             json:    sigValue
                         }, function(error, response, body) {
-                            if (error) console.log("ERROR", error);
+                            if (error) logger.error("ERROR", error);
                             doneIterCb();
                             //onsole.log(error);
                             //onsole.log(response);
@@ -1701,7 +1702,7 @@ function public_sendSignal(wfId, sig, cb) {
             //onsole.log("SENDING SIGNAL Y", sigId, "TOOK", -time+"ms");
             sendSignalTime -= time;
             if (err) {
-                console.log(err.toString(), err.stack);
+                logger.error(err.toString(), err.stack);
             }
             err ? cb(err): cb(null, sinks);
         }
@@ -1913,7 +1914,7 @@ function getTasks1(wfId, from, to, dataNum, cb) {
             cb(err);
         } else {
             finish = (new Date()).getTime();
-            console.log("getTasks exec time: "+(finish-start)+"ms");
+            logger.info("getTasks exec time: "+(finish-start)+"ms");
 
             // replace ids of data elements with their attributes
             for (var i=0; i<tasks.length; ++i) {
@@ -1974,6 +1975,6 @@ return {
 
 
 process.on('exit', function() {
-    console.log("fetchInputs total time:", fetchInputsTime/1000);
-    console.log("sendSignal total time:", sendSignalTime/1000);
+    logger.info("fetchInputs total time:", fetchInputsTime/1000);
+    logger.info("sendSignal total time:", sendSignalTime/1000);
 });
