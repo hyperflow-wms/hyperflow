@@ -15,14 +15,16 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] [-p <plugin_module_name> ...]\n\
-  hflow start-server [-p <plugin_module_name> ...]\n\
-  hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--verbose] [--with-server] [-p <plugin_module_name> ...]\n\
+  hflow start-server [--verbose] [-p <plugin_module_name> ...]\n\
+  hflow send [--verbose] <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
 
-initialize_logging();
+console.log(opts);
+
+initialize_logging(opts['--verbose']);
 var logger = winston.loggers.get('hyperflow');
 logger.debug('Logging initialized');
 
@@ -52,7 +54,7 @@ if (opts.run) {
 function initialize_logging(verbose) {
 
     var colorize = true;
-    var logLevel = 'info';
+    var logLevel = 'verbose';
 
     // logger for engine, wflib, hflow stuff
     if (verbose != null && verbose) {
@@ -90,7 +92,7 @@ function load_plugin(plugin_name) {
 function hflow_start() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib, plugins);
     server.listen(process.env.PORT, function() { });
-    console.info("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
+    logger.info("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }
 
 function hflow_run() {
