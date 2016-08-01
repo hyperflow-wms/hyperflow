@@ -44,7 +44,8 @@
     "xmldom": "",
     "shell-quote": "1.4.2",
     "adm-zip": "",
-    "which": ""
+    "which": "",
+    "winston": "^2.2.0"
   },
   "files": [
     "LICENSE",
