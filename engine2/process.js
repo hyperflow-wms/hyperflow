@@ -5,7 +5,8 @@
  ** 
  */
 
-var async = require('async')
+var async = require('async'),
+    logger = require('winston').loggers.get('hyperflow');
 
 // This function is invoked on arrival of an input signal.
 // 'obj.message' is a JSON object which should contain:
@@ -226,7 +227,7 @@ var ProcLogic = function() {
             }
         }
 
-        //console.log(funcIns, funcOuts);
+        //logger.debug("%s %s", funcIns, funcOuts);
         
         var isSticky = function(sigId) { 
             return proc.fullInfo.sticky && (sigId in proc.fullInfo.stickySigs);
@@ -315,9 +316,9 @@ var ProcLogic = function() {
                 proc.engine.eventServer,
                 proc.engine.config, 
                 function(err, outs, options) {
-		    //console.log("FUNC INVOKED");
-		    //console.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
-		    //console.log("OUTS: ", outs);
+		    //logger.debug("FUNC INVOKED");
+		    //logger.debug("INS: ", JSON.stringify(proc.sigValues, null, 2));
+		    //logger.debug("OUTS: ", outs);
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );
