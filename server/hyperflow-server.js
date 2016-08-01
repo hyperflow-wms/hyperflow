@@ -23,6 +23,7 @@ var express = require('express'),
     which = require('which'),
     pathtool = require('path'),
     AdmZip = require('adm-zip'),
+	logger = require('winston').loggers.get('hyperflow'),
     app = express();
 
 var redis = require('redis'),
@@ -138,7 +139,7 @@ app.post('/apps', function(req, res) {
 
     var wfDir = pathtool.join(tmpdir, makeId6());
     fs.mkdirSync(wfDir);
-    console.log("WF DIR:", wfDir);
+    logger.info("WF DIR:", wfDir);
 
 
     // 1. Workflow can be sent as a zipped directory
@@ -188,11 +189,11 @@ app.post('/apps', function(req, res) {
                 var proc = spawn(npmexec, ["install", "-d"]);
 
                 proc.stdout.on('data', function(data) {
-                    console.log(data.toString().trimRight());
+					logger.info(data.toString().trimRight());
                 });
 
                 proc.stderr.on('data', function(data) {
-                    console.log(data.toString().trimRight());
+					logger.info(data.toString().trimRight());
                 });
 
                 // TODO: check exit code
@@ -209,14 +210,14 @@ app.post('/apps', function(req, res) {
 	}); 
 
 	req.on('error', function(e) {
-	    console.log("ERROR ERROR: " + e.message);
+		logger.error("ERROR ERROR: " + e.message);
 	});
 
 	return;
 
 	// TODO: switch to "mkdtemp" after migrating to Node 6.x
 	/*fs.mkdtemp(tmpdir, (err, dir) => {
-	  console.log(dir);
+	 logger.debug(dir);
 	  return res.send(201, null);
 	  });*/
     }
@@ -260,7 +261,7 @@ app.get('/apps/:i', function(req, res) {
         }, function(err, html) {
             if (err) { throw(err); }
             end = (new Date()).getTime();
-            console.log("rendering page: "+(end-start)+"ms, length: "+html.length);
+			logger.debug("rendering page: "+(end-start)+"ms, length: "+html.length);
             res.statuscode = 200;
             res.send(html);
         });
@@ -656,7 +657,7 @@ function clone(obj) {
 /*if (!module.parent) {
 	server.listen(process.env.PORT, function() {
 	});
-	console.log("HyperFlow server. App factory URI: http://%s:%d/apps", server.address().address, server.address().port);
+ logger.info("HyperFlow server. App factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }*/
 
 module.exports = function(rcl_, wflib_, plugins_) {
