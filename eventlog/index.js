@@ -38,7 +38,7 @@ function createEventServer() {
 // Here's how to subscribe to events:
     eventLog.on('trace.*', function (data) {
         // "this.event" contains the full event name
-        logger.info("EVENT:", this.event, JSON.stringify(arguments, null, 2));
+        logger.info("EVENT: %s %s", this.event, JSON.stringify(arguments, null, 2));
     });
     return eventLog;
 }
