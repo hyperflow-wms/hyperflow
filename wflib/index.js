@@ -30,7 +30,7 @@ function p0() {
 
 function p1(start, name) {
     var end = (new Date()).getTime();
-    logger.debug(name, "TOOK", end - start + "ms");
+    logger.debug("%s %s %d", name, "TOOK", end - start + "ms");
     return end;
 }
 
@@ -52,9 +52,9 @@ exports.init = function(redisClient) {
 	}
     }
 
-    logger.info("hfid:", global_hfid);
+    logger.info("hfid: %s", global_hfid);
     /*rcl.on("error", function (err) {
-     logger.error("redis error: " + err);
+     logger.error("redis error: %s", err);
       });*/
 
     //////////////////////////////////////////////////////////////////////////
@@ -1594,7 +1594,7 @@ function sendSignalLua(wfId, sigValue, cb) {
                             url:     sinkUri,
                             json:    sigValue
                         }, function(error, response, body) {
-                            if (error) logger.error("ERROR", error);
+                            if (error) logger.error("ERROR %s", error);
                             doneIterCb();
                             //onsole.log(error);
                             //onsole.log(response);
@@ -1702,7 +1702,7 @@ function public_sendSignal(wfId, sig, cb) {
             //onsole.log("SENDING SIGNAL Y", sigId, "TOOK", -time+"ms");
             sendSignalTime -= time;
             if (err) {
-                logger.error(err.toString(), err.stack);
+                logger.error("%s %s", err.toString(), err.stack);
             }
             err ? cb(err): cb(null, sinks);
         }
@@ -1975,6 +1975,6 @@ return {
 
 
 process.on('exit', function() {
-    logger.info("fetchInputs total time:", fetchInputsTime/1000);
-    logger.info("sendSignal total time:", sendSignalTime/1000);
+    logger.info("fetchInputs total time: %d", fetchInputsTime/1000);
+    logger.info("sendSignal total time: %d", sendSignalTime/1000);
 });
