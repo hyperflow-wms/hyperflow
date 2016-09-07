@@ -36,6 +36,7 @@
     "form-data": "",
     "nodeunit": "",
     "request": "",
+    "requestretry": "",
     "q": "",
     "traverse": "",
     "istanbul": "",

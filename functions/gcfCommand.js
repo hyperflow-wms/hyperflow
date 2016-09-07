@@ -1,4 +1,5 @@
-var request = require('request');
+//var request = require('request');
+var request = require('requestretry');
 var executor_config = require('./gcfCommand.config.js');
 var identity = function(e) {return e};
 
@@ -15,8 +16,9 @@ function gcfCommand(ins, outs, config, cb) {
             }
         }
     }
+    var executable = config.executor.executable
     var jobMessage = {
-        "executable": config.executor.executable,
+        "executable": executable,
         "args":       config.executor.args,
         "env":        (config.executor.env || {}),
         "inputs":     ins.map(identity),
@@ -29,23 +31,24 @@ function gcfCommand(ins, outs, config, cb) {
     var url = executor_config.gcf_url
 
     var req = request.post(
-        {url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}});
+        {timeout:600000, url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}});
 
     req.on('error', function(err) {
-        console.log(err);
+        console.log("Function: " + executable + " error: " + err);
         cb(err, outs);
     })
 
     req.on('response', function(response) {
-        console.log("got response")
+        console.log("Function: " + executable + " response status code: " + response.statusCode)
+        console.log('The number of request attempts: ' + response.attempts);
     })
 
     req.on('data', function(body) {
-        console.log(body.toString())
+        console.log("Function: " + executable + " data: " + body.toString())
     })
 
     req.on('end', function(body) {
-        console.log("got end");
+        console.log("Function: " + executable + " end.");
         cb(null, outs);
     })
 
