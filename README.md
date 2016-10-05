@@ -8,14 +8,13 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 
 ##Getting started
 
-The latest release of HyperFlow is 1.0.0
+The latest release of HyperFlow is 1.1.0
 
 ###Installation
-* Install the latest node.js (http://nodejs.org)
-* Install dependencies (in `hyperflow` directory): `npm install -d`
-* Install the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
-* `npm install https://github.com/dice-cyfronet/hyperflow/archive/1.0.0.tar.gz`
+* Install the latest Node.js (http://nodejs.org)
+* Install the Redis server (http://redis.io) 
+* Install HypeFlow:<br>`npm install https://github.com/dice-cyfronet/hyperflow/archive/1.1.0.tar.gz`
 
 ###Running
-* Start the redis server
-* Run example workflows from the `examples` directory as follows: <br>```hflow run <wf_directory>```
+* Start the redis server: `redis-server`
+* Run example workflows using command `hflow run <wf_directory>`, for example:<br>```./bin/hflow run ./examples/Sqrsum```
