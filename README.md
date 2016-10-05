@@ -17,4 +17,5 @@ The latest release of HyperFlow is 1.1.0
 
 ###Running
 * Start the redis server: `redis-server`
+* Go to hyperflow directory: `cd node_modules/hyperflow`
 * Run example workflows using command `hflow run <wf_directory>`, for example:<br>```./bin/hflow run ./examples/Sqrsum```
