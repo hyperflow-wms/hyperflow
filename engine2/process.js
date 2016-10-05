@@ -306,15 +306,19 @@ var ProcLogic = function() {
             }
         }
 
-        proc.wflib.invokeTaskFunction2(
+        proc.wflib.invokeProcFunction(
                 proc.appId,
                 proc.procId,
+		proc.firingId, 
                 funcIns,
                 proc.sigValues,
                 funcOuts, emul,
                 proc.engine.eventServer,
                 proc.engine.config, 
                 function(err, outs, options) {
+		    //console.log("FUNC INVOKED");
+		    //console.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
+		    //console.log("OUTS: ", outs);
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );

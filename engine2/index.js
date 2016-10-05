@@ -1,5 +1,5 @@
 /** Hypermedia workflow execution engine. 
- ** Author: Bartosz Balis (2013)
+ ** Author: Bartosz Balis (2013-2015)
  */
 
 /*

@@ -4,8 +4,8 @@ if [ "$#" -ne 2 ]; then
   echo "Distributed and decentralized workflow execution test using the HyperFlow REST API."
   echo
   echo "Usage:"
-  echo "1. Run the 1st HyperFlow server:    node app.js    ( -> runs on port1)"
-  echo "2. Run the 2nd HyperFlow server:    node app.js    ( -> runs on port2)"
+  echo "1. Run the 1st HyperFlow server: hflow start-server ( -> runs on port1)"
+  echo "2. Run the 2nd HyperFlow server: hflow start-server ( -> runs on port2)"
   echo "3. Then run this script:"
   echo "       cd examples/DistributedPingPong"
   echo "       ./run.sh <port1> <port2>"

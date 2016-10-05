@@ -8,16 +8,14 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 
 ##Getting started
 
-The latest release of HyperFlow is 1.0.0
+The latest release of HyperFlow is 1.1.0
 
 ###Installation
-* Download the package: https://github.com/dice-cyfronet/hyperflow/archive/1.0.0.zip
-* Install the latest node.js (http://nodejs.org)
-* Install dependencies (in `hyperflow` directory): `npm install -d`
-* Install the Redis server 2.6.x or higher (http://redis.io) (tested with version 2.6.x)
-* Set an environment variable `HFLOW_PATH` to point to your hyperflow root directory.
-* Add `$HFLOW_PATH/bin` to your `PATH`.
+* Install the latest Node.js (http://nodejs.org)
+* Install HyperFlow: `npm install https://github.com/dice-cyfronet/hyperflow/archive/1.1.0.tar.gz`
+* Install dependencies: <br>`cd hyperflow`<br>`npm install -d`
+* Install Redis server (http://redis.io) 
 
 ###Running
-* Start the redis server
-* Run example workflows from the `examples` directory as follows: <br>```hflow run <wf_directory>```
+* Start the Redis server: `redis-server`
+* Run example workflows from the `examples` directory as follows: <br>```hflow run examples/<wf_directory>```

@@ -13,7 +13,8 @@
  *   - @cb        - callback function (err, wfJson)
  */
 var fs = require('fs'),
-    xml2js = require('xml2js');
+    xml2js = require('xml2js'),
+    parse = require('shell-quote').parse;
 
 // Pegasus DAX converter constructor, accepts optional name of function, used to execute tasks
 var PegasusConverter = function(functionName) {
@@ -57,7 +58,7 @@ function parseDax(filename, cb) {
                 if (err) {
                     cb(new Error("File parse error."));
                 } else {
-			//console.log(JSON.stringify(result, null, 2));
+                    //console.log(JSON.stringify(result, null, 2));
                     cb(null, result);
                 }
             });
@@ -77,7 +78,7 @@ function createWorkflow(dax, functionName, cb) {
 
     dax.adag.job.forEach(function(job) {
         ++nextTaskId;
-	var args = job.argument[0];
+        var args = parse(job.argument[0]);
         wfOut.tasks.push({
             "name": job['$'].name,
             "function": functionName,
@@ -103,11 +104,11 @@ function createWorkflow(dax, functionName, cb) {
 
         var dataId, dataName;
         job.uses.forEach(function(job_data) {
-	    if (job_data['$'].name) {
+        if (job_data['$'].name) {
                 dataName = job_data['$'].name; // dax v3.3
-	    } else {
+        } else {
                 dataName = job_data['$'].file; // dax v2.1
-	    }
+        }
             if (!dataNames[dataName]) {
                 ++nextDataId;
                 wfOut.data.push({
