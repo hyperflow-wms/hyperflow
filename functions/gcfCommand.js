@@ -30,27 +30,23 @@ function gcfCommand(ins, outs, config, cb) {
 
     var url = executor_config.gcf_url
 
-    var req = request.post(
-        {timeout:600000, url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}});
-
-    req.on('error', function(err) {
-        console.log("Function: " + executable + " error: " + err);
-        cb(err, outs);
-    })
-
-    req.on('response', function(response) {
-        console.log("Function: " + executable + " response status code: " + response.statusCode)
-        console.log('The number of request attempts: ' + response.attempts);
-    })
-
-    req.on('data', function(body) {
+    function optionalCallback(err, response, body) {
+        if (err) {
+            console.log("Function: " + executable + " error: " + err);
+            cb(err, outs);
+            return
+        }
+        if (response) {
+             console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
+        }
         console.log("Function: " + executable + " data: " + body.toString())
-    })
-
-    req.on('end', function(body) {
-        console.log("Function: " + executable + " end.");
         cb(null, outs);
-    })
+    }
+
+
+    var req = request.post(
+        {timeout:600000, url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}}, optionalCallback);
+
 
 }
 
