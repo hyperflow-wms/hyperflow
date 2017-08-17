@@ -8,6 +8,9 @@
     "hflow": "./bin/hflow",
     "hflow-convert-dax": "./bin/hflow-convert-dax"
   },
+  "scripts": {
+    "start": "node bin/hflow start-server"
+  },
   "dependencies": {
     "adm-zip": "0.4.11",
     "amqplib": "0.5.2",
