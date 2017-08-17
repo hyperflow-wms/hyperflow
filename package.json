@@ -8,6 +8,9 @@
     "hflow": "./bin/hflow",
     "hflow-convert-dax": "./bin/hflow-convert-dax"
   },
+  "scripts": {
+    "start": "node bin/hflow start-server"
+  },
   "dependencies": {
     "express": "3.x",
     "consolidate": "0.10.x",
