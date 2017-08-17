@@ -1,0 +1,23 @@
+sudo: required
+language: node_js
+
+services:
+- docker
+
+script:
+- make container
+
+before_deploy:
+- docker login -u $DOCKER_USER -p $DOCKER_PASS
+
+deploy:
+- provider: script
+  script: make push
+  on:
+    branch: master
+    tags: true
+
+env:
+  global:
+  - secure: cUORTbxmO9uDJWTCED+czPL7rL6w+DxFndNtNn33IF1IvXdCSvI+Oz2/BtQ8s7/eZDi8rpmcxcx4OXrDBx+ahoVwyaID2KNR7xLF0O6xYbnRCPiT2Je8PHroitlvtjGfEGe8Gy1tqWlyyt+bAy7eilvcn3rLMXDomKH8FXJPaa4=
+  - secure: vzuQD6ZpQ/CJ+CKuGPae9/I8GQikxkxcyNXtkgafwjXK+fViFEm61Bal29DvIjgi6VwAbo+2oG9OWN8gbWtC3FkHkXV3P3ji0DNnXoIWd7Rr8tMpD0tI+9pw6bLjX+v0l+WCDhvPdXCWw1+RC7SjzClI8n5byk7OfqEdvsMDEzU=
