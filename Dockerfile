@@ -10,7 +10,6 @@ RUN npm install
 COPY . .
 
 ENV PORT=80
-ENV REDIS_HOST=redis
 
 EXPOSE ${PORT}
 
