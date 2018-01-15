@@ -1,11 +1,11 @@
 //var request = require('request');
 var request = require('requestretry');
-var executor_config = require('./gcfCommand.config.js');
+var executor_config = require('./awsLambdaCommand.config.js');
 var identity = function(e) {return e};
 
 
 
-function gcfCommand(ins, outs, config, cb) {
+function awsLambdaCommand(ins, outs, config, cb) {
 
     var options = executor_config.options;
     if(config.executor.hasOwnProperty('options')) {
@@ -16,7 +16,7 @@ function gcfCommand(ins, outs, config, cb) {
             }
         }
     }
-    var executable = config.executor.executable
+    var executable = config.executor.executable;
     var jobMessage = {
         "executable": executable,
         "args":       config.executor.args,
@@ -26,11 +26,11 @@ function gcfCommand(ins, outs, config, cb) {
         "options":    options
     };
 
-    console.log("Executing:  " + JSON.stringify(jobMessage))
+    console.log("Executing:  " + JSON.stringify(jobMessage));
 
-    var url = executor_config.gcf_url
+    var url = executor_config.awslambda_url;
 
-    function optionalCallback(err, response, body) {
+    function requestCb(err, response, body) {
         if (err) {
             console.log("Function: " + executable + " error: " + err);
             cb(err, outs);
@@ -39,16 +39,16 @@ function gcfCommand(ins, outs, config, cb) {
         if (response) {
              console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
         }
-        console.log("Function: " + executable + " data: " + body.toString())
+        console.log("Function: " + executable + " data: " + body.toString());
         cb(null, outs);
     }
 
 
     var req = request.post(
-        {timeout:600000, url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}}, optionalCallback);
+        {timeout:600000, url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}}, requestCb);
 
 
 }
 
 
-exports.gcfCommand = gcfCommand;
+exports.awsLambdaCommand = awsLambdaCommand;
