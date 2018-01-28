@@ -1,11 +1,10 @@
-//var request = require('request');
 var request = require('requestretry');
-var executor_config = require('./awsLambdaCommand.config.js');
+var executor_config = require('./RESTServiceCommand.config.js');
 var identity = function(e) {return e};
 
 
 
-function awsLambdaCommand(ins, outs, config, cb) {
+function RESTServiceCommand(ins, outs, config, cb) {
 
     var options = executor_config.options;
     if(config.executor.hasOwnProperty('options')) {
@@ -26,9 +25,9 @@ function awsLambdaCommand(ins, outs, config, cb) {
         "options":    options
     };
 
-    console.log("Executing:  " + JSON.stringify(jobMessage));
+    var url = executor_config.service_url;
 
-    var url = executor_config.awslambda_url;
+    console.log("Executing: " + JSON.stringify(jobMessage) + "@" + url);
 
     function requestCb(err, response, body) {
         if (err) {
@@ -51,4 +50,4 @@ function awsLambdaCommand(ins, outs, config, cb) {
 }
 
 
-exports.awsLambdaCommand = awsLambdaCommand;
+exports.RESTServiceCommand = RESTServiceCommand;
