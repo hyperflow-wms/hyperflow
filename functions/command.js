@@ -1,13 +1,21 @@
-var spawn = require('cross-spawn');
+var spawn = require('cross-spawn'),
+    fs = require('fs');
 
 function command(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args;
 
+    var stdoutStream;
+
     console.log("Executing:", exec, args);
 
 //    var proc = spawn(exec, [ args ]);
     var proc = spawn(exec,  args );
+
+    if (config.executor.stdout) {
+        stdoutStream = fs.createWriteStream(config.executor.stdout, {flags: 'w'});
+        proc.stdout.pipe(stdoutStream);
+    }
 
     proc.stdout.on('data', function(data) {
         console.log(exec, 'stdout:' + data);
