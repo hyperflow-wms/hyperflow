@@ -1,6 +1,6 @@
 /* Hypermedia workflow. 
  ** Converts from pegasus dax file to hyperflow workflow representation (json)
- ** Author: Bartosz Balis (2013)
+ ** Author: Bartosz Balis (2013-2018)
  */
 
 /*
@@ -43,7 +43,6 @@ var sources = {}, sinks = {};
 
 var nextTaskId = -1, nextDataId = -1, dataNames = {};
 
-
 function parseDax(filename, cb) {
     var self = this;
     var parser = new xml2js.Parser({normalize: true});
@@ -52,8 +51,10 @@ function parseDax(filename, cb) {
             cb(new Error("File read error. Doesn't exist?"));
         } else {
             var dag = data.toString();
-            dag = dag.replace(/<file name="(.*)".*>/g, "$1");
-            dag = dag.replace(/<filename file="(.*)".*>/g, "$1");
+            // without the following replacements parsing of 'argument' elements is a hell 
+            // (because DAX uses 'mixed content', i.e. elements mix text and child elements)
+            dag = dag.replace(/<file name="(.*?)".*?\/>/g, "$1");  // DAX 3.x
+            dag = dag.replace(/<filename file="(.*?)".*?\/>/g, "$1"); // DAX 2.1
             parser.parseString(dag, function(err, result) {
                 if (err) {
                     cb(new Error("File parse error."));
@@ -76,18 +77,33 @@ function createWorkflow(dax, functionName, cb) {
         outs: []
     };
 
+    // in DAX 3.x there can be "executable" elements
+    var execs={};
+    if (dax.adag.executable) {
+        dax.adag.executable.forEach(function(exec) {
+                var name = exec['$'].name,
+                    execName = exec.pfn[0]['$'].url.replace(/^.*[\\\/]/, '');
+                execs[name] = execName;
+                //console.log(name, execName);
+        });
+    }
+
     dax.adag.job.forEach(function(job) {
+
         ++nextTaskId;
-        var args = parse(job.argument[0]);
+       
+        var args = job.argument ? parse(job.argument[0]): [],
+            jname = job['$'].name;
+
         wfOut.tasks.push({
-            "name": job['$'].name,
+            "name": jname,
             "function": functionName,
             "type": "dataflow",
             "executor": "syscommand",
             "firingLimit": 1,
             "config": {
                 "executor": {
-                    "executable": job['$'].name,
+                    "executable": execs[jname] ? execs[jname]: jname,
                     "args": args
                 }
             },
@@ -99,16 +115,13 @@ function createWorkflow(dax, functionName, cb) {
             wfOut.tasks[nextTaskId].runtime = job['$'].runtime;
         }
 
-        //var
-        //if (config
-
         var dataId, dataName;
         job.uses.forEach(function(job_data) {
-        if (job_data['$'].name) {
-                dataName = job_data['$'].name; // dax v3.3
-        } else {
-                dataName = job_data['$'].file; // dax v2.1
-        }
+            if (job_data['$'].name) {
+                    dataName = job_data['$'].name; // dax v3.3
+            } else {
+                    dataName = job_data['$'].file; // dax v2.1
+            }
             if (!dataNames[dataName]) {
                 ++nextDataId;
                 wfOut.data.push({
@@ -133,9 +146,11 @@ function createWorkflow(dax, functionName, cb) {
             }
         });
     });
+
     for (var i=0; i<wfOut.data.length; ++i) {
         if (wfOut.data[i].sources.length == 0) {
             wfOut.ins.push(i);
+            wfOut.data[i].data = [{ }]; // uncomment to send initial signals to the workflow
         }
         if (wfOut.data[i].sinks.length == 0) {
             wfOut.outs.push(i);
@@ -149,6 +164,11 @@ function createWorkflow(dax, functionName, cb) {
         delete wfOut.data[i].sources;
         delete wfOut.data[i].sinks;
     }
+
+    wfOut.processes = wfOut.tasks;
+    wfOut.signals = wfOut.data;
+    delete wfOut.tasks;
+    delete wfOut.data;
 
     cb(null, wfOut);
 }
