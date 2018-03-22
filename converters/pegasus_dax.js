@@ -112,7 +112,6 @@ function createWorkflow(dax, functionName, cb) {
         });
 
         if (job.stdout) { // stdout should be redirected to a file
-            console.log(job.stdout);
             wfOut.tasks[nextTaskId].config.executor.stdout = job.stdout[0]['$'].name;
         }
 
