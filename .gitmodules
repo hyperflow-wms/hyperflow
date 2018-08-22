@@ -1,0 +1,3 @@
+[submodule "plugins/hyperflow-ecs-monitoring-plugin"]
+	path = plugins/hyperflow-ecs-monitoring-plugin
+	url = https://github.com/krystianpawlik/hyperflow-ecs-monitoring-plugin.git
