@@ -1,6 +1,7 @@
 var fsp = require('./fileSplitter.js'), 
     cmd = require('./command.js'),
     amqpCmd = require('./amqpCommand.js'),
+    RESTCmd = require('./RESTServiceCommand.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, config, cb) {
@@ -210,6 +211,7 @@ exports.length = length;
 exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
+exports.RESTServiceCommand = RESTCmd.RESTServiceCommand;
 exports.exit = exit;
 exports.command_print = cmd.command_print;
 exports.command_notifyevents = cmd.command_notifyevents;
