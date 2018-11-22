@@ -1,4 +1,4 @@
-/* Hypermedia workflow. 
+/* HyperFlow engine. 
  ** Converts from pegasus dax file to hyperflow workflow representation (json)
  ** Author: Bartosz Balis (2013-2018)
  */
@@ -154,7 +154,8 @@ function createWorkflow(dax, functionName, cb) {
     for (var i=0; i<wfOut.data.length; ++i) {
         if (wfOut.data[i].sources.length == 0) {
             wfOut.ins.push(i);
-            wfOut.data[i].data = [{ }]; // uncomment to send initial signals to the workflow
+            // the line below sends initial signals to the workflow. FIXME: add a cmd line option 
+            wfOut.data[i].data = [{ }]; 
         }
         if (wfOut.data[i].sinks.length == 0) {
             wfOut.outs.push(i);
