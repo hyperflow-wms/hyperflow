@@ -1,21 +1,21 @@
-#HyperFlow: a distributed workflow execution engine
+# HyperFlow: a distributed workflow execution engine
 
-##Description
+## Description
 
 HyperFlow provides a model of computation, workflow description language and enactment engine for complex, distributed workflows.
 
 Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more about the HyperFlow workflow model. 
 
-##Getting started
+## Getting started
 
 The latest release of HyperFlow is 1.1.0
 
-###Installation
+### Installation
 * Install Node.js (http://nodejs.org)
 * Install Redis (http://redis.io) 
 * Install HyperFlow:<br>`npm install https://github.com/dice-cyfronet/hyperflow/archive/1.1.0.tar.gz`
 
-###Running
+### Running
 * Start the redis server: `redis-server`
 * Go to hyperflow directory: `cd node_modules/hyperflow`
 * Run example workflows using command `hflow run <wf_directory>`, for example:<br>```./bin/hflow run ./examples/Sqrsum```
