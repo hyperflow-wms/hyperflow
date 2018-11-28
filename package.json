@@ -9,7 +9,7 @@
     "hflow-convert-dax": "./bin/hflow-convert-dax"
   },
   "dependencies": {
-    "adm-zip": "0.4.7",
+    "adm-zip": "0.4.11",
     "amqplib": "0.5.2",
     "async": "0.2.x",
     "consolidate": "0.10.x",
