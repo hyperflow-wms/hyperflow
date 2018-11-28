@@ -39,9 +39,10 @@ function command_print(ins, outs, config, cb) {
     var exec = config.executor.executable,
         args = config.executor.args.join(' ');
 
-    console.log(exec, args);
-
-    cb(null, outs);
+    setTimeout(function() {
+        console.log(exec, args);
+        cb(null, outs);
+    }, 1);
 }
 
 function command_notifyevents(ins, outs, config, cb) {

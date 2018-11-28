@@ -5,6 +5,7 @@ function bconvREST(ins, outs, config, cb) {
     var gene = "unigene:" + ins.gene.data[0],
         url = "http://rest.kegg.jp/conv/mmu/" + gene;
 
+    console.log(url);
     req({
         "timeout": 10000,
         "url": url
@@ -12,6 +13,9 @@ function bconvREST(ins, outs, config, cb) {
         if (error || response.statusCode != 200) { 
             throw(new Error("bconvREST response error (" + error + ")")); 
         }
+        console.log("BODY:", body);
+        console.log("RESPONSE:", response.statusCode);
+        console.log("ERROR:", error);
         var geneId = body.match(/mmu:[0-9]{4,}/)[0];
         outs.geneId.data = [ geneId ];
         cb(null, outs);

@@ -285,8 +285,9 @@ var ProcLogic = function() {
             if (proc.sigValues) {
                 proc.sigValues.forEach(function(sigs) {
                     sigs.forEach(function(sig) {
+                        // FIXME: remove "sig" at the end of event (for debugging only)
                         proc.engine.eventServer.emit("prov", 
-                            ["read", proc.appId, proc.procId, proc.firingId, sig._id, sig.sigIdx]
+                            ["read", +proc.appId, +proc.procId, +proc.firingId, +sig._id, +sig.sigIdx, sig]
                         );
                     });
 
@@ -316,9 +317,25 @@ var ProcLogic = function() {
                 proc.engine.eventServer,
                 proc.engine.config, 
                 function(err, outs, options) {
-		    //console.log("FUNC INVOKED");
-		    //console.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
-		    //console.log("OUTS: ", outs);
+		    //onsole.log("FUNC INVOKED");
+		    //onsole.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
+		    //onsole.log("OUTS: ", outs);
+                    var outsArray = [];
+                    if (outs == null) {
+                       outsArray = null; 
+                    } else {
+                        outs.forEach(function(out) {
+                            outsArray.push(out);
+                        });
+                    }
+
+                    // persist outputs (originally persistence was disabled DURING recovery, 
+                    // but it's probably wrong: currently even when recovering from a previous log, 
+                    // workflow execution is persisted normally to a new log
+                    //if (!options || !options.recovered) {
+                        proc.engine.eventServer.emit("persist", 
+                            ["fired", proc.appId, proc.procId, proc.firingId, outsArray]);
+                    //}
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }
         );
@@ -326,6 +343,10 @@ var ProcLogic = function() {
 
     this.postInvoke = function(outs, asyncInvocation, funcIns, funcOuts, firingId, firingSigs, cb) {
         var proc = this;
+
+        // the function can return 'null' in order not to emit any signals (e.g. the process can
+        // be stateful and emit an output for every three firings). 
+        if (outs == null) return cb();
 
         var outValues = outs;
         for (var i=0; i<funcOuts.length; ++i) {

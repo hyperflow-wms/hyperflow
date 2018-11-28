@@ -1,6 +1,6 @@
 /* HyperFlow workflow engine
  ** API over redis-backed workflow instance
- ** Author: Bartosz Balis (2013-2014)
+ ** Author: Bartosz Balis (2013-2015)
  */
 var fs = require('fs'),
     redis = require('redis'),
@@ -43,7 +43,7 @@ exports.init = function(redisClient) {
 	  global_hfid = uuid.v1();
 
 	  // this object holds global information about this HF engine instance
-	  // written to redis as a hash map with key "globalinfo:<uuid>"
+	  // written to redis as a hash map with key "hflow:<uuid>"
 	  // TODO: add more attributes
 	  globalInfo.hf_version = "???";
 
@@ -51,7 +51,7 @@ exports.init = function(redisClient) {
 	}
     }
 
-   console.log("hfid:", global_hfid);
+    console.log("hfid:", global_hfid);
     /*rcl.on("error", function (err) {
       console.log("redis error: " + err);
       });*/
@@ -63,14 +63,12 @@ exports.init = function(redisClient) {
     function public_createInstanceFromFile(filename, baseUrl, cb) {
         fs.readFile(filename, 'utf8', function(err, data) {
             if (err) { return cb(err); }
-            var wfname = filename.split('.')[0];
-            rcl.hmset("wftempl:"+wfname, "name", wfname, "maxInstances", "3", function(err, ret) { 
-                var start = (new Date()).getTime(), finish;
-                public_createInstance(JSON.parse(data), baseUrl, function(err, wfId) {
-                    finish = (new Date()).getTime();
-                    console.log("createInstance time: "+(finish-start)+"ms");
-                    err ? cb(err): cb(null, wfId);
-                });
+            var start = (new Date()).getTime(), finish;
+            var wfJson = JSON.parse(data);
+            public_createInstance(wfJson, baseUrl, function(err, wfId) {
+                finish = (new Date()).getTime();
+                console.log("createInstance time: "+(finish-start)+"ms");
+                err ? cb(err): cb(null, wfId, wfJson);
             });
         });
     }
@@ -79,6 +77,7 @@ exports.init = function(redisClient) {
     function public_createInstance(wfJson, baseUrl, cb) { 
         var wfId, procs, sigs, funs, schemas, ins, outs;
         var start, finish; 
+        //var recoveryMode = false;
 
         // preprocessing: converts signal names to array indexes, etc.
         var preprocess = function() {
@@ -201,12 +200,12 @@ exports.init = function(redisClient) {
                     "status", "waiting", 
                     function(err, ret) { });
 
-            var multi = rcl.multi(); // FIXME: change this to async.parallel
+           var multi = rcl.multi(); // FIXME: change this to async.parallel
 
             var addSigInfo = function(sigId) {
                 var score = -1;
                 var sigObj = sigs[sigId-1];
-                sigObj.status = "not_ready"; // FIXME: remove (deprecated)
+                //sigObj.status = "not_ready"; // FIXME: remove (deprecated)
                 sigKey = wfKey+":data:"+sigId;
                 if (sigObj.control) { // this is a control signal
                     sigObj.type = "control";
@@ -215,7 +214,8 @@ exports.init = function(redisClient) {
                 } else {              // this is a data signal
                     score = 0;
                 }
-                sigObj.uri = baseUri + '/sigs/' + sigId; 
+                // FIXME: signal uri removed temporarily (currently unused)
+                //sigObj.uri = baseUri + '/sigs/' + sigId; 
 
                 if (sigObj.schema && value(sigObj.schema).typeOf(Object)) { // this is an inline schema 
                     //onsole.log("INLINE SCHEMA", sigObj.schema);
@@ -401,12 +401,26 @@ exports.init = function(redisClient) {
 
         rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
             if (err) { return cb(err); }
+
+            // FIXME: "setnx" should be done synchronously, before moving to createWfInstance 
+            // (but a race is probably impossible such that "recoveryMode" is set incorrectly)
+            // FIXME: probably to be removed, recovery mode will be set via option to 'hflow' 
+            // NOTE: we probably don't need persistent IDs because there are no persistent objects:
+            //       we recover state of the workflow which is no longer needed after the workflow
+            //       is finished executing. (IOW, workflow apps are different than business apps)
+            /*if (wfJson.persistenceId) {
+                rcl.setnx("wftrace:" + wfJson.persistenceId, "1", function(err, ret) {
+                    console.log(err, ret);
+                    if (ret == 0) { // the persistence key already exists in redis --- we go to recovery mode
+                        recoveryMode = true;
+                    }
+                });
+            }*/
+ 
             wfId = ret.toString();
-            //onsole.log("wfId="+wfId);
             preprocess();
-            //onsole.log(JSON.stringify(wfJson, null, 2));
             createWfInstance(function(err) {
-                cb(null, wfId);
+                cb(null, wfId); // FIXME: is race with 'setnx' above impossible? (EDIT: pending removal)
             });
         });
     }
@@ -775,6 +789,7 @@ exports.init = function(redisClient) {
     }
 
     function popInput(wfId, taskId, sigId, cb) {
+        //onsole.log("POP INPUT", wfId, taskId, sigId);
         var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
         var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
         var isStickyKey = "wf:"+wfId+":task:"+taskId+":sticky";
@@ -1365,6 +1380,22 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
     isArray(insIds_) ? insIds = insIds_: insIds.push(insIds_);
     isArray(outsIds_) ? outsIds = outsIds_: outsIds.push(outsIds_);
 
+    // convert an array of signals to an object-array 
+    var convertSigs2ObjArray = function(sigs) {
+        if (sigs == null) return null;
+        function Arg() {} 
+        Arg.prototype = Object.create(Array.prototype);
+        var outSigs = new Arg;
+        sigs.forEach(function(s) {
+            outSigs.push(s);
+        });
+        outSigs.forEach(function(s, idx) {
+            outSigs[s.name] = outSigs[idx];
+        });
+        return outSigs;
+    }
+
+    // TODO: reuse convertSigs2ObjArray
     var convertSigValuesToFunctionInputs = function() {
         function Arg() {} // arguments will be an Array-like object
         Arg.prototype = Object.create(Array.prototype);
@@ -1387,7 +1418,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
         return funcIns;
     }
 
-    var ins = convertSigValuesToFunctionInputs(), outsTmp = [];
+    var ins = convertSigValuesToFunctionInputs();
 
     // TODO: for each ins[i].data[j], create a map (i,j) => metadata (for provenance logging)
     // In functions user-defined provenance could look like:
@@ -1395,43 +1426,70 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
     
     //onsole.log("FUNC INS", ins);
 
-    public_getTaskInfo(wfId, procId, function(err, taskInfo) {
+    public_getTaskInfo(wfId, procId, function(err, procInfo) {
         if (err) return cb(err); 
 
-        var asyncTasks = [];
+        var prepareFuncOutputs = function(callback) {
+            // if in recovery mode, use recovery data --> pass outputs that were produced
+            // during the previous run. The function will decide if re-execution is needed.
+            if (appConfig.recovery) {
+                var key = procId + "_" + firingId;
+                // if outputs from this firing have been persisted in the previous execution, we reuse them!
+                if (key in appConfig.recoveryData.outputs) {
+                    var outs = convertSigs2ObjArray(appConfig.recoveryData.outputs[key]);
+                    //onsole.log("RECOVERY DATA FOUND!!!", outs);
+                    return callback(outs, true);
+                }
+            }
 
-        // retrieve task outputs given in 'outsIds'
-        for (i=0; i<outsIds.length; ++i) {
-            (function(idx) {
-                asyncTasks.push(function(callback) {
-                    var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
-                    rcl.hgetall(dataKey, function(err, dataInfo) {
-                        outsTmp[+idx] = dataInfo;
-                        callback(err, dataInfo);
-                    });
-                })
-            })(i);
+            var asyncTasks = [], outsTmp = [];
+
+            // retrieve task outputs given in 'outsIds'
+            for (i=0; i<outsIds.length; ++i) {
+                (function(idx) {
+                    asyncTasks.push(function(callback) {
+                        var dataKey = "wf:"+wfId+":data:"+outsIds[idx];
+                        rcl.hgetall(dataKey, function(err, dataInfo) {
+                            outsTmp[+idx] = dataInfo;
+                            callback(err, dataInfo);
+                        });
+                    })
+                })(i);
+            }
+
+            /*function Arg() {} // make 'outs' an Array-like object
+            Arg.prototype = Object.create(Array.prototype);
+            var outs = new Arg;*/
+
+            async.parallel(asyncTasks, function done(err, result) {
+                if (err) return cb(err);
+
+                // convert 'outsTmp' array to array-like object 'outs'
+                var outs = convertSigs2ObjArray(outsTmp);
+                //console.log("OUTS", outs);
+
+                /*for (var i=0; i<outsTmp.length; i++) {
+                    outs.push(outsTmp[i]);
+                    outs[outsTmp[i].name] = outs[i];
+                }*/
+                callback(outs, false);
+            });
         }
 
-        function Arg() {} // make 'outs' an Array-like object
-        Arg.prototype = Object.create(Array.prototype);
-        var outs = new Arg;
-
-        async.parallel(asyncTasks, function done(err, result) {
-            if (err) return cb(err);
-
-            // convert 'outsTmp' array to array-like object 'outs'
-            for (var i=0; i<outsTmp.length; i++) {
-                outs.push(outsTmp[i]);
-                outs[outsTmp[i].name] = outs[i];
-            }
+        prepareFuncOutputs(function(outs, recovered) {
             if (emulate) {
-                setTimeout(function() {
-                    return cb(null, outs);
+                return setTimeout(function() {
+                    cb(null, outs);
                 }, 100);
             }
 
-            if ((taskInfo.fun == "null") || (!taskInfo.fun)) {
+            // when this is a recovered firing, unless the process has set flag "executeWhenRecovering",
+            // we don't invoke the function, just immediately return the recovered outputs!
+            if (recovered && !procInfo.executeWhenRecovering) {
+                return cb(null, outs, {"recovered": "true"});
+            }
+
+            if ((procInfo.fun == "null") || (!procInfo.fun)) {
                 return cb(new Error("No function defined for the process."));
             }
 
@@ -1439,7 +1497,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
             // INVOKE THE FUNCTION //
             /////////////////////////
 
-            rcl.hgetall("wf:"+wfId+":functions:"+taskInfo.fun, function(err, fun) {
+            rcl.hgetall("wf:"+wfId+":functions:"+procInfo.fun, function(err, fun) {
                 if (err) return cb(err);
 
                 if (appConfig.workdir) {
@@ -1458,7 +1516,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 var funPath = pathTool.join(appConfig.workdir ? appConfig.workdir : "", funModuleName);
 
                 try {
-                    f = require(funPath)[taskInfo.fun];
+                    f = require(funPath)[procInfo.fun];
                 } catch(err) {
                     //console.log(err);
                     //console.log("functions.js doesn't exist, trying default 'functions' module...");
@@ -1468,24 +1526,24 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // if the function could not be loaded, look in the core HyperFlow functions
                 if (!f) {
                     funPath = pathTool.join(require('path').dirname(require.main.filename), "..", "functions");
-                    f = require(funPath)[taskInfo.fun];
+                    f = require(funPath)[procInfo.fun];
                 }
 
                 // the function couldn't be found anywhere
                 if (!f) {
                     throw(new Error("Unable to load the process function: " + 
-                                taskInfo.fun + " in module: " + funPath + ", exception:  " + err));
+                                procInfo.fun + " in module: " + funPath + ", exception:  " + err));
                 }
 
-                //onsole.log("FUNCTION", taskInfo.fun, module);
-                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
-                //onsole.log("FUNCTION", taskInfo.fun, module);
-                //onsole.log("FPATH", fpath, "F", f, "FUN", taskInfo.fun);
+                //onsole.log("FUNCTION", procInfo.fun, module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", procInfo.fun);
+                //onsole.log("FUNCTION", procInfo.fun, module);
+                //onsole.log("FPATH", fpath, "F", f, "FUN", procInfo.fun);
                 //onsole.log("INS:", ins);
                 //onsole.log("OUTS:", outs);
-                //onsole.log(JSON.stringify(taskInfo.config));  //DEBUG
-                var conf = taskInfo.config ? JSON.parse(taskInfo.config): {}; 
-                //var executor = taskInfo.executor ? taskInfo.executor: null;
+                //onsole.log(JSON.stringify(procInfo.config));  //DEBUG
+                var conf = procInfo.config ? JSON.parse(procInfo.config): {}; 
+                //var executor = procInfo.executor ? procInfo.executor: null;
 
                 //onsole.log("INS VALUES", insValues);
                 if (eventServer !== 'undefined') {
@@ -1498,8 +1556,16 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
 		conf.procId = procId;
 		conf.firingId = firingId;
 
+                if (recovered) { conf.recovered = true; }
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
+                    if (recovered) { 
+                        if (!options) { 
+                            options = { recovered: true } 
+                        } else {
+                            options.recovered = true;
+                        }
+                    }
                     cb(null, outs, options);
                 });
             });
@@ -1940,7 +2006,7 @@ return {
     getWfTasks: public_getWfTasks,
     getWfIns: public_getWfIns,
     getWfOuts: public_getWfOuts,
-    getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
+    //getWfInsAndOutsInfoFull: public_getWfInsAndOutsInfoFull,
     getTaskInfo: public_getTaskInfo,
     //getTaskInfoFull: public_getTaskInfoFull,
     //getTaskIns: public_getTaskIns,

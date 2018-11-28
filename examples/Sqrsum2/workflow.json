@@ -1,0 +1,29 @@
+{
+    "name": "sumsqr2",
+    "processes": [ {
+        "name": "Sqr",
+	"type": "dataflow",
+        "function": "sqr",
+        "parlevel": 1,
+	"ordering": "true",
+        "ins": [ "number" ],
+        "outs": [ "square" ]
+    }, {
+        "name": "Sum",
+	"type": "dataflow",
+        "function": "sum",
+        "executeWhenRecovering": "true",
+        "ins": [ "square" ],
+        "outs": [ "sum" ]
+    } ],
+    "signals": [ {
+        "name": "number",
+        "data": [ 1, 2, 3, 4, 5, 6 ]
+    }, {
+        "name": "square"
+    }, {
+        "name": "sum"
+    } ],
+    "ins": [ "number" ],
+    "outs": [ "sum" ]
+}

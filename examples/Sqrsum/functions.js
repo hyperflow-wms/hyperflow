@@ -1,5 +1,8 @@
 function sqr(ins, outs, config, cb) {
     var n = Number(ins.number.data[0]);
+    if (n == 5) {
+	    process.exit(1); // emulate crash
+    }
     outs.square.data = [n * n];
     setTimeout(function() {
         cb(null, outs);

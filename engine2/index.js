@@ -54,12 +54,12 @@ var Engine = function(config, wflib, wfId, cb) {
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
 
     this.logProvenance = false;
-                          
-    this.eventServer.on('prov', function(data) {
-        console.log(arguments[1]);
-    });
 
-    this.emulate = config.emulate == "true" ? true: false;       
+    this.emulate = config.emulate == "true" ? true: false;
+
+    // for recovery of workflow state
+    this.recovery = config.recovery;
+    this.recoveryData = config.recoveryData;
 
     this.startTime = (new Date()).getTime(); // the start time of this engine (workflow)
 
@@ -103,40 +103,39 @@ var Engine = function(config, wflib, wfId, cb) {
 
 Engine.prototype.runInstance = function (cb) {
     var engine = this;
+
+    var getInitialSigs = function(callback) {
+        // if in recovery mode, take initial sigs from recovery data
+        if (engine.recovery) {
+            callback(engine.recoveryData.input);
+        } else {
+            engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
+                callback(sigs);
+            });
+        }
+    }
+
     engine.wflib.setWfInstanceState(engine.wfId, { "status": "running" }, function(err, rep) {
         if (err) return cb(err);
-        // send initial signals (if any) to the instance
-        engine.wflib.getInitialSigs(engine.wfId, function(err, sigs) {
+
+        getInitialSigs(function(sigs) {
             if (sigs) {
                 engine.emitSignals(sigs, function(err) {
                     if (err) console.log(err);
-                    cb(err);
+                    return cb(err);
                 });
             }
         });
     });
-
-    // Emulate workflow execution: change state of all workflow inputs to "ready" and send
-    // signal to all sink tasks; pretend task Functions are invoked and results computed.
-    if (this.emulate) {
-        (function(engine) {
-            engine.wflib.getWfIns(engine.wfId, false, function(err, wfIns) {
-                for (var i=0; i<wfIns.length; ++i) {
-                    markDataReadyAndNotifySinks(engine.wfId, wfIns[i], engine.tasks, engine.wflib, function() { });
-                }
-            });
-        })(this);
-    }
 }
 
 // callback of this function is invoked only when the workflow instance running in this
 // engine has finished execution.
 Engine.prototype.runInstanceSync = function(callback) {
-    (function(engine) {
-        engine.runInstance(function(err) {
-            engine.syncCb = callback;
-        });
-    })(this);
+    var engine = this;
+    engine.runInstance(function(err) {
+        engine.syncCb = callback;
+    });
 }
 
 
@@ -208,9 +207,23 @@ Engine.prototype.emitSignals = function(sigs, cb) {
             engine.wflib.sendSignal(engine.wfId, s, function(err, sinks) {
                 // at this point "s" contains unique 'sigIdx' set in 'sendSignal' => we can emit "write" 
                 // provenance events (for signals which have "source", i.e. were written by a process)
+                // FIXME: remove "sig" at the end of event (for debugging only)
                 if (s.source && engine.logProvenance) { 
-                    engine.eventServer.emit("prov", ["write", +engine.wfId, s.source, s.firingId, s._id, s.sigIdx]);
+                    engine.eventServer.emit("prov", 
+                        ["write", +engine.wfId, +s.source, +s.firingId, +s._id, +s.sigIdx, sig]);
+                } 
+
+                // signals which don't have "source" are workflow inputs ==> need to be persisted
+                // FIXME: add a flag to check if persistence is enabled
+                if (!s.source) {
+                    engine.eventServer.emit("persist", ["input", +engine.wfId, s]);
                 }
+
+                // log signal payload in the provenance log
+                if (engine.logProvenance) {
+                    engine.eventServer.emit("prov", ["sig", s]);
+                }
+
 
                 if (!err) {
                     // notify sinks that the signals have arrived

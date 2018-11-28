@@ -3435,6 +3435,7 @@
       "function": "command_print",
       "type": "dataflow",
       "firingLimit": 1,
+      "executeWhenRecovering": "true",
       "config": {
         "executor": {
           "executable": "mJPEG",
