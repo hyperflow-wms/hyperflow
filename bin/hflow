@@ -18,7 +18,7 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...]\n\
   hflow recover <persistence-log> [-p <plugin_module_name> ...]\n\
   hflow start-server [-p <plugin_module_name> ...]\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
@@ -168,19 +168,22 @@ function hflow_run() {
           });
       }
 
-      // TODO: implement a plugin for different persistence backends
-      // FIXME: generate unique persist-log file name
-      var date = new Date().toISOString().replace(new RegExp('[T:.]', 'g'), '-').replace('Z', '');
-      var logFileName = (wfName ? wfName: 'wf').concat('.' + date + ".log");
-      console.log("Persistence log:", logFileName);
-      var persistlog=pathtool.join(wfDirFull, logFileName);
-      engine.eventServer.on('persist', function() {
-          cargo.push( { "filename": persistlog, "args": JSON.stringify(arguments) }, function(err) {
-              if (err) {
-                  console.log("cargo errror! " + err);
-              }
+
+      if (opts['--persist']) { // enable persistence of workflow execution state
+          // TODO: implement a plugin for different persistence backends
+          // FIXME: generate unique persist-log file name
+          var date = new Date().toISOString().replace(new RegExp('[T:.]', 'g'), '-').replace('Z', '');
+          var logFileName = (wfName ? wfName: 'wf').concat('.' + date + ".log");
+          console.log("Persistence log:", logFileName);
+          var persistlog=pathtool.join(wfDirFull, logFileName);
+          engine.eventServer.on('persist', function() {
+              cargo.push( { "filename": persistlog, "args": JSON.stringify(arguments) }, function(err) {
+                  if (err) {
+                      console.log("cargo errror! " + err);
+                  }
+              });
           });
-      });
+      }
 
       // we persist the full workflow directory path and execution options used to run the workflow
       engine.eventServer.emit('persist', ["info", wfDirFull, JSON.stringify(opts)]);
