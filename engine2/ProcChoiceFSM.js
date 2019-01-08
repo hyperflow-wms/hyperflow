@@ -136,7 +136,7 @@ var ChoiceLogic = function() {
             var Nj = outValues.length, Nb = Nj; 
             proc.engine.emitSignals([{"_id": proc.ctrOuts.merge, "data": [{"Nb": Nb, "Nj": Nj}]}],
                     function(err) { });
-            //onsole.log("CHOICE EMIT MERGE", proc.ctrOuts.merge);
+            //onsole.log("CHOICE EMIT MERGE: " + Nj + " " + Nb, proc.ctrOuts.merge);
         }
         if (proc.ctrOuts.next) { // emit "next" signal if there is such an output port
             outValues.push({"_id": proc.ctrOuts.next });

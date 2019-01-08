@@ -188,7 +188,7 @@ function JoinLogic() {
             proc.ready = true;
             proc.firingSigsH.shift();
             if (proc.ctrIns.merge) {
-                console.log("RESET Nb="+proc.paramsH[0].Nb+", Nj="+proc.paramsH[0].Nj);
+                //onsole.log("RESET Nb="+proc.paramsH[0].Nb+", Nj="+proc.paramsH[0].Nj);
                 proc.paramsH.shift();
             }
             cb();
@@ -196,6 +196,8 @@ function JoinLogic() {
 
         var Nb0 = proc.ctrIns.merge ? proc.paramsH[0].Nb: proc.Nb,
             Nj0 = proc.ctrIns.merge ? proc.paramsH[0].Nj: proc.Nj;
+
+        //onsole.log("Nb0=" + Nb0 + ", Nj0=" + Nj0);
 
         if (Nb0 > Nj0) { // remove discarded signals (if any)
             var sigs = proc.firingSigsH[0].slice(Nj0);
@@ -284,7 +286,7 @@ function fireInputJoin(obj) {
     if (sigId == proc.ctrIns.done) { // "done" signal has arrived
         proc.done = true;
     } else if (proc.ctrIns.merge && sigId == proc.ctrIns.merge)  { // there is a 'merge' input port
-        //onsole.log("JOIN RECV MERGE");
+        //onsole.log("JOIN RECV MERGE: Nj=" + sig.data[0].Nj + " Nb=" + sig.data[0].Nb);
         proc.paramsH.push({ "Nj": sig.data[0].Nj, "Nb": sig.data[0].Nb});
     } else {
         if (!proc.dataIns[sigId]) {
@@ -299,7 +301,7 @@ function fireInputJoin(obj) {
         // algorithm which places a new sig in the appropriate "set" and determines
         // whether the signal will be fired or discarded, and in which firing
         var qsigs = function(idx) {
-            //console.log("QSIG", idx, proc.firingSigsH);
+            //onsole.log("QSIG", idx, proc.firingSigsH);
             Nb = proc.ctrIns.merge ? proc.paramsH[idx].Nb: proc.Nb;
             Nj = proc.ctrIns.merge ? proc.paramsH[idx].Nj: proc.Nj;
             if (proc.firingSigsH[idx]) {
