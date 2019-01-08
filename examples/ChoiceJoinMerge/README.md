@@ -1,9 +1,9 @@
 # Choice and Join process types
 
 This example demonstrates how to achieve the following workflow patterns:
-- Produce results on a subset of outputs (multi-choice)
-- Activate process on n-out-of-m inputs (discriminator)
-- Combine the above, i.e. "choice" process sends information to "join" process on how many outputs have been activated (structured synchronizing merge)
+- Produce results on a subset of a process' outputs (multi-choice)
+- Activate a process by any n-out-of-m inputs (discriminator)
+- Combine the above, i.e. the "choice" process sends information to the "join" process on how many outputs have been activated (structured synchronizing merge)
 
 <P></P>
 The workflow has two processes:
