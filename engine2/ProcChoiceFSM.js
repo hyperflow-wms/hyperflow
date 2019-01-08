@@ -132,7 +132,7 @@ var ChoiceLogic = function() {
         }
         // if there exists "merge" output, emit the 'merge' control signal first. 
         // see 'join' process for explanation
-        if (proc.ctrOuts.merge) {
+        if (proc.ctrOuts.merge && outValues.length) { // (don't send the signal if no branches are activated)
             var Nj = outValues.length, Nb = Nj; 
             proc.engine.emitSignals([{"_id": proc.ctrOuts.merge, "data": [{"Nb": Nb, "Nj": Nj}]}],
                     function(err) { });
