@@ -1,0 +1,35 @@
+{
+    "name": "CollectionsCountTest",
+    "processes": [ {
+        "name": "proc1",
+	"type": "dataflow",
+        "function": "genCollection",
+        "ins": [ "activation" ],
+        "outs": [ "file:fcount" ]
+    }, {
+        "name": "proc2",
+        "type": "dataflow",
+        "function": "procElement",
+        "ins": [ "file" ],
+        "outs": [ "fileout" ]
+    }, {
+        "name": "proc3",
+        "type": "dataflow",
+        "function": "consumeCollection",
+        "ins": [ "fileout:fcount" ],
+        "outs": [ ]
+    } ],
+    "signals": [ {
+        "name": "activation",
+        "data": ["firstActivation"]
+    }, {
+        "name": "file"
+    }, {
+        "name": "fileout"
+    }, {
+        "name": "fcount",
+        "control": "count"
+    } ],
+    "ins": [ ],
+    "outs": [ ]
+}
