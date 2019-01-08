@@ -1,0 +1,31 @@
+{
+    "name": "ChoiceJoinMerge",
+    "processes": [ {
+        "name": "WriteRandOuts",
+	"type": "choice",
+        "function": "writeRandOuts",
+        "ins": [ "activate" ],
+        "outs": [ "file1", "file2", "file3", "mergesig" ]
+    }, {
+        "name": "ReadRandIns",
+	"type": "join",
+        "function": "readRandIns",
+        "ins" : [ "file1", "file2", "file3", "mergesig" ],
+        "outs": [ ]
+    } ],
+    "signals": [ {
+        "name": "activate",
+        "data": [ "dummy", "dummy", "dummy" ]
+    }, {
+        "name": "file1"
+    }, {
+        "name": "file2"
+    }, {
+        "name": "file3"
+    }, {
+        "name": "mergesig",
+        "control": "merge"
+    } ],
+    "ins": [ ],
+    "outs": [ ]
+}
