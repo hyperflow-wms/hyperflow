@@ -12,4 +12,4 @@ The workflow has two processes:
 - <TT>ReadRandIns</TT> is activated by <TT>n-out-of-3</TT> inputs, where <TT>n</TT> is the number of branches activated by the first process.  
   
 <P>
-  To achieve this, the process are connected by the <TT>merge</TT> control signal. See the <A HREF=https://github.com/hyperflow-wms/hyperflow/wiki/Workflow-patterns>Structured synchronizing merge</A> to learn more about using this pattern. 
+  To achieve this, the processes are connected by the <TT>merge</TT> control signal. See the <A HREF=https://github.com/hyperflow-wms/hyperflow/wiki/Workflow-patterns>Structured synchronizing merge</A> to learn more about using this pattern. 
