@@ -191,6 +191,8 @@ Engine.prototype.emitSignals = function(sigs, cb) {
     async.each(sigs, function iterator(sig, doneIter) {
         var sigInstances = [];
         sig._ts = timeStamp;
+        // FIXME: if there is no 'data', a "pure-metadata" signal will be sent. However, if there is a 'data=[]' (empty),
+        // no signals will be sent! It seems to work well with the semantics of 'count' signals, but should be tested
         if (sig.data) { // there is a 'data' array which may contain multiple instances of this signal
             for (var i in sig.data) {
                 var s = copySignal(sig);

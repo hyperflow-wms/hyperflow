@@ -358,7 +358,7 @@ var ProcLogic = function() {
             var countSigId = proc.fullInfo.outcounts && 
                 proc.fullInfo.outcounts[funcOuts[i]] ? proc.fullInfo.outcounts[funcOuts[i]]: undefined;
             if (countSigId) {
-                var count = outValues[i].data ? outValues[i].data.length: 1;
+                var count = outValues[i].data ? outValues[i].data.length: 1; 
                 var sigId = countSigId.split(":")[1]; 
 
                 //onsole.log("FUNC OUTS", funcOuts);
@@ -366,14 +366,16 @@ var ProcLogic = function() {
                 //onsole.log("IN  COUNTS", proc.fullInfo.incounts);
                 //onsole.log("OUT COUNTS", proc.fullInfo.outcounts);
                 var sigV = {"_id": +sigId, "count": count, "control": "count", data: [{}]};
-                if (!proc.fullInfo.ordering) {
-                    proc.engine.emitSignals([sigV]);
-                } else {
-                    // TODO: test thouroughly if ordering works correctly with output "count" signals
-                    function Arg() {} // we need an Array-like object
-                    Arg.prototype = Object.create(Array.prototype);
-                    proc.emitStash[firingId] = new Arg;
-                    proc.emitStash[firingId].push(sigV); 
+                if (count > 0) { // 0 can happen if process returns an empty "data" array
+                    if (!proc.fullInfo.ordering) {
+                        proc.engine.emitSignals([sigV]);
+                    } else {
+                        // TODO: test thouroughly if ordering works correctly with output "count" signals
+                        function Arg() {} // we need an Array-like object
+                        Arg.prototype = Object.create(Array.prototype);
+                        proc.emitStash[firingId] = new Arg;
+                        proc.emitStash[firingId].push(sigV); 
+                    }
                 }
             }
         }
