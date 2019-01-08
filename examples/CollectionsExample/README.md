@@ -1,6 +1,6 @@
-# Using "count" control signal to produce and consume collections of elements (signals)
+# "Count" control signal and collections
 
-This workflow has 3 processes:
+This example demonstrates how to use the "count" control signal to produce and consume collections of elements (signals). This workflow has 3 processes:
 - Proc1 randomly produces a collection of 0-3 elements.
 - Proc2 processes these elements one by one.
 - Proc3 consumes all elements produced by Proc2 as a single collection.
