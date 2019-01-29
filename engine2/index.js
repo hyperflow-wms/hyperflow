@@ -216,7 +216,7 @@ Engine.prototype.emitSignals = function(sigs, cb) {
                 } 
 
                 // signals which don't have "source" are workflow inputs ==> need to be persisted
-                // FIXME: add a flag to check if persistence is enabled
+                // FIXME: add a flag to check if persistence is enabled. EDIT: no need for flag, this is checked in ONE PLACE in 'hflow'
                 if (!s.source) {
                     engine.eventServer.emit("persist", ["input", +engine.wfId, s]);
                 }

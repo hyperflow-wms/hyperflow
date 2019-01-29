@@ -316,25 +316,41 @@ var ProcLogic = function() {
                 funcOuts, emul,
                 proc.engine.eventServer,
                 proc.engine.config, 
-                function(err, outs, options) {
+                function(err, ins, outs, options) { // 'ins' is returned only for the purpose of persistence
 		    //onsole.log("FUNC INVOKED");
 		    //onsole.log("INS: ", JSON.stringify(proc.sigValues, null, 2));
 		    //onsole.log("OUTS: ", outs);
-                    var outsArray = [];
+
+                    // convert ins and outs object-arrays to arrays for the purpose of persistence
+                    var outsArray = [], insArray = [];
                     if (outs == null) {
                        outsArray = null; 
                     } else {
-                        outs.forEach(function(out) {
+                        outs.forEach(function(out, i) {
                             outsArray.push(out);
+                            // FIXME: the code below is repeated below in "postInvoke"
+                            // --> TODO: make a function for adding metadata to a signal 
+                            outsArray[i]["_id"] = +funcOuts[i];
+                            outsArray[i]["source"] = +proc.procId;
+                            outsArray[i]["firingId"] = +proc.firingId;
+                        });        
+                    }                    
+                    if (ins == null) {
+                       insArray = null; 
+                    } else {
+                        ins.forEach(function(input) {
+                            insArray.push(input);
                         });
                     }
 
+
                     // persist outputs (originally persistence was disabled DURING recovery, 
                     // but it's probably wrong: currently even when recovering from a previous log, 
-                    // workflow execution is persisted normally to a new log
+                    // workflow execution is persisted normally to a new log)
                     //if (!options || !options.recovered) {
                         proc.engine.eventServer.emit("persist", 
-                            ["fired", proc.appId, proc.procId, proc.firingId, outsArray]);
+                            // FIXME: insArray only added for testing "pregel" algorithm
+                            ["fired", proc.appId, proc.procId, proc.firingId, outsArray, insArray]);
                     //}
                     err ? cb(err): cb(null, outs, asyncInvocation, funcIns, funcOuts);
                 }

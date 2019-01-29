@@ -1479,14 +1479,14 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
         prepareFuncOutputs(function(outs, recovered) {
             if (emulate) {
                 return setTimeout(function() {
-                    cb(null, outs);
+                    cb(null, ins, outs);
                 }, 100);
             }
 
             // when this is a recovered firing, unless the process has set flag "executeWhenRecovering",
             // we don't invoke the function, just immediately return the recovered outputs!
             if (recovered && !procInfo.executeWhenRecovering) {
-                return cb(null, outs, {"recovered": "true"});
+                return cb(null, ins, outs, {"recovered": "true"});
             }
 
             if ((procInfo.fun == "null") || (!procInfo.fun)) {
@@ -1566,7 +1566,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                             options.recovered = true;
                         }
                     }
-                    cb(null, outs, options);
+                    cb(null, ins, outs, options);
                 });
             });
         });
