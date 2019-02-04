@@ -4,7 +4,7 @@ var walk = require('walk'),
     file = require('file'),
     path = require('path'),
     _ = require('underscore'),
-    twitter = require('mtwitter'),
+    Twitter = require('twitter'),
     crc = require('crc'),
     querystr = require('querystring'),
     nconf = require('nconf'),
@@ -21,21 +21,16 @@ function twitterSource(ins, outs, config, cb) {
           dir: '.',
           search: true
        });
-       var configuration = {
-           consumer_key: nconf.get('consumer_key'), 
-	   consumer_secret: nconf.get('consumer_secret'),
-	   access_token_key: nconf.get('access_token_key'),
-	   access_token_secret: nconf.get('access_token_secret')
-       };
+       twit = new Twitter({
+            consumer_key: nconf.get('consumer_key'), 
+            consumer_secret: nconf.get('consumer_secret'),
+            access_token_key: nconf.get('access_token_key'),
+            access_token_secret: nconf.get('access_token_secret')
+       });
+   }
 
-       if (!configuration.consumer_key) {
-           throw(new Error("Error getting twitter credentials"));
-       }
+   var params = {screen_name: 'nodejs'};
 
-       twit = new twitter(configuration);
-    }
-
-    var options = {};
     if (deltaLink) {
         options = querystr.parse(deltaLink.substr(1));
     } else {
