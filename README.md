@@ -21,7 +21,7 @@ The latest release of HyperFlow is 1.1.0
 * Run example workflows using command `hflow run <wf_directory>`, for example:<br>```./bin/hflow run ./examples/Sqrsum```
 * Optionally, you can add directory `<hyperflow_root_dir>/bin` to your system `PATH`
 
-###Using docker image
+## Using Docker image
 * Build the image: `docker build -t hyperflow .`
 * Start redis container: `docker run --name redis -d redis`
     * [OPTIONAL] If you plan on using amqp executor, start a rabbitmq container: `docker run -d --name rabbitmq rabbitmq:3`
