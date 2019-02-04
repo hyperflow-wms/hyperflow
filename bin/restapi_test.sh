@@ -6,7 +6,7 @@ if [ "$#" -ne 2 ]; then
   echo
   echo "Usage:"
   echo "- first run the HyperFlow server:     node app.js"
-  echo "- then run this script:               scripts/restapi_test.sh <port> <path to workflow.json>"
+  echo "- then run this script:               restapi_test.sh <port> <path to Ping Pong workflow.json>"
   echo "where <port> is the port number on which the server is running"
   exit
 fi
