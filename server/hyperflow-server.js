@@ -1,20 +1,17 @@
 /*
 ** HyperFlow engine
-** Author: Bartosz Balis (2012-2014)
+** Author: Bartosz Balis (2012-2019)
 **
 ** HyperFlow server implementing the REST API for HyperFlow workflows.
 */
 
 'use strict';
 
-/**
- * Module dependencies.
- */
-
 
 var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined;
 // for express
 var express = require('express'),
+    bodyParser = require('body-parser'),
     cons = require('consolidate'),
     spawn = require('child_process').spawn,
     http = require('http'),
@@ -47,29 +44,14 @@ var contentType = 'text/html';
 //var baseUrl = 'http://localhost:'+process.env.PORT;
 var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 
-// Configuration
-app.configure(function() {
-        //app.use(express.compress());
-	app.engine('ejs', cons.ejs);
-	app.set('views', __dirname + '/views');
-	app.set('view engine', 'ejs');
-	app.use(express.bodyParser({strict: false}));
-	app.use(express.methodOverride());
-	app.use(app.router);
-	app.use(express.static(__dirname + '/public'));
-	app.disable('strict routing');
-});
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: false }))
 
-app.configure('development', function() {
-	app.use(express.errorHandler({
-		dumpExceptions: true,
-		showStack: true
-	}));
-});
+// parse application/json
+app.use(bodyParser.json())
 
-app.configure('production', function() {
-	app.use(express.errorHandler());
-});
+app.disable('strict routing');
+
 
 /////////////////////////////////////////////////////////////////
 ////           REST API for HyperFlow workflows              ////

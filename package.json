@@ -1,8 +1,8 @@
 {
   "name": "hyperflow",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "engines": {
-    "node": "~4.8.7"
+    "node": "~10.15.1"
   },
   "bin": {
     "hflow": "./bin/hflow",
@@ -15,13 +15,14 @@
     "adm-zip": "0.4.11",
     "amqplib": "0.5.2",
     "async": "0.2.x",
+    "body-parser": "^1.18.3",
     "consolidate": "0.10.x",
     "crc": "0.2.1",
     "cross-spawn": "^6.0.5",
     "docopt": "0.6.2",
     "ejs": "2.6.1",
     "eventemitter2": "5.x",
-    "express": "3.x",
+    "express": "4.16.x",
     "eyes": "0.1.8",
     "file": "0.2.x",
     "form-data": "2.3.x",
