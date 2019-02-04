@@ -1,6 +1,6 @@
 sudo: required
 language: node_js
-node:
+node_js:
   - "lts/*"
 
 services:
