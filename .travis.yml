@@ -1,5 +1,7 @@
 sudo: required
 language: node_js
+node:
+  - "lts/*"
 
 services:
 - docker
