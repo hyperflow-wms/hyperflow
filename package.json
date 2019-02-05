@@ -27,7 +27,7 @@
     "file": "0.2.x",
     "form-data": "2.3.x",
     "istanbul": "0.4.x",
-    "log4js": "0.6.9",
+    "log4js": "^4.0.2",
     "twitter": "^1.7.1",
     "nconf": "0.6.8",
     "nodeunit": "0.11.x",
