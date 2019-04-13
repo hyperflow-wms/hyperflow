@@ -50,7 +50,7 @@
     "xmldom": "0.1.x",
     "xpath": "0.x",
     "z-schema": "2.0.x",
-    "aws-sdk": "^2.x.x"
+    "aws-sdk": "^2.2.1"
   },
   "files": [
     "LICENSE",

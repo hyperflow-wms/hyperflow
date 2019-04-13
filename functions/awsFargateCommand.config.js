@@ -1,11 +1,14 @@
-exports.cluster_arn = 'STRING';
-exports.cluster_name = 'STRING';
-exports.task_definition_name = 'STRING';
-exports.subnet_1 = 'STRING';
-exports.subnet_2 = 'STRING';
+exports.cluster_arn = 'string';
+exports.container_name = 'string';
+exports.subnet_1 = 'string';
+exports.subnet_2 = 'string';
 
 exports.options = {
-    'storage': 'STRING',
-    'bucket': 'STRING',
-    'prefix': 'STRING'
+    'storage': 'string',
+    'bucket': 'string',
+    'prefix': 'string'
+};
+
+exports.mapping = {
+    'default': 'string'
 };
