@@ -1,15 +1,16 @@
 "use strict";
 
 const aws = require("aws-sdk");
-aws.config.update({region: 'eu-west-1'}); // aws sdk doesn't load region by default
+aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
-const executor_config = require('./awsFargateCommand.config.js');
-const AWS_TASK_LIMIT = 50;
+const executor_config = require("./awsFargateCommand.config.js");
+const baseTimeFrame = 2000;
+const maxRetries = 12;
 
 async function awsFargateCommand(ins, outs, config, cb) {
 
     const options = executor_config.options;
-    if (config.executor.hasOwnProperty('options')) {
+    if (config.executor.hasOwnProperty("options")) {
         let executorOptions = config.executor.options;
         for (let opt in executorOptions) {
             if (executorOptions.hasOwnProperty(opt)) {
@@ -29,36 +30,44 @@ async function awsFargateCommand(ins, outs, config, cb) {
         "stdout": config.executor.stdout
     });
 
-    await waitUntilBelowTaskLimit();
+    const runTaskWithRetryStrategy = (times) => new Promise(() => {
+        return runTask()
+            .catch(error => {
+                if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
+                    if (times < maxRetries) {
+                        console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
+                        return backoffWait(times)
+                            .then(runTaskWithRetryStrategy.bind(null, times + 1));
+                    }
+                }
+                console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error);
+            });
+    });
 
     console.log("Executing: " + jobMessage + " on AWS Fargate");
 
-    ecs.runTask(await createFargateTask(), async function (err, data) {
-        if (err) {
-            console.log("Running fargate task " + executable + " failed, error: " + err);
-        } else {
+    await runTaskWithRetryStrategy(0);
+
+    async function runTask() {
+        await ecs.runTask(await createFargateTask()).promise().then(async function (data) {
+            if (data.failures && data.failures.map(failure => failure.reason).includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
+                throw new TaskLimitError()
+            }
             let taskArn = data.tasks[0].taskArn;
-            await waitForTaskCompletion(taskArn);
-            let containerStatusCode = (await ecs.describeTasks({
-                tasks: [taskArn],
-                cluster: executor_config.cluster_arn
-            }).promise()).tasks[0].containers[0].exitCode;
+            let containerStatusCode = await waitAndGetExitCode(taskArn);
             if (containerStatusCode !== 0) {
-                console.log("Error: container returned non-zero status code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
+                console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
                 return
             }
             console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
             cb(null, outs);
-        }
-    });
+        });
+    }
 
-    async function waitUntilBelowTaskLimit() {
-        let taskList = await checkTaskCount("RUNNING");
-        while (taskList.taskArns.length >= AWS_TASK_LIMIT) {
-            console.log("Reached task count limit, waiting for some task to finish..");
-            await sleep(10000);
-            taskList = await checkTaskCount("RUNNING");
-        }
+    async function backoffWait(times) {
+        let backoffTimes = Math.pow(2, times);
+        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * baseTimeFrame;
+        return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
     }
 
     async function createFargateTask() {
@@ -69,11 +78,11 @@ async function awsFargateCommand(ins, outs, config, cb) {
             cluster: executor_config.cluster_arn,
             count: 1,
             enableECSManagedTags: false,
-            launchType: 'FARGATE',
+            launchType: "FARGATE",
             networkConfiguration: {
                 awsvpcConfiguration: {
                     subnets: [executor_config.subnet_1, executor_config.subnet_2],
-                    assignPublicIp: 'ENABLED',
+                    assignPublicIp: "ENABLED",
                     securityGroups: []
                 }
             },
@@ -85,21 +94,21 @@ async function awsFargateCommand(ins, outs, config, cb) {
                     }
                 ]
             },
-            platformVersion: 'LATEST',
-            startedBy: 'hyperflow'
+            platformVersion: "LATEST",
+            startedBy: "hyperflow"
         };
     }
 
     async function getTaskDefinition() {
-        const mapping = executor_config.task_mapping;
+        const mapping = executor_config.tasks_mapping;
         if (mapping === undefined) {
-            let errorMessage = "Missing task_mapping in config";
+            let errorMessage = "Missing tasks_mapping in config";
             console.log(errorMessage);
             return
         }
         let taskDefinition = mapping[executable] === undefined ? mapping["default"] : mapping[executable];
         if (taskDefinition === undefined) {
-            let errorMessage = "No task task_mapping nor default task_mapping is defined for " + executable;
+            let errorMessage = "No task tasks_mapping nor default tasks_mapping is defined for " + executable;
             console.log(errorMessage);
             return
         }
@@ -111,23 +120,28 @@ async function awsFargateCommand(ins, outs, config, cb) {
         return task.taskDefinition.containerDefinitions[0].name;
     }
 
-    async function waitForTaskCompletion(taskArn) {
-        let taskList = await checkTaskCount('STOPPED');
-        while (taskList.taskArns.includes(taskArn) === false) {
+    async function waitAndGetExitCode(taskArn) {
+        const payload = {
+            tasks: [taskArn],
+            cluster: executor_config.cluster_arn
+        };
+        let taskList = await ecs.describeTasks(payload).promise();
+        while (taskList.tasks[0].lastStatus !== "STOPPED") {
             await sleep(5000);
-            taskList = await checkTaskCount('STOPPED');
+            taskList = await ecs.describeTasks(payload).promise();
         }
-    }
-
-    function checkTaskCount(desiredStatus) {
-        return ecs.listTasks({
-            cluster: executor_config.cluster_arn,
-            desiredStatus: desiredStatus
-        }).promise()
+        return taskList.tasks[0].containers[0].exitCode;
     }
 
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+
+class TaskLimitError extends Error {
+    constructor() {
+        super();
+        this.name = "TaskLimitError";
     }
 }
 
