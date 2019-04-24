@@ -22,7 +22,8 @@ function RESTServiceCommand(ins, outs, config, cb) {
         "env":        (config.executor.env || {}),
         "inputs":     ins.map(identity),
         "outputs":    outs.map(identity),
-        "options":    options
+        "options":    options,
+		"stdout": 	  config.executor.stdout
     };
 
     var url = executor_config.service_url;
