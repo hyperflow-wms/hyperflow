@@ -23,7 +23,7 @@ function RESTServiceCommand(ins, outs, config, cb) {
         "inputs":     ins.map(identity),
         "outputs":    outs.map(identity),
         "options":    options,
-		"stdout": 	  config.executor.stdout
+	"stdout":     config.executor.stdout
     };
 
     var url = executor_config.service_url;
