@@ -1556,6 +1556,12 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
 		conf.procId = procId;
 		conf.firingId = firingId;
 
+		// Pass the workflow working directory
+                if (appConfig.workdir) {
+                     conf.workdir = appConfig.workdir;
+                }
+
+
                 if (recovered) { conf.recovered = true; }
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG 
