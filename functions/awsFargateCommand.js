@@ -4,8 +4,18 @@ const aws = require("aws-sdk");
 aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
 const maxRetryWait = 10 * 60 * 1000; // 10 minutes
+let runLock = false;
+let runningTasks = 0;
 
 async function awsFargateCommand(ins, outs, config, cb) {
+
+    while (runLock === true || runningTasks >= 50) {
+        await sleep(1500);
+    }
+    runLock = true;
+    await sleep(1500);
+    runLock = false;
+    runningTasks++;
 
     const executor_config = await getConfig(config.workdir);
 
@@ -43,7 +53,6 @@ async function awsFargateCommand(ins, outs, config, cb) {
     });
 
     console.log("Executing: " + jobMessage + " on AWS Fargate");
-
     await runTaskWithRetryStrategy(0);
 
     async function getConfig(workdir) {
@@ -69,6 +78,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
                 return
             }
             console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+            runningTasks--;
             cb(null, outs);
         });
     }
