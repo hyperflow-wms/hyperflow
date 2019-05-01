@@ -3,11 +3,11 @@
 const aws = require("aws-sdk");
 aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
-const executor_config = require("./awsFargateCommand.config.js");
-const baseTimeFrame = 2000;
-const maxRetries = 12;
+const maxRetryWait = 10 * 60 * 1000; // 10 minutes
 
 async function awsFargateCommand(ins, outs, config, cb) {
+
+    const executor_config = await getConfig(config.workdir);
 
     const options = executor_config.options;
     if (config.executor.hasOwnProperty("options")) {
@@ -34,11 +34,9 @@ async function awsFargateCommand(ins, outs, config, cb) {
         return runTask()
             .catch(error => {
                 if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
-                    if (times < maxRetries) {
-                        console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
-                        return backoffWait(times)
-                            .then(runTaskWithRetryStrategy.bind(null, times + 1));
-                    }
+                    console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
+                    return backoffWait(times)
+                        .then(runTaskWithRetryStrategy.bind(null, times + 1));
                 }
                 console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error);
             });
@@ -47,6 +45,17 @@ async function awsFargateCommand(ins, outs, config, cb) {
     console.log("Executing: " + jobMessage + " on AWS Fargate");
 
     await runTaskWithRetryStrategy(0);
+
+    async function getConfig(workdir) {
+        let config;
+        try {
+            config = require(workdir + "/awsFargateCommand.config.js");
+        } catch (e) {
+            console.log("No config in " + workdir + ", loading config from default location: .");
+            config = require("./awsFargateCommand.config.js");
+        }
+        return config;
+    }
 
     async function runTask() {
         await ecs.runTask(await createFargateTask()).promise().then(async function (data) {
@@ -66,7 +75,11 @@ async function awsFargateCommand(ins, outs, config, cb) {
 
     async function backoffWait(times) {
         let backoffTimes = Math.pow(2, times);
-        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * baseTimeFrame;
+        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * 500;
+        if (backoffWaitTime > maxRetryWait) {
+            backoffWaitTime = maxRetryWait;
+        }
+        console.log("Waiting for " + backoffWaitTime + " milliseconds.");
         return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
     }
 
