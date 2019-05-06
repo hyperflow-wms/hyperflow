@@ -1,10 +1,10 @@
 "use strict";
 
 const aws = require("aws-sdk");
-aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
+aws.config.update({region: "eu-central-1"}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
 const executor_config = require("./awsFargateCommand.config.js");
-const baseTimeFrame = 2000;
+const baseTimeFrame = 10000;
 const maxRetries = 12;
 
 async function awsFargateCommand(ins, outs, config, cb) {
@@ -30,72 +30,97 @@ async function awsFargateCommand(ins, outs, config, cb) {
         "stdout": config.executor.stdout
     });
 
-    const runTaskWithRetryStrategy = (times) => new Promise(() => {
-        return runTask()
-            .catch(error => {
-                if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
-                    if (times < maxRetries) {
-                        console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
-                        return backoffWait(times)
-                            .then(runTaskWithRetryStrategy.bind(null, times + 1));
-                    }
+    const runTaskWithRetryStrategy = async (times) => {
+        try {
+            await runTask();
+        } catch (error) {
+            if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
+                if (times < maxRetries) {
+                    console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
+                    return backoffWait(times)
+                        .then(runTaskWithRetryStrategy.bind(null, times + 1));
                 }
-                console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error);
-            });
-    });
+            }
+            console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error.name);
+            return;
+        }
+        cb(null, outs);
+    };
 
-    console.log("Executing: " + jobMessage + " on AWS Fargate");
+    console.log(`Executing: ${jobMessage} on AWS Fargate`);
 
     await runTaskWithRetryStrategy(0);
 
-    async function runTask() {
-        await ecs.runTask(await createFargateTask()).promise().then(async function (data) {
-            if (data.failures && data.failures.map(failure => failure.reason).includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
-                throw new TaskLimitError()
-            }
-            let taskArn = data.tasks[0].taskArn;
-            let containerStatusCode = await waitAndGetExitCode(taskArn);
-            if (containerStatusCode !== 0) {
-                console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
-                return
-            }
-            console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
-            cb(null, outs);
-        });
+    function runTask() {
+        return new Promise((resolve, reject) => {
+            ecs.runTask(createFargateTask(), (err, data) => {
+                if (err) {
+                    if (err.message.indexOf('RequestLimitExceeded') > -1) {
+                        return reject(new TaskLimitError())
+                    } else {
+                        return reject(err);
+                    }
+                }
+
+                if (data.failures && data.failures.map(failure => failure.reason).includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
+                    return reject(new TaskLimitError());
+                }
+
+                let taskArn = data.tasks[0].taskArn;
+
+                waitAndGetExitCode(taskArn).then(containerStatusCode => {
+                    if (containerStatusCode !== 0) {
+                        console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
+                        return reject();
+                    }
+
+                    console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+                    return resolve()
+                }).catch(err => reject(err));
+            });
+        })
     }
 
     async function backoffWait(times) {
         let backoffTimes = Math.pow(2, times);
-        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * baseTimeFrame;
+        let backoffWaitTime = Math.floor(Math.random() * backoffTimes + 1) * baseTimeFrame;
         return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
     }
 
-    async function createFargateTask() {
-        let taskDef = await getTaskDefinition();
-        let taskContainer = await getTaskContainer(taskDef);
+    function createFargateTask() {
         return {
-            taskDefinition: taskDef,
-            cluster: executor_config.cluster_arn,
+            taskDefinition: executor_config.taskArn,
+            cluster: executor_config.clusterArn,
             count: 1,
             enableECSManagedTags: false,
-            launchType: "FARGATE",
+            launchType: 'FARGATE',
             networkConfiguration: {
                 awsvpcConfiguration: {
-                    subnets: [executor_config.subnet_1, executor_config.subnet_2],
-                    assignPublicIp: "ENABLED",
-                    securityGroups: []
+                    subnets: executor_config.subnets,
+                    assignPublicIp: executor_config.assignPublicIp,
+                    securityGroups: executor_config.securityGroups
                 }
             },
-            "overrides": {
-                "containerOverrides": [
+            overrides: {
+                containerOverrides: [
                     {
-                        "command": ["npm", "start", jobMessage],
-                        "name": taskContainer
+                        command: ['npm', 'start', jobMessage],
+                        name: executor_config.containerName,
+                        environment: [
+                            {name: 'NAME', value: executor_config.containerName},
+                            {name: 'TASK_ID', value: executable},
+                            {name: 'PUSH_GW_URL', value: executor_config.pushgatewayUrl},
+                            {
+                                name: 'LABELS',
+                                // stringify object {key: val,key1: val1} to 'key=val,key1=val1'
+                                value: Object.entries(executor_config.extraLabels).map(array => array.join('=')).join(',')
+                            }
+                        ]
                     }
                 ]
             },
-            platformVersion: "LATEST",
-            startedBy: "hyperflow"
+            platformVersion: 'LATEST',
+            startedBy: 'hyperflow'
         };
     }
 
@@ -123,7 +148,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
     async function waitAndGetExitCode(taskArn) {
         const payload = {
             tasks: [taskArn],
-            cluster: executor_config.cluster_arn
+            cluster: executor_config.clusterArn
         };
         let taskList = await ecs.describeTasks(payload).promise();
         while (taskList.tasks[0].lastStatus !== "STOPPED") {
