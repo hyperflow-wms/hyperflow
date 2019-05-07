@@ -1,16 +1,16 @@
 var request = require('requestretry');
 var executor_config = require('./RESTServiceCommand.config.js');
-var identity = function(e) {return e};
-
-
+var identity = function (e) {
+    return e
+};
 
 function RESTServiceCommand(ins, outs, config, cb) {
 
     var options = executor_config.options;
-    if(config.executor.hasOwnProperty('options')) {
+    if (config.executor.hasOwnProperty('options')) {
         var executorOptions = config.executor.options;
         for (var opt in executorOptions) {
-            if(executorOptions.hasOwnProperty(opt)) {
+            if (executorOptions.hasOwnProperty(opt)) {
                 options[opt] = executorOptions[opt];
             }
         }
@@ -18,12 +18,12 @@ function RESTServiceCommand(ins, outs, config, cb) {
     var executable = config.executor.executable;
     var jobMessage = {
         "executable": executable,
-        "args":       config.executor.args,
-        "env":        (config.executor.env || {}),
-        "inputs":     ins.map(identity),
-        "outputs":    outs.map(identity),
-        "options":    options,
-	"stdout":     config.executor.stdout
+        "args": config.executor.args,
+        "env": (config.executor.env || {}),
+        "inputs": ins.map(identity),
+        "outputs": outs.map(identity),
+        "options": options,
+        "stdout": config.executor.stdout
     };
 
     var url = executor_config.service_url;
@@ -37,18 +37,19 @@ function RESTServiceCommand(ins, outs, config, cb) {
             return
         }
         if (response) {
-             console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
+            console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
         }
-        console.log("Function: " + executable + " data: " + body.toString());
+        console.log("Function: " + executable + " data: " + JSON.stringify(body));
         cb(null, outs);
     }
 
-
     var req = request.post(
-        {timeout:600000, url:url, json:jobMessage, headers: {'Content-Type' : 'application/json', 'Accept': '*/*'}}, requestCb);
-
-
+        {
+            timeout: 600000,
+            url: url,
+            json: jobMessage,
+            headers: {'Content-Type': 'application/json', 'Accept': '*/*'}
+        }, requestCb);
 }
-
 
 exports.RESTServiceCommand = RESTServiceCommand;
