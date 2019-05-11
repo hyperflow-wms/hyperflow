@@ -3,11 +3,21 @@
 const aws = require("aws-sdk");
 aws.config.update({region: "eu-central-1"}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
-const executor_config = require("./awsFargateCommand.config.js");
-const baseTimeFrame = 10000;
-const maxRetries = 12;
+const maxRetryWait = 10 * 60 * 1000; // 10 minutes
+let runLock = false;
+let runningTasks = 0;
 
 async function awsFargateCommand(ins, outs, config, cb) {
+
+    while (runLock === true || runningTasks >= 50) {
+        await sleep(1500);
+    }
+    runLock = true;
+    await sleep(1500);
+    runLock = false;
+    runningTasks++;
+
+    const executor_config = await getConfig(config.workdir);
 
     const options = executor_config.options;
     if (config.executor.hasOwnProperty("options")) {
@@ -75,6 +85,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
                     }
 
                     console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+                    runningTasks--;
                     return resolve()
                 }).catch(err => reject(err));
             });
@@ -83,7 +94,11 @@ async function awsFargateCommand(ins, outs, config, cb) {
 
     async function backoffWait(times) {
         let backoffTimes = Math.pow(2, times);
-        let backoffWaitTime = Math.floor(Math.random() * backoffTimes + 1) * baseTimeFrame;
+        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * 500;
+        if (backoffWaitTime > maxRetryWait) {
+            backoffWaitTime = maxRetryWait;
+        }
+        console.log("Waiting for " + backoffWaitTime + " milliseconds.");
         return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
     }
 
