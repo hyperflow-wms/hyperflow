@@ -3,6 +3,7 @@ var fsp = require('./fileSplitter.js'),
     amqpCmd = require('./amqpCommand.js'),
     RESTCmd = require('./RESTServiceCommand.js'),
 	fargateCmd = require('./awsFargateCommand.js'),
+    lambdaCmd = require('./awsLambdaCommand.js'),
     scanDir = require('./DirScanner').scanDir;
 
 function print(ins, outs, config, cb) {
@@ -214,6 +215,7 @@ exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
 exports.RESTServiceCommand = RESTCmd.RESTServiceCommand;
 exports.awsFargateCommand = fargateCmd.awsFargateCommand;
+exports.awsLambdaCommand = lambdaCmd.awsLambdaCommand;
 exports.exit = exit;
 exports.command_print = cmd.command_print;
 exports.command_notifyevents = cmd.command_notifyevents;

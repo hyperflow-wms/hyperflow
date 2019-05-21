@@ -32,7 +32,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
 
     let logName;
     if (executor_config.metrics) {
-        logName = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 10);
+        logName = (Math.random()*1e12).toString(36);
     }
 
     const executable = config.executor.executable;
@@ -90,7 +90,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
                 Key: "logs/" + logName
             };
             console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
-            if (logName !== undefined) {
+            if (executor_config.metrics) {
                 const log = await s3.getObject(params).promise().then(data => data.Body.toString());
                 console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + log);
             }

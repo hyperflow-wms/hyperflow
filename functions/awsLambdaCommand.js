@@ -1,6 +1,9 @@
 const request = require('requestretry');
+const aws = require("aws-sdk");
+const s3 = new aws.S3();
+const s3LogCheckRetryFrequency = 10000; // milliseconds
 
-async function RESTServiceCommand(ins, outs, config, cb) {
+async function awsLambdaCommand(ins, outs, config, cb) {
 
     const executor_config = await getConfig(config.workdir);
 
@@ -13,6 +16,12 @@ async function RESTServiceCommand(ins, outs, config, cb) {
             }
         }
     }
+
+    let logName;
+    if (executor_config.S3_metrics) {
+        logName = (Math.random() * 1e12).toString(36);
+    }
+
     const executable = config.executor.executable;
     const jobMessage = {
         "executable": executable,
@@ -21,7 +30,8 @@ async function RESTServiceCommand(ins, outs, config, cb) {
         "inputs": ins.map(i => i),
         "outputs": outs.map(o => o),
         "options": options,
-        "stdout": config.executor.stdout
+        "stdout": config.executor.stdout,
+        "logName": logName
     };
 
     const url = executor_config.service_url;
@@ -37,12 +47,16 @@ async function RESTServiceCommand(ins, outs, config, cb) {
         retryStrategy: retry,
         headers: {'Content-Type': 'application/json', 'Accept': '*/*'}
     })
-        .then(function (response) {
+        .then(async function (response) {
             if (response) {
                 console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
             }
+            if (executor_config.S3_metrics) {
+                await waitForLogs(1)
+            } else {
+                console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + response.body);
+            }
             console.log("Lambda task: " + executable + " completed successfully.");
-            console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + response.body);
             cb(null, outs);
         })
         .catch(function (error) {
@@ -50,10 +64,36 @@ async function RESTServiceCommand(ins, outs, config, cb) {
             cb(error, outs);
         });
 
+    async function waitForLogs(retry) {
+        if ((retry * s3LogCheckRetryFrequency) / 1000 > 900) { // lambda can execute up to 900 seconds
+            console.log("Error - waiting over 15 minutes. Terminating.");
+            cb("Error", outs);
+        }
+        console.log("Waiting for S3 logs, retry number: " + retry);
+        await getS3Logs()
+            .catch(() => {
+                return sleep(s3LogCheckRetryFrequency)
+                    .then(waitForLogs.bind(null, retry + 1));
+            });
+    }
+
+    async function getS3Logs() {
+        const params = {
+            Bucket: options.bucket,
+            Key: "logs/" + logName
+        };
+        await s3.getObject(params).promise().then(async function (data) {
+            console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + data.Body.toString());
+        });
+    }
+
     function retry(err, response) {
         if (response.statusCode === 502 || response.statusCode === 400 || response.statusCode === 500) {
-            console.log("Status code: " + response.statusCode + ", retrying " + executable);
+            console.log("Error: " + err + ", retrying " + executable);
             return true;
+        }
+        if (response.statusCode === 504) {
+            console.log(executable + " timeout!")
         }
         return false;
     }
@@ -61,13 +101,17 @@ async function RESTServiceCommand(ins, outs, config, cb) {
     async function getConfig(workdir) {
         let config;
         try {
-            config = require(workdir + "/RESTServiceCommand.config.js");
+            config = require(workdir + "/awsLambdaCommand.config.js");
         } catch (e) {
             console.log("No config in " + workdir + ", loading config from default location: .");
-            config = require("./RESTServiceCommand.config.js");
+            config = require("./awsLambdaCommand.config.js");
         }
         return config;
     }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 }
 
-exports.RESTServiceCommand = RESTServiceCommand;
+exports.awsLambdaCommand = awsLambdaCommand;

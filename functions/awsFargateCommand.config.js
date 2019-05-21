@@ -4,7 +4,6 @@ exports.subnet_2 = "string";
 exports.metrics = true || false;
 
 exports.options = {
-    "storage": "S3",
     "bucket": "string",
     "prefix": "string"
 };
