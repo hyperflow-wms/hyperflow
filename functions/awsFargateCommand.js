@@ -1,6 +1,7 @@
 "use strict";
 
 const aws = require("aws-sdk");
+const s3 = new aws.S3();
 aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
 const maxRetryWait = 10 * 60 * 1000; // 10 minutes
@@ -10,10 +11,10 @@ let runningTasks = 0;
 async function awsFargateCommand(ins, outs, config, cb) {
 
     while (runLock === true || runningTasks >= 50) {
-        await sleep(1500);
+        await sleep(1000);
     }
     runLock = true;
-    await sleep(1500);
+    await sleep(1000);
     runLock = false;
     runningTasks++;
 
@@ -29,6 +30,11 @@ async function awsFargateCommand(ins, outs, config, cb) {
         }
     }
 
+    let logName;
+    if (executor_config.metrics) {
+        logName = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 10);
+    }
+
     const executable = config.executor.executable;
     const jobMessage = JSON.stringify({
         "executable": executable,
@@ -37,7 +43,8 @@ async function awsFargateCommand(ins, outs, config, cb) {
         "inputs": ins.map(i => i),
         "outputs": outs.map(o => o),
         "options": options,
-        "stdout": config.executor.stdout
+        "stdout": config.executor.stdout,
+        "logName": logName
     });
 
     const runTaskWithRetryStrategy = (times) => new Promise(() => {
@@ -53,6 +60,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
     });
 
     console.log("Executing: " + jobMessage + " on AWS Fargate");
+    const fireTime = Date.now();
     await runTaskWithRetryStrategy(0);
 
     async function getConfig(workdir) {
@@ -77,7 +85,15 @@ async function awsFargateCommand(ins, outs, config, cb) {
                 console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
                 return
             }
+            const params = {
+                Bucket: options.bucket,
+                Key: "logs/" + logName
+            };
             console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+            if (logName !== undefined) {
+                const log = await s3.getObject(params).promise().then(data => data.Body.toString());
+                console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + log);
+            }
             runningTasks--;
             cb(null, outs);
         });

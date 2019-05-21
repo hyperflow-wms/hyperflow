@@ -1,55 +1,73 @@
-var request = require('requestretry');
-var executor_config = require('./RESTServiceCommand.config.js');
-var identity = function (e) {
-    return e
-};
+const request = require('requestretry');
 
-function RESTServiceCommand(ins, outs, config, cb) {
+async function RESTServiceCommand(ins, outs, config, cb) {
 
-    var options = executor_config.options;
+    const executor_config = await getConfig(config.workdir);
+
+    const options = executor_config.options;
     if (config.executor.hasOwnProperty('options')) {
-        var executorOptions = config.executor.options;
-        for (var opt in executorOptions) {
+        let executorOptions = config.executor.options;
+        for (let opt in executorOptions) {
             if (executorOptions.hasOwnProperty(opt)) {
                 options[opt] = executorOptions[opt];
             }
         }
     }
-    var executable = config.executor.executable;
-    var jobMessage = {
+    const executable = config.executor.executable;
+    const jobMessage = {
         "executable": executable,
         "args": config.executor.args,
         "env": (config.executor.env || {}),
-        "inputs": ins.map(identity),
-        "outputs": outs.map(identity),
+        "inputs": ins.map(i => i),
+        "outputs": outs.map(o => o),
         "options": options,
         "stdout": config.executor.stdout
     };
 
-    var url = executor_config.service_url;
+    const url = executor_config.service_url;
 
     console.log("Executing: " + JSON.stringify(jobMessage) + "@" + url);
 
-    function requestCb(err, response, body) {
-        if (err) {
-            console.log("Function: " + executable + " error: " + err);
-            cb(err, outs);
-            return
+    const fireTime = Date.now();
+
+    request.post({
+        timeout: 600000,
+        url: url,
+        json: jobMessage,
+        retryStrategy: retry,
+        headers: {'Content-Type': 'application/json', 'Accept': '*/*'}
+    })
+        .then(function (response) {
+            if (response) {
+                console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
+            }
+            console.log("Lambda task: " + executable + " completed successfully.");
+            console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + response.body);
+            cb(null, outs);
+        })
+        .catch(function (error) {
+            console.log("Function: " + executable + " error: " + error);
+            cb(error, outs);
+        });
+
+    function retry(err, response) {
+        if (response.statusCode === 502 || response.statusCode === 400 || response.statusCode === 500) {
+            console.log("Retrying " + executable);
+            return true;
         }
-        if (response) {
-            console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts)
-        }
-        console.log("Function: " + executable + " data: " + JSON.stringify(body));
-        cb(null, outs);
+        return false;
     }
 
-    var req = request.post(
-        {
-            timeout: 600000,
-            url: url,
-            json: jobMessage,
-            headers: {'Content-Type': 'application/json', 'Accept': '*/*'}
-        }, requestCb);
+    async function getConfig(workdir) {
+        let config;
+        try {
+            config = require(workdir + "/RESTServiceCommand.config.js");
+        } catch (e) {
+            console.log("No config in " + workdir + ", loading config from default location: .");
+            config = require("./RESTServiceCommand.config.js");
+        }
+        return config;
+    }
 }
 
 exports.RESTServiceCommand = RESTServiceCommand;
