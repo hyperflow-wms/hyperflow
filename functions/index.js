@@ -2,8 +2,10 @@ var fsp = require('./fileSplitter.js'),
     cmd = require('./command.js'),
     amqpCmd = require('./amqpCommand.js'),
     RESTCmd = require('./RESTServiceCommand.js'),
-	fargateCmd = require('./awsFargateCommand.js'),
+    fargateCmd = require('./awsFargateCommand.js'),
+    commandLocalMock = require('./commandLocalMock.js'),
     scanDir = require('./DirScanner').scanDir;
+
 
 function print(ins, outs, config, cb) {
     //console.log("PRINT", JSON.stringify(ins));
@@ -226,3 +228,4 @@ exports.count = count;
 exports.match = match;
 exports.noop = noop;
 exports.genCollection = genCollection;
+exports.commandLocalMock = commandLocalMock.commandLocalMock;

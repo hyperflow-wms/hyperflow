@@ -179,7 +179,8 @@ app.post('/apps', function(req, res) {
 
                 // TODO: check exit code
                 proc.on('exit', function(code, signal) {
-                    wflib.createInstanceFromFile(wffile, '', function(err, appId, wfJson) {
+                    // TODO: add support for passing variables (used in rendering wf JSON; for now empty array 'vars' is passed)
+                    wflib.createInstanceFromFile(wffile, '', { vars: [] }, function(err, appId, wfJson) {
                         runWorkflow(wfDir, appId);
                     });
                 });
