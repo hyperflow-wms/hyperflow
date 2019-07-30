@@ -20,7 +20,7 @@ var docopt = require('docopt').docopt,
 var doc = "\
 Usage:\n\
   hflow run <workflow_dir_or_file> [-s] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
-  hflow recover <persistence-log> [-p <plugin_module_name> ...]\n\
+  hflow recover <persistence-log> [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
   hflow start-server [-p <plugin_module_name> ...]\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
