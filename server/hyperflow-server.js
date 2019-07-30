@@ -85,6 +85,7 @@ app.get('/apps', function(req, res) {
 app.post('/apps', function(req, res) {
     var ctype = req.headers["content-type"];
 
+    // TODO: makeId6 now moved to 'utils' -- use it
     function makeId6() {
 	var id = [];
 	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
