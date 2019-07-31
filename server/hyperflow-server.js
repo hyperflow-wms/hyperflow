@@ -87,14 +87,14 @@ app.post('/apps', function(req, res) {
 
     // TODO: makeId6 now moved to 'utils' -- use it
     function makeId6() {
-	var id = [];
-	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var id = [];
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-	for (var i=0; i<6; i++ ) {
-	    id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
-	}
+        for (var i=0; i<6; i++ ) {
+            id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
+        }
 
-	return id.join("");
+        return id.join("");
     }
 
     var runWorkflow = function(wfDir, appId) {
