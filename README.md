@@ -1,8 +1,8 @@
-# HyperFlow: a distributed workflow execution engine
+# HyperFlow: a scientific workflow execution engine
 
 ## Description
 
-HyperFlow provides a model of computation, workflow description language and enactment engine for complex, distributed workflows.
+HyperFlow is a Workflow Management System (WMS) dedicated for scientific workflows. 
 
 Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more about the HyperFlow workflow model. 
 
@@ -22,9 +22,10 @@ The latest release of HyperFlow is 1.2.0
 * Optionally, you can add directory `<hyperflow_root_dir>/bin` to your system `PATH`
 
 ## Using Docker image
-* Build the image: `docker build -t hyperflow .`
+* Use the latest Docker image for the HyperFlow engine, published in Docker Hub as `hyperflowwms/hyperflow`, OR 
+* Build the image yourself: `docker build -t hyperflow .`
 * Start redis container: `docker run --name redis -d redis`
-    * [OPTIONAL] If you plan on using amqp executor, start a rabbitmq container: `docker run -d --name rabbitmq rabbitmq:3`
-* Run hyperflow server: `docker run -d --rm --link=redis -e "REDIS_URL=redis://redis" --name hyperflow -p 8080:80 hyperflow`
+    * [OPTIONAL] If you plan on using amqp executor, start a RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
+* Run the HyperFlow server container: `docker run -d --rm --link=redis -e "REDIS_URL=redis://redis" --name hyperflow -p 8080:80 hyperflow`
     * [OPTIONAL] or with amqp executor: `docker run -d --rm --link=rabbitmq --link=redis -e "AMQP_URL=amqp://rabbitmq" -e "REDIS_URL=redis://redis" --name hyperflow -p 8080:80 hyperflow`
 * Verify that the server responds with: `curl localhost:8080 -v`, the output should contain a string: `Cannot GET /`

@@ -2,11 +2,13 @@
 //   @param configFilePaths -- JSON config files to read variables from
 //   @param additionalVars -- variables read and passed by the caller (e.g. from command line parameters) -- will be included in the final array of variables
 // format: array ['name=value', 'name=value', 'name=value']
+//
+// TODO: implement support for config files
 function readVars(configFilePaths, additionalVars) {
 
     var vars = {};
 
-    // Note that in case of name conflict, variables read in step 1. will be overriden by 
+    // Note that in the case of name conflict, variables read in step 1. will be overridden by 
     // those read in step 2., and then in step 3.
 
     // 1. add variables passed to the function
@@ -22,7 +24,7 @@ function readVars(configFilePaths, additionalVars) {
     // files should contain JSON objects in the form: { name: value, name: value }
     if (configFilePaths) {
         configFilePaths.forEach(function(file) {
-
+            // TODO: not implemented
         });
     }
 
