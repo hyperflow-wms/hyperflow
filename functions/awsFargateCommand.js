@@ -1,14 +1,55 @@
-"use strict";
+'use strict';
 
-const aws = require("aws-sdk");
-aws.config.update({region: "eu-central-1"}); // aws sdk doesn't load region by default
+const aws = require('aws-sdk');
+aws.config.update({region: 'eu-central-1'}); // aws sdk doesn't load region by default
 const ecs = new aws.ECS();
-const maxRetryWait = 10 * 60 * 1000; // 10 minutes
+const s3 = new aws.S3();
+const Influx = require('influx');
+const uuid = require('uuid/v4');
+
+const executor_config = require('./awsFargateCommand.config');
+
+const maxRetryWait = 5 * 60 * 1000; // 2 minutes
 let runLock = false;
+
 let runningTasks = 0;
+let retryAmount = 0;
+let waitingTasks = 0;
+
+function initInflux(dbName, experiment) {
+    const tags = {
+        experiment: experiment
+    };
+
+    let influx = new Influx.InfluxDB({
+        host: 'localhost',
+        database: dbName,
+        schema: [
+            {
+                measurement: 'diagnostic',
+                fields: {
+                    waitingTasks: Influx.FieldType.INTEGER,
+                    retryAmount: Influx.FieldType.INTEGER
+                },
+                tags: Object.keys(tags)
+            }
+        ]
+    });
+
+    function write() {
+        influx.writeMeasurement('diagnostic', [{
+            tags: tags,
+            fields: {waitingTasks: waitingTasks, retryAmount: retryAmount}
+        }]).catch(console.error);
+    }
+
+    influx.createDatabase(dbName)
+        .then(() => setInterval(write, 5000))
+}
+
+initInflux('hyperflow-database', new Date().toISOString());
 
 async function awsFargateCommand(ins, outs, config, cb) {
-
     while (runLock === true || runningTasks >= 50) {
         await sleep(1500);
     }
@@ -17,7 +58,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
     runLock = false;
     runningTasks++;
 
-    const executor_config = await getConfig(config.workdir);
+    let isTaskWaiting = false;
 
     const options = executor_config.options;
     if (config.executor.hasOwnProperty("options")) {
@@ -44,14 +85,26 @@ async function awsFargateCommand(ins, outs, config, cb) {
         try {
             await runTask();
         } catch (error) {
-            if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
-                if (times < maxRetries) {
-                    console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
-                    return backoffWait(times)
-                        .then(runTaskWithRetryStrategy.bind(null, times + 1));
+            if (["ThrottlingException", "NetworkingError", "TaskLimitError", "OutOfError"].includes(error.name)) {
+
+                retryAmount++;
+
+                if (!isTaskWaiting) {
+                    waitingTasks++;
+                    isTaskWaiting = true;
                 }
+
+                console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
+                return backoffWait(times)
+                    .then(runTaskWithRetryStrategy.bind(null, times + 1));
             }
-            console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error.name);
+
+            console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error
+                + ', error.message: ' + error.message);
+
+            // exit on unexpected failure of any task
+            process.exit(1);
+
             return;
         }
         cb(null, outs);
@@ -63,31 +116,49 @@ async function awsFargateCommand(ins, outs, config, cb) {
 
     function runTask() {
         return new Promise((resolve, reject) => {
-            ecs.runTask(createFargateTask(), (err, data) => {
-                if (err) {
-                    if (err.message.indexOf('RequestLimitExceeded') > -1) {
-                        return reject(new TaskLimitError())
-                    } else {
-                        return reject(err);
-                    }
-                }
-
-                if (data.failures && data.failures.map(failure => failure.reason).includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
-                    return reject(new TaskLimitError());
-                }
-
-                let taskArn = data.tasks[0].taskArn;
-
-                waitAndGetExitCode(taskArn).then(containerStatusCode => {
-                    if (containerStatusCode !== 0) {
-                        console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
-                        return reject();
+            createFargateTask().then(task => {
+                ecs.runTask(task, (err, data) => {
+                    if (err) {
+                        if (err.message.indexOf('RequestLimitExceeded') > -1) {
+                            return reject(new TaskLimitError())
+                        } else {
+                            return reject(err);
+                        }
                     }
 
-                    console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
-                    runningTasks--;
-                    return resolve()
-                }).catch(err => reject(err));
+                    if (data.failures && data.failures.length > 0) {
+                        let reason = data.failures.map(failure => failure.reason);
+
+                        if (reason.includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
+                            return reject(new TaskLimitError());
+                        }
+
+                        if (reason.includes('RESOURCE:MEMORY')) {
+                            return reject(new OutOfMemoryError())
+                        }
+
+                        console.log(`Unhandled err: ${data.failures}`);
+                    }
+
+                    let taskArn = data.tasks[0].taskArn;
+
+                    waitAndGetExitCode(taskArn).then(containerStatusCode => {
+                        if (containerStatusCode !== 0) {
+                            console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
+                            return reject(new Error(taskArn));
+                        }
+
+                        console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+
+                        runningTasks--;
+
+                        if (isTaskWaiting) {
+                            waitingTasks--;
+                        }
+
+                        return resolve()
+                    }).catch(err => reject(err));
+                });
             });
         })
     }
@@ -155,22 +226,34 @@ async function awsFargateCommand(ins, outs, config, cb) {
         return taskDefinition;
     }
 
-    async function getTaskContainer(taskDefinition) {
-        let task = await ecs.describeTaskDefinition({taskDefinition}).promise();
-        return task.taskDefinition.containerDefinitions[0].name;
-    }
-
     async function waitAndGetExitCode(taskArn) {
         const payload = {
             tasks: [taskArn],
             cluster: executor_config.clusterArn
         };
-        let taskList = await ecs.describeTasks(payload).promise();
-        while (taskList.tasks[0].lastStatus !== "STOPPED") {
-            await sleep(5000);
+
+        let taskList;
+
+        do {
             taskList = await ecs.describeTasks(payload).promise();
-        }
-        return taskList.tasks[0].containers[0].exitCode;
+
+            if (taskList.failures && taskList.failures.length > 0) {
+                // throw new Error(`${taskArn}: task.failures: ${JSON.stringify(taskList.failures)}`);
+                await sleep(5000);
+                continue;
+            }
+
+            let container = taskList.tasks[0].containers[0];
+            if (container.exitCode === 137) {
+                throw new OutOfMemoryError(taskArn);
+            }
+
+            await sleep(5000);
+        } while (taskList.tasks[0].lastStatus !== "STOPPED");
+
+        let exitCode = taskList.tasks[0].containers[0].exitCode;
+
+        return exitCode !== undefined ? exitCode : taskList.tasks[0].containers[0].reason;
     }
 
     function sleep(ms) {
@@ -182,6 +265,14 @@ class TaskLimitError extends Error {
     constructor() {
         super();
         this.name = "TaskLimitError";
+    }
+}
+
+class OutOfMemoryError extends Error {
+    constructor(taskArn) {
+        super();
+        this.name = 'OutOfMemoryError';
+        this.message = `taskArn: ${taskArn}`;
     }
 }
 
