@@ -13,7 +13,7 @@ The latest release of HyperFlow is 1.2.0
 ### Installation
 * Install Node.js (http://nodejs.org)
 * Install Redis (http://redis.io) 
-* Install HyperFlow:<br>`npm install https://github.com/dice-cyfronet/hyperflow/archive/1.2.0.tar.gz`
+* Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/v1.2.0.tar.gz`
 
 ### Running
 * Start the redis server: `redis-server`
