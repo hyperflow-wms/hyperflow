@@ -85,7 +85,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
         try {
             await runTask();
         } catch (error) {
-            if (["ThrottlingException", "NetworkingError", "TaskLimitError", "OutOfError"].includes(error.name)) {
+            if (["ThrottlingException", "NetworkingError", "TaskLimitError", "OutOfMemoryError"].includes(error.name)) {
 
                 retryAmount++;
 
@@ -221,6 +221,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
                             environment: [
                                 {name: 'NAME', value: executor_config.containerName},
                                 {name: 'TASK_ID', value: executable},
+                                {name: 'INFLUXDB_HOST', value: executor_config.influxdbHost},
                                 {
                                     name: 'LABELS',
                                     // stringify object {key: val,key1: val1} to 'key=val,key1=val1'

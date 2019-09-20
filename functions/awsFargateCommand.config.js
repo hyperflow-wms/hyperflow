@@ -7,12 +7,12 @@ exports.influxdbHost = 'string';
 exports.launchType = 'FARGATE';
 
 exports.options = {
-    storage: 'string',
     bucket: 'string',
     prefix: 'string'
 };
 
 // extra labels provided to container in form of {key: value}
+// use your own values
 exports.extraLabels = {
     experiment: new Date().toISOString(),
     configId: 'string',
