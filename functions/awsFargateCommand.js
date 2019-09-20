@@ -173,57 +173,65 @@ async function awsFargateCommand(ins, outs, config, cb) {
         return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
     }
 
-    function createFargateTask() {
-        return {
-            taskDefinition: executor_config.taskArn,
-            cluster: executor_config.clusterArn,
-            count: 1,
-            enableECSManagedTags: false,
-            launchType: 'FARGATE',
-            networkConfiguration: {
-                awsvpcConfiguration: {
-                    subnets: executor_config.subnets,
-                    assignPublicIp: executor_config.assignPublicIp,
-                    securityGroups: executor_config.securityGroups
-                }
-            },
-            overrides: {
-                containerOverrides: [
-                    {
-                        command: ['npm', 'start', jobMessage],
-                        name: executor_config.containerName,
-                        environment: [
-                            {name: 'NAME', value: executor_config.containerName},
-                            {name: 'TASK_ID', value: executable},
-                            {name: 'PUSH_GW_URL', value: executor_config.pushgatewayUrl},
-                            {
-                                name: 'LABELS',
-                                // stringify object {key: val,key1: val1} to 'key=val,key1=val1'
-                                value: Object.entries(executor_config.extraLabels).map(array => array.join('=')).join(',')
-                            }
-                        ]
+    async function createFargateTask() {
+        return executor_config.launchType === 'FARGATE' ? {
+                taskDefinition: executor_config.taskArn,
+                cluster: executor_config.clusterArn,
+                count: 1,
+                enableECSManagedTags: false,
+                launchType: 'FARGATE',
+                networkConfiguration: {
+                    awsvpcConfiguration: {
+                        subnets: executor_config.subnets,
+                        assignPublicIp: 'DISABLED',
+                        securityGroups: executor_config.securityGroups
                     }
-                ]
-            },
-            platformVersion: 'LATEST',
-            startedBy: 'hyperflow'
-        };
-    }
-
-    async function getTaskDefinition() {
-        const mapping = executor_config.tasks_mapping;
-        if (mapping === undefined) {
-            let errorMessage = "Missing tasks_mapping in config";
-            console.log(errorMessage);
-            return
-        }
-        let taskDefinition = mapping[executable] === undefined ? mapping["default"] : mapping[executable];
-        if (taskDefinition === undefined) {
-            let errorMessage = "No task tasks_mapping nor default tasks_mapping is defined for " + executable;
-            console.log(errorMessage);
-            return
-        }
-        return taskDefinition;
+                },
+                overrides: {
+                    containerOverrides: [
+                        {
+                            command: ['npm', 'start', jobMessage],
+                            name: executor_config.containerName,
+                            environment: [
+                                {name: 'NAME', value: executor_config.containerName},
+                                {name: 'TASK_ID', value: executable},
+                                {
+                                    name: 'LABELS',
+                                    // stringify object {key: val,key1: val1} to 'key=val,key1=val1'
+                                    value: Object.entries(executor_config.extraLabels).map(array => array.join('=')).join(',')
+                                }
+                            ]
+                        }
+                    ]
+                },
+                platformVersion: 'LATEST',
+                startedBy: 'hyperflow'
+            } :
+            {
+                taskDefinition: executor_config.taskArn,
+                cluster: executor_config.clusterArn,
+                count: 1,
+                enableECSManagedTags: false,
+                launchType: 'EC2',
+                overrides: {
+                    containerOverrides: [
+                        {
+                            command: ['npm', 'start', jobMessage],
+                            name: executor_config.containerName,
+                            environment: [
+                                {name: 'NAME', value: executor_config.containerName},
+                                {name: 'TASK_ID', value: executable},
+                                {
+                                    name: 'LABELS',
+                                    // stringify object {key: val,key1: val1} to 'key=val,key1=val1'
+                                    value: Object.entries(executor_config.extraLabels).map(array => array.join('=')).join(',')
+                                }
+                            ]
+                        }
+                    ]
+                },
+                startedBy: 'hyperflow'
+            }
     }
 
     async function waitAndGetExitCode(taskArn) {

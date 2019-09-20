@@ -4,6 +4,7 @@ exports.taskArn = 'string';
 exports.subnets = ['string'];
 exports.securityGroups = ['string'];
 exports.influxdbHost = 'string';
+exports.launchType = 'FARGATE';
 
 exports.options = {
     storage: 'string',
