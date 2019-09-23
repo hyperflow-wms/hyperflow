@@ -4,7 +4,6 @@ var fsp = require('./fileSplitter.js'),
     RESTCmd = require('./RESTServiceCommand.js'),
 	fargateCmd = require('./awsFargateCommand.js'),
     lambdaCmd = require('./awsLambdaCommand.js'),
-    fargateCmd = require('./awsFargateCommand.js'),
     commandLocalMock = require('./commandLocalMock.js'),
     scanDir = require('./DirScanner').scanDir;
 
