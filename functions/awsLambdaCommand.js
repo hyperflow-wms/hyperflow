@@ -1,7 +1,7 @@
 const request = require('requestretry');
 const aws = require("aws-sdk");
 const s3 = new aws.S3();
-const s3LogCheckRetryFrequency = 10000; // milliseconds
+const s3LogCheckRetryFrequency = 5 * 1000;
 
 async function awsLambdaCommand(ins, outs, config, cb) {
 
@@ -69,7 +69,6 @@ async function awsLambdaCommand(ins, outs, config, cb) {
             console.log("Error - waiting over 15 minutes. Terminating.");
             cb("Error", outs);
         }
-        console.log("Waiting for S3 logs, retry number: " + retry);
         await getS3Logs()
             .catch(() => {
                 return sleep(s3LogCheckRetryFrequency)
@@ -83,7 +82,7 @@ async function awsLambdaCommand(ins, outs, config, cb) {
             Key: "logs/" + logName
         };
         await s3.getObject(params).promise().then(async function (data) {
-            console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + data.Body.toString());
+            console.log("Metrics: task: " + config.name + " fire time " + fireTime + " " + data.Body.toString());
         });
     }
 

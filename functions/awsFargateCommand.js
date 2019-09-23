@@ -2,20 +2,16 @@
 
 const aws = require("aws-sdk");
 const s3 = new aws.S3();
-aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
-const ecs = new aws.ECS();
+const ecs = new aws.ECS({region: 'eu-west-1'}); // aws sdk doesn't load region by default
 const maxRetryWait = 10 * 60 * 1000; // 10 minutes
-let runLock = false;
+const minRetryWait = 0;
 let runningTasks = 0;
 
 async function awsFargateCommand(ins, outs, config, cb) {
 
-    while (runLock === true || runningTasks >= 50) {
-        await sleep(1000);
+    while (runningTasks >= 50) { // AWS Fargate supports up to 50 instances at a given time
+        await sleep(3000);
     }
-    runLock = true;
-    await sleep(1000);
-    runLock = false;
     runningTasks++;
 
     const executor_config = await getConfig(config.workdir);
@@ -30,13 +26,15 @@ async function awsFargateCommand(ins, outs, config, cb) {
         }
     }
 
+    const randomString = (Math.random() * 1e12).toString(36);
+
     let logName;
     if (executor_config.metrics) {
-        logName = (Math.random()*1e12).toString(36);
+        logName = "log_" + randomString;
     }
 
     const executable = config.executor.executable;
-    const jobMessage = JSON.stringify({
+    let jobMessage = JSON.stringify({
         "executable": executable,
         "args": config.executor.args,
         "env": (config.executor.env || {}),
@@ -46,6 +44,25 @@ async function awsFargateCommand(ins, outs, config, cb) {
         "stdout": config.executor.stdout,
         "logName": logName
     });
+
+    console.log("Executing: " + jobMessage + " on AWS Fargate");
+
+    if (jobMessage.length > 8192) { // if payload is bigger than 8192 bytes (npm argument size limit), it is send via S3
+        const fileName = "config_" + randomString;
+        const fileContent = jobMessage;
+        const uploadParams = {
+            Bucket: options.bucket,
+            Key: "tmp/" + fileName,
+            ContentType: 'text/plain',
+            Body: fileContent
+        };
+        const downloadParams = {
+            Bucket: options.bucket,
+            Key: "tmp/" + fileName
+        };
+        jobMessage = "S3=" + JSON.stringify(downloadParams);
+        await s3.putObject(uploadParams).promise();
+    }
 
     const runTaskWithRetryStrategy = (times) => new Promise(() => {
         return runTask()
@@ -59,8 +76,6 @@ async function awsFargateCommand(ins, outs, config, cb) {
             });
     });
 
-    console.log("Executing: " + jobMessage + " on AWS Fargate");
-    const fireTime = Date.now();
     await runTaskWithRetryStrategy(0);
 
     async function getConfig(workdir) {
@@ -75,6 +90,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
     }
 
     async function runTask() {
+        const fireTime = Date.now();
         await ecs.runTask(await createFargateTask()).promise().then(async function (data) {
             if (data.failures && data.failures.map(failure => failure.reason).includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
                 throw new TaskLimitError()
@@ -89,10 +105,10 @@ async function awsFargateCommand(ins, outs, config, cb) {
                 Bucket: options.bucket,
                 Key: "logs/" + logName
             };
-            console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+            console.log("Fargate task: " + config.name + " with arn: " + taskArn + " completed successfully.");
             if (executor_config.metrics) {
                 const log = await s3.getObject(params).promise().then(data => data.Body.toString());
-                console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + log);
+                console.log("Metrics: task: " + config.name + " fire time " + fireTime + " " + log);
             }
             runningTasks--;
             cb(null, outs);
@@ -104,6 +120,9 @@ async function awsFargateCommand(ins, outs, config, cb) {
         let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * 500;
         if (backoffWaitTime > maxRetryWait) {
             backoffWaitTime = maxRetryWait;
+        }
+        if (backoffWaitTime < minRetryWait) {
+            backoffWaitTime = minRetryWait;
         }
         console.log("Waiting for " + backoffWaitTime + " milliseconds.");
         return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
