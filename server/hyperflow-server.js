@@ -85,15 +85,16 @@ app.get('/apps', function(req, res) {
 app.post('/apps', function(req, res) {
     var ctype = req.headers["content-type"];
 
+    // TODO: makeId6 now moved to 'utils' -- use it
     function makeId6() {
-	var id = [];
-	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var id = [];
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-	for (var i=0; i<6; i++ ) {
-	    id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
-	}
+        for (var i=0; i<6; i++ ) {
+            id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
+        }
 
-	return id.join("");
+        return id.join("");
     }
 
     var runWorkflow = function(wfDir, appId) {
@@ -179,7 +180,8 @@ app.post('/apps', function(req, res) {
 
                 // TODO: check exit code
                 proc.on('exit', function(code, signal) {
-                    wflib.createInstanceFromFile(wffile, '', function(err, appId, wfJson) {
+                    // TODO: add support for passing variables (used in rendering wf JSON; for now empty array 'vars' is passed)
+                    wflib.createInstanceFromFile(wffile, '', { vars: [] }, function(err, appId, wfJson) {
                         runWorkflow(wfDir, appId);
                     });
                 });

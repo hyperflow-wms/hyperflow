@@ -12,6 +12,7 @@ exports.amqp_url = AMQP_URL;
 //     "prefix": S3_PATH
 // };
 
+// Local storage
 exports.options = {
     "storage": "local",
     "workdir": WORKDIR

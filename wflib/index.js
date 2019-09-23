@@ -12,6 +12,7 @@ var fs = require('fs'),
     pathTool = require('path'),
     //toobusy = require('toobusy'),
     uuid = require('uuid'),
+    Mustache = require('mustache'),
     rcl;
 
 
@@ -60,11 +61,19 @@ exports.init = function(redisClient) {
     ///////////////////////// public functions ///////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    function public_createInstanceFromFile(filename, baseUrl, cb) {
+    function public_createInstanceFromFile(filename, baseUrl, config, cb) {
         fs.readFile(filename, 'utf8', function(err, data) {
             if (err) { return cb(err); }
             var start = (new Date()).getTime(), finish;
-            var wfJson = JSON.parse(data);
+
+            // 1. render '{{var}}' variables in the workflow file
+            var renderedWf=data;
+            if (config.vars) {
+                renderedWf = Mustache.render(data, config.vars);
+                //onsole.log(renderedWf);
+            }
+            // 2. parse workflow to JSON
+            var wfJson = JSON.parse(renderedWf);
             public_createInstance(wfJson, baseUrl, function(err, wfId) {
                 finish = (new Date()).getTime();
                 console.log("createInstance time: "+(finish-start)+"ms");
@@ -1490,13 +1499,13 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
             }
 
             if ((procInfo.fun == "null") || (!procInfo.fun)) {
-                return cb(new Error("No function defined for the process."));
+                throw new Error("No function defined for the process." + JSON.stringify(procInfo));
             }
 
             /////////////////////////
             // INVOKE THE FUNCTION //
             /////////////////////////
-
+            
             rcl.hgetall("wf:"+wfId+":functions:"+procInfo.fun, function(err, fun) {
                 if (err) return cb(err);
 

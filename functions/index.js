@@ -4,7 +4,10 @@ var fsp = require('./fileSplitter.js'),
     RESTCmd = require('./RESTServiceCommand.js'),
 	fargateCmd = require('./awsFargateCommand.js'),
     lambdaCmd = require('./awsLambdaCommand.js'),
+    fargateCmd = require('./awsFargateCommand.js'),
+    commandLocalMock = require('./commandLocalMock.js'),
     scanDir = require('./DirScanner').scanDir;
+
 
 function print(ins, outs, config, cb) {
     //console.log("PRINT", JSON.stringify(ins));
@@ -228,3 +231,4 @@ exports.count = count;
 exports.match = match;
 exports.noop = noop;
 exports.genCollection = genCollection;
+exports.commandLocalMock = commandLocalMock.commandLocalMock;

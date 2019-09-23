@@ -11,6 +11,7 @@ var docopt = require('docopt').docopt,
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
+    readVars = require('../utils/readvars.js'),
     dbId = 0,
     plugins = [],
     recoveryMode = false, recoveryData = { 'input': [], 'outputs': {} },
@@ -18,14 +19,17 @@ var docopt = require('docopt').docopt,
 
 var doc = "\
 Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...]\n\
-  hflow recover <persistence-log> [-p <plugin_module_name> ...]\n\
+  hflow run <workflow_dir_or_file> [-s] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
+  hflow recover <persistence-log> [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
   hflow start-server [-p <plugin_module_name> ...]\n\
   hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
   hflow -h | --help | --version";
 
 var opts = docopt(doc);
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
+
+// Workflow variables TODO: add support for config files
+var wf_vars = readVars([], opts['--var']);
 
 if (opts['-p']) {
     opts['<plugin_module_name>'].forEach(load_plugin);
@@ -209,7 +213,7 @@ function hflow_run() {
   var createWf = function(cb) {
     rcl.select(dbId, function(err, rep) {
       //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
-        wflib.createInstanceFromFile(wffile, '', function(err, id, wfJson) {
+        wflib.createInstanceFromFile(wffile, '', { vars: wf_vars }, function(err, id, wfJson) {
           cb(err, id, wfJson.name);
         });
       //});
