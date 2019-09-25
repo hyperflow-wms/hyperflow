@@ -157,6 +157,10 @@ function hflow_run() {
           plugin.init(rcl, wflib, engine);
       });
 
+      engine.syncCb = function () {
+          process.exit();
+      };
+
       if (opts['--log-provenance']) {
           engine.logProvenance = true;
           var provenance_output = opts['--provenance-output'] || 'provenance_log.txt';

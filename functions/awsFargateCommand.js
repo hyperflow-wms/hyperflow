@@ -1,13 +1,20 @@
 "use strict";
 
 const aws = require("aws-sdk");
-aws.config.update({region: "eu-west-1"}); // aws sdk doesn't load region by default
-const ecs = new aws.ECS();
-const executor_config = require("./awsFargateCommand.config.js");
-const baseTimeFrame = 2000;
-const maxRetries = 12;
+const s3 = new aws.S3();
+const ecs = new aws.ECS({region: 'eu-west-1'}); // aws sdk doesn't load region by default
+const maxRetryWait = 10 * 60 * 1000; // 10 minutes
+const minRetryWait = 0;
+let runningTasks = 0;
 
 async function awsFargateCommand(ins, outs, config, cb) {
+
+    while (runningTasks >= 50) { // AWS Fargate supports up to 50 instances at a given time
+        await sleep(3000);
+    }
+    runningTasks++;
+
+    const executor_config = await getConfig(config.workdir);
 
     const options = executor_config.options;
     if (config.executor.hasOwnProperty("options")) {
@@ -19,36 +26,71 @@ async function awsFargateCommand(ins, outs, config, cb) {
         }
     }
 
+    const randomString = (Math.random() * 1e12).toString(36);
+
+    let logName;
+    if (executor_config.metrics) {
+        logName = "log_" + randomString;
+    }
+
     const executable = config.executor.executable;
-    const jobMessage = JSON.stringify({
+    let jobMessage = JSON.stringify({
         "executable": executable,
         "args": config.executor.args,
         "env": (config.executor.env || {}),
         "inputs": ins.map(i => i),
         "outputs": outs.map(o => o),
         "options": options,
-        "stdout": config.executor.stdout
+        "stdout": config.executor.stdout,
+        "logName": logName
     });
+
+    console.log("Executing: " + jobMessage + " on AWS Fargate");
+
+    if (jobMessage.length > 8192) { // if payload is bigger than 8192 bytes (npm argument size limit), it is send via S3
+        const fileName = "config_" + randomString;
+        const fileContent = jobMessage;
+        const uploadParams = {
+            Bucket: options.bucket,
+            Key: "tmp/" + fileName,
+            ContentType: 'text/plain',
+            Body: fileContent
+        };
+        const downloadParams = {
+            Bucket: options.bucket,
+            Key: "tmp/" + fileName
+        };
+        jobMessage = "S3=" + JSON.stringify(downloadParams);
+        await s3.putObject(uploadParams).promise();
+    }
 
     const runTaskWithRetryStrategy = (times) => new Promise(() => {
         return runTask()
             .catch(error => {
                 if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
-                    if (times < maxRetries) {
-                        console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
-                        return backoffWait(times)
-                            .then(runTaskWithRetryStrategy.bind(null, times + 1));
-                    }
+                    console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
+                    return backoffWait(times)
+                        .then(runTaskWithRetryStrategy.bind(null, times + 1));
                 }
                 console.log("Running fargate task " + executable + " failed after " + times + " retries, error: " + error);
             });
     });
 
-    console.log("Executing: " + jobMessage + " on AWS Fargate");
-
     await runTaskWithRetryStrategy(0);
 
+    async function getConfig(workdir) {
+        let config;
+        try {
+            config = require(workdir + "/awsFargateCommand.config.js");
+        } catch (e) {
+            console.log("No config in " + workdir + ", loading config from default location: .");
+            config = require("./awsFargateCommand.config.js");
+        }
+        return config;
+    }
+
     async function runTask() {
+        const fireTime = Date.now();
         await ecs.runTask(await createFargateTask()).promise().then(async function (data) {
             if (data.failures && data.failures.map(failure => failure.reason).includes("You\'ve reached the limit on the number of tasks you can run concurrently")) {
                 throw new TaskLimitError()
@@ -59,14 +101,30 @@ async function awsFargateCommand(ins, outs, config, cb) {
                 console.log("Error: container returned non-zero exit code: " + containerStatusCode + " for task " + executable + " with arn: " + taskArn);
                 return
             }
-            console.log("Fargate task: " + executable + " with arn: " + taskArn + " completed successfully.");
+            const params = {
+                Bucket: options.bucket,
+                Key: "logs/" + logName
+            };
+            console.log("Fargate task: " + config.name + " with arn: " + taskArn + " completed successfully.");
+            if (executor_config.metrics) {
+                const log = await s3.getObject(params).promise().then(data => data.Body.toString());
+                console.log("Metrics: task: " + config.name + " fire time " + fireTime + " " + log);
+            }
+            runningTasks--;
             cb(null, outs);
         });
     }
 
     async function backoffWait(times) {
         let backoffTimes = Math.pow(2, times);
-        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * baseTimeFrame;
+        let backoffWaitTime = Math.floor(Math.random() * backoffTimes) * 500;
+        if (backoffWaitTime > maxRetryWait) {
+            backoffWaitTime = maxRetryWait;
+        }
+        if (backoffWaitTime < minRetryWait) {
+            backoffWaitTime = minRetryWait;
+        }
+        console.log("Waiting for " + backoffWaitTime + " milliseconds.");
         return new Promise(resolve => setTimeout(resolve, backoffWaitTime));
     }
 
