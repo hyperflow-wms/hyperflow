@@ -261,16 +261,16 @@ exports.init = function(redisClient) {
             }
 
             // add workflow processes
-            var taskKey;
+            var procKey;
             for (var i=0; i<procs.length; ++i) {
-                var taskId = i+1, uri;
+                var procId = i+1, uri;
                 if (procs[i].host) { // FIXME: host deprecated (replaced by remote sinks)
                     uri = procs[i].host + '/apps/' + wfId;
                 } else {
                     uri = baseUri;
                 } 
-                taskKey = wfKey+":task:"+taskId;
-                processProc(procs[i], wfname, uri, wfKey, taskKey, taskId, function() { });
+                procKey = wfKey+":task:"+procId;
+                processProc(procs[i], wfname, uri, wfKey, procKey, procId, function() { });
             }
 
             // add signal schemas
@@ -312,7 +312,7 @@ exports.init = function(redisClient) {
             });
         }
 
-        var processProc = function(task, wfname, baseUri, wfKey, taskKey, taskId, cb) {
+        var processProc = function(task, wfname, baseUri, wfKey, procKey, procId, cb) {
             // TODO: here there could be a validation of the process, e.g. Foreach process 
             // should have the same number of ins and outs, etc.
             var multi=rcl.multi();
@@ -338,43 +338,43 @@ exports.init = function(redisClient) {
                 return copy;
             }
 
-            multi.hmset(taskKey, taskObject(task), function(err, ret) { });
+            multi.hmset(procKey, taskObject(task), function(err, ret) { });
 
             // FIXME: "task" type deprecated, change the default type to "dataflow"
             // add task id to sorted set of all wf tasks. Score 0/1/2==waiting/running/finished
             // FIXME: score is now deprecated
             task.type = task.type ? task.type.toLowerCase() : "task";
-            multi.zadd(wfKey+":tasks", 0 /* score */, taskId, function(err, ret) { });
+            multi.zadd(wfKey+":tasks", 0 /* score */, procId, function(err, ret) { });
 
             // For every task of type other than "task" (e.g. "foreach", "choice"), add its 
             // id to a type set. 
             // Engine uses this to know which FSM instance to create
             // TODO: need additional, "global" set with all possible task type names
             if (task.type != "task") {
-                multi.sadd(wfKey+":tasktype:"+task.type, taskId);
+                multi.sadd(wfKey+":tasktype:"+task.type, procId);
             }
 
             // add process inputs and outputs + signals sources and sinks
             for (var i=0; i<task.ins.length; ++i) {
                 (function(inId, dataId) {
                     var dataKey = wfKey+":data:"+dataId;
-                    multi.zadd(taskKey+":ins", inId, dataId, function(err, rep) { });
-                    multi.zadd(dataKey+":sinks", inId /* score: port id */ , taskId, function(err, ret) { });
+                    multi.zadd(procKey+":ins", inId, dataId, function(err, rep) { });
+                    multi.zadd(dataKey+":sinks", inId /* score: port id */ , procId, function(err, ret) { });
                     if (sigs[dataId-1].control) { // add all control inputs to a separate hash
-                        //multi.hmset(taskKey+":cins", sigs[dataId-1].control, dataId);
-                        multi.hmset(taskKey+":cins", dataId, sigs[dataId-1].control);
-                        multi.sadd(taskKey+":cinset", dataId);
+                        //multi.hmset(procKey+":cins", sigs[dataId-1].control, dataId);
+                        multi.hmset(procKey+":cins", dataId, sigs[dataId-1].control);
+                        multi.sadd(procKey+":cinset", dataId);
                     }
                 })(i+1, task.ins[i]+1);
             }
             for (var i=0; i<task.outs.length; ++i) {
                 (function(outId, dataId) {
                     var dataKey = wfKey+":data:"+dataId;
-                    multi.zadd(taskKey+":outs", outId, dataId, function(err, rep) { });
-                    multi.zadd(dataKey+":sources", outId /* score: port Id */, taskId, function(err, ret) { });
+                    multi.zadd(procKey+":outs", outId, dataId, function(err, rep) { });
+                    multi.zadd(dataKey+":sources", outId /* score: port Id */, procId, function(err, ret) { });
                     if (sigs[dataId-1].control) { // add all control outputs to a separate hash
-                        multi.hmset(taskKey+":couts", sigs[dataId-1].control, dataId);
-                        multi.sadd(taskKey+":coutset", dataId);
+                        multi.hmset(procKey+":couts", sigs[dataId-1].control, dataId);
+                        multi.sadd(procKey+":coutset", dataId);
                     }
                 })(i+1, task.outs[i]+1);
             }
@@ -385,12 +385,12 @@ exports.init = function(redisClient) {
                     if (s == "rev") {
                         c = JSON.stringify(c);
                     }
-                    multi.hset(taskKey+":incounts", s, c);
+                    multi.hset(procKey+":incounts", s, c);
                 })(sig, task.incounts[sig])
             }
             for (var sig in task.outcounts) {
                 (function(s, c) {
-                    multi.hset(taskKey+":outcounts", s, c);
+                    multi.hset(procKey+":outcounts", s, c);
                 })(sig, task.outcounts[sig])
             }
 
@@ -399,7 +399,7 @@ exports.init = function(redisClient) {
             for (var i=0; i<task.sticky.length; ++i) {
                 (function(sigId) {
                     //onsole.log("STICKY ADDING", sigId);
-                    rcl.sadd(taskKey+":sticky", sigId, function(err, res) { });
+                    rcl.sadd(procKey+":sticky", sigId, function(err, res) { });
                 })(task.sticky[i]+1);
             }
 
@@ -542,34 +542,34 @@ exports.init = function(redisClient) {
         });
     }
 
-    function public_getTaskInfo(wfId, taskId, cb) {
-        var taskKey = "wf:"+wfId+":task:"+taskId;
-        rcl.hgetall(taskKey, function(err, reply) {
+    function public_getTaskInfo(wfId, procId, cb) {
+        var procKey = "wf:"+wfId+":task:"+procId;
+        rcl.hgetall(procKey, function(err, reply) {
             err ? cb(err): cb(null, reply);
         });
     }
 
-    function public_getTaskIns(wfId, taskId, withports, cb) {
-        var taskKey = "wf:"+wfId+":task:"+taskId;
+    function public_getTaskIns(wfId, procId, withports, cb) {
+        var procKey = "wf:"+wfId+":task:"+procId;
         if (withports) {
-            rcl.zrangebyscore(taskKey+":ins", 0, "+inf", "withscores", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":ins", 0, "+inf", "withscores", function(err, ret) { 
                 err ? cb(err): cb(null, ret);
             });
         } else {
-            rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) { 
                 err ? cb(err): cb(null, ret);
             });
         }
     }
 
-    function public_getTaskOuts(wfId, taskId, withports, cb) {
-        var taskKey = "wf:"+wfId+":task:"+taskId;
+    function public_getTaskOuts(wfId, procId, withports, cb) {
+        var procKey = "wf:"+wfId+":task:"+procId;
         if (withports) {
-            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", "withscores", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":outs", 0, "+inf", "withscores", function(err, ret) { 
                 err ? cb(err): cb(null, ret);
             });
         } else {
-            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) { 
                 err ? cb(err): cb(null, ret);
             });
         }
@@ -577,13 +577,13 @@ exports.init = function(redisClient) {
 
     // Returns full task info. Format:
     // TODO ......
-    function public_getTaskInfoFull(wfId, taskId, cb) {
-        var taskKey = "wf:"+wfId+":task:"+taskId;
+    function public_getTaskInfoFull(wfId, procId, cb) {
+        var procKey = "wf:"+wfId+":task:"+procId;
         var task, ins, outs, data_ins = {}, data_outs = {}, asyncTasks = [];
 
         // Retrieve task info
         asyncTasks.push(function(callback) {
-            rcl.hgetall(taskKey, function(err, reply) {
+            rcl.hgetall(procKey, function(err, reply) {
                 task = err ? err: reply;
                 callback(null, task);
             });
@@ -591,7 +591,7 @@ exports.init = function(redisClient) {
 
         // Retrieve all ids of inputs of the task
         asyncTasks.push(function(callback) {
-            rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) { 
                 ins = err ? err: ret;
                 callback(null, ins);
             });
@@ -599,7 +599,7 @@ exports.init = function(redisClient) {
 
         // Retrieve all ids of outputs of the task
         asyncTasks.push(function(callback) {
-            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) { 
                 outs = err ? err: ret;
                 callback(null, outs);
             });
@@ -656,13 +656,13 @@ exports.init = function(redisClient) {
     }
 
     // Part of NEW API for continuous processes with FIFO queues
-    function public_getTaskInfoFull1(wfId, taskId, insIds, outsIds, cb) {
-        var taskKey = "wf:"+wfId+":task:"+taskId;
+    function public_getTaskInfoFull1(wfId, procId, insIds, outsIds, cb) {
+        var procKey = "wf:"+wfId+":task:"+procId;
         var task, ins, outs, data_ins = {}, data_outs = {}, asyncTasks = [];
 
         // Retrieve task info
         asyncTasks.push(function(callback) {
-            rcl.hgetall(taskKey, function(err, reply) {
+            rcl.hgetall(procKey, function(err, reply) {
                 task = err ? err: reply;
                 callback(null, task);
             });
@@ -671,10 +671,10 @@ exports.init = function(redisClient) {
         // Retrieve all inputs of the task given in 'insIds'
         for (var i=0; i<insIds.length; ++i) {
             (function(inIdx) {
-                var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+insIds[inIdx];
+                var sigQueueKey = "wf:"+wfId+":task:"+procId+":ins:"+insIds[inIdx];
                 var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId+":"+idx;
                 asyncTasks.push(function(callback) {
-                    rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+                    rcl.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) { 
                         ins = err ? err: ret;
                         callback(null, ins);
                     });
@@ -684,7 +684,7 @@ exports.init = function(redisClient) {
 
         // Retrieve all outputs of the task given in 'outsIds'
         asyncTasks.push(function(callback) {
-            rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+            rcl.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) { 
                 outs = err ? err: ret;
                 callback(null, outs);
             });
@@ -740,9 +740,9 @@ exports.init = function(redisClient) {
         });
     }
 
-    function pushInput(wfId, taskId, sigId, sigIdx, cb) {
-        var isStickyKey = "wf:"+wfId+":task:"+taskId+":sticky"; // KEYS[1]
-        var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId; // KEYS[2]
+    function pushInput(wfId, procId, sigId, sigIdx, cb) {
+        var isStickyKey = "wf:"+wfId+":task:"+procId+":sticky"; // KEYS[1]
+        var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sigId; // KEYS[2]
 
         // LUA Script
         // ARGS[1] = sigId
@@ -768,7 +768,7 @@ exports.init = function(redisClient) {
 
         // OLD non-Lua implementation
         // checking if this input signal is on a 'sticky' port
-        rcl.sismember("wf:"+wfId+":task:"+taskId+":sticky", sigId, function(err, isSticky) {
+        rcl.sismember("wf:"+wfId+":task:"+procId+":sticky", sigId, function(err, isSticky) {
             if (isSticky) {
                 // if the input is 'sticky', the new signal is not queued, only replaces the old one
                 // (there is no queue of signals, just the 'currrent' signal value)
@@ -797,11 +797,11 @@ exports.init = function(redisClient) {
         });
     }
 
-    function popInput(wfId, taskId, sigId, cb) {
-        //onsole.log("POP INPUT", wfId, taskId, sigId);
-        var sigQueueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+    function popInput(wfId, procId, sigId, cb) {
+        //onsole.log("POP INPUT", wfId, procId, sigId);
+        var sigQueueKey = "wf:"+wfId+":task:"+procId+":ins:"+sigId;
         var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
-        var isStickyKey = "wf:"+wfId+":task:"+taskId+":sticky";
+        var isStickyKey = "wf:"+wfId+":task:"+procId+":sticky";
 
         // LUA Script
         // KEYS[1] = sigQueueKey
@@ -829,9 +829,9 @@ exports.init = function(redisClient) {
 
         // OLD non-Lua implementation
         // checking if this input signal is on a 'sticky' port
-        rcl.sismember("wf:"+wfId+":task:"+taskId+":sticky", sigId, function(err, isSticky) {
+        rcl.sismember("wf:"+wfId+":task:"+procId+":sticky", sigId, function(err, isSticky) {
             if (isSticky) {
-                //onsole.log("STICKY!", taskId, sigId);
+                //onsole.log("STICKY!", procId, sigId);
                 // if the input is 'sticky', the signal is not removed, just its value is retrieved
                 // (there is no queue of signals, just the 'currrent' signal value which is persistent)
                 rcl.lindex(sigQueueKey, 0, function(err, sigIdx) { 
@@ -859,10 +859,10 @@ exports.init = function(redisClient) {
         });
     }
 
-    function resetStickyPorts(wfId, taskId, cb) {
-        rcl.smembers("wf:"+wfId+":task:"+taskId+":sticky", function(err, sigs) {
+    function resetStickyPorts(wfId, procId, cb) {
+        rcl.smembers("wf:"+wfId+":task:"+procId+":sticky", function(err, sigs) {
             async.each(sigs, function(sigId, cbNext) {
-                var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+                var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sigId;
                 rcl.lpop(queueKey, function(err, rep) { 
                     rcl.llen(queueKey, function(err, len) {
                         //onsole.log(queueKey, "LEN="+len);
@@ -877,8 +877,8 @@ exports.init = function(redisClient) {
     }
 
 
-    function public_setTaskState(wfId, taskId, obj, cb) {
-        rcl.hmset("wf:"+wfId+":task:"+taskId, obj, function(err, rep) {
+    function public_setTaskState(wfId, procId, obj, cb) {
+        rcl.hmset("wf:"+wfId+":task:"+procId, obj, function(err, rep) {
             cb(err, rep);
         });
     }
@@ -888,7 +888,7 @@ exports.init = function(redisClient) {
         var multi = rcl.multi();
 
         dataKey = "wf:"+wfId+":data:"+dataId;
-        taskKeyPfx = "wf:"+wfId+":task:";
+        procKeyPfx = "wf:"+wfId+":task:";
 
         // Retrieve data element info
         multi.hgetall(dataKey, function(err, reply) {
@@ -917,11 +917,11 @@ exports.init = function(redisClient) {
     // returns full data element info
     // OBSOLETED BY getSignalInfo
     function public_getDataInfoFull(wfId, dataId, cb) {
-        var data, sources, sinks, dataKey, taskKeyPfx, tasks = {};
+        var data, sources, sinks, dataKey, procKeyPfx, tasks = {};
         var multi = rcl.multi();
 
         dataKey = "wf:"+wfId+":data:"+dataId;
-        taskKeyPfx = "wf:"+wfId+":task:";
+        procKeyPfx = "wf:"+wfId+":task:";
 
         // Retrieve data element info
         multi.hgetall(dataKey, function(err, reply) {
@@ -929,9 +929,9 @@ exports.init = function(redisClient) {
         });
 
         // this is a great feature: sort+get combo (even for hashes)!
-        multi.sort(dataKey+":sources", "get", taskKeyPfx+"*->uri",
-                "get", taskKeyPfx+"*->name",
-                "get", taskKeyPfx+"*->status",
+        multi.sort(dataKey+":sources", "get", procKeyPfx+"*->uri",
+                "get", procKeyPfx+"*->name",
+                "get", procKeyPfx+"*->status",
                 function(err, reply) {
                     if (err) {
                         sources = err;
@@ -944,9 +944,9 @@ exports.init = function(redisClient) {
                     }
                 });
 
-        multi.sort(dataKey+":sinks", "get", taskKeyPfx+"*->uri",
-                "get", taskKeyPfx+"*->name",
-                "get", taskKeyPfx+"*->status",
+        multi.sort(dataKey+":sinks", "get", procKeyPfx+"*->uri",
+                "get", procKeyPfx+"*->name",
+                "get", procKeyPfx+"*->status",
                 function(err, reply) {
                     if (err) {
                         sinks = err;
@@ -1018,7 +1018,7 @@ exports.init = function(redisClient) {
     //   
     // TODO: optimize by introducing a counter of how many signals await on ALL ports of a given task.
     //       often it will be enough to tell that a process is NOT ready to fire, without checking all queues 
-    function fetchInputs(wfId, taskId, sigsSpec, deref, cb) {
+    function fetchInputs(wfId, procId, sigsSpec, deref, cb) {
         //var time = (new Date()).getTime();
         var spec = [];
         for (var i in sigsSpec)  { // TODO: rewrite the code below to use object, instead of converting to array
@@ -1026,7 +1026,7 @@ exports.init = function(redisClient) {
         }
         var sigValues = [];
         async.every(spec, function (sig, callback) {
-            var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig[0];
+            var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sig[0];
             rcl.llen(queueKey, function(err, len) {
                 //onsole.log("FETCH SIG", sig, "LEN", len);
                 callback(!err && len>=sig[1]); 
@@ -1036,7 +1036,7 @@ exports.init = function(redisClient) {
             async.times(spec.length, function(n, cbNext) {
                 //sigValues[n] = [];
                 async.timesSeries(spec[n][1] /* count */, function(m, cbNextInner) {
-                    popInput(wfId, taskId, spec[n][0] /* sigId */, function(err, sig) {
+                    popInput(wfId, procId, spec[n][0] /* sigId */, function(err, sig) {
                         if (!sig.control) { // don't return values of control signals!
                             if (m==0) {
                                 sigValues.push([sig]);
@@ -1051,7 +1051,7 @@ exports.init = function(redisClient) {
                 });
             }, function(err, res) {
                 //time -= (new Date()).getTime();
-                //onsole.log("FETCHING INPUTS FOR", taskId , "TOOK", -time+"ms");
+                //onsole.log("FETCHING INPUTS FOR", procId , "TOOK", -time+"ms");
                 //fetchInputsTime -= time;
                 //onsole.log("CHECK INPUT DEREF:", sigValues);
                 cb(result, sigValues);
@@ -1097,7 +1097,7 @@ exports.init = function(redisClient) {
     // - types         = ids of tasks with type other than default "task"; format:
     //                   { "foreach": [1,2,5], "choice": [3,4] }
     // - cPortsInfo    = information about all control ports of all tasks; format:
-    //                   { taskId: { "ins": { portName: dataId } ... }, "outs": { ... } } }
+    //                   { procId: { "ins": { portName: dataId } ... }, "outs": { ... } } }
     //                   e.g.: { '1': { ins: { next: '2' }, outs: { next: '2', done: '4' } } } 
     // - fullInfo[i]   = all additional attributes of i-th task (e.g. firingInterval etc.)
 function public_getWfMap(wfId, cb) {
@@ -1112,22 +1112,22 @@ function public_getWfMap(wfId, cb) {
             var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, fullInfo = [];
             //var multi = rcl.multi();
             for (var i=1; i<=nTasks; ++i) {
-                (function(taskId) {
-                    var taskKey = wfKey+":task:"+taskId;
+                (function(procId) {
+                    var procKey = wfKey+":task:"+procId;
                     asyncTasks.push(function(callback) {
-                        rcl.hgetall(taskKey, function(err, taskInfo) {
+                        rcl.hgetall(procKey, function(err, taskInfo) {
                             //onsole.log("FULL TASK INFO:", taskInfo);
-                            fullInfo[taskId] = taskInfo;
+                            fullInfo[procId] = taskInfo;
                             // add additional info to fullInfo
                             async.parallel([
                                 function(cb) {
                                     if (taskInfo.sticky) {
-                                        var stickyKey = taskKey+":sticky"; 
+                                        var stickyKey = procKey+":sticky"; 
                                         rcl.smembers(stickyKey, function(err, stickySigs) {
                                             if (!stickySigs) stickySigs = [];
-                                            fullInfo[taskId].stickySigs = {};
+                                            fullInfo[procId].stickySigs = {};
                                             stickySigs.forEach(function(s) {
-                                                fullInfo[taskId].stickySigs[+s] = true;
+                                                fullInfo[procId].stickySigs[+s] = true;
                                             });
                                             cb(err);
                                         });
@@ -1136,38 +1136,38 @@ function public_getWfMap(wfId, cb) {
                                     }
                                 }, 
                                 function(cb) {
-                                    rcl.smembers(taskKey+":cinset", function(err, cins) {
+                                    rcl.smembers(procKey+":cinset", function(err, cins) {
                                         if (!cins) cins = [];
-                                        fullInfo[taskId].cinset = {};
+                                        fullInfo[procId].cinset = {};
                                         cins.forEach(function(c) {
-                                            fullInfo[taskId].cinset[+c] = true;
+                                            fullInfo[procId].cinset[+c] = true;
                                         });
                                         cb(err);
                                     });
                                 },
                                 function(cb) {
-                                    rcl.smembers(taskKey+":coutset", function(err, couts) {
+                                    rcl.smembers(procKey+":coutset", function(err, couts) {
                                         if (!couts) couts = [];
                                         //onsole.log("COUTS", couts);
-                                        fullInfo[taskId].coutset = {};
+                                        fullInfo[procId].coutset = {};
                                         couts.forEach(function(c) {
-                                            fullInfo[taskId].coutset[+c] = true;
+                                            fullInfo[procId].coutset[+c] = true;
                                         });
                                         cb(err);
                                     });
                                 },
                                 function(cb) {
-                                    rcl.hgetall(taskKey+":incounts", function(err, incounts) {
+                                    rcl.hgetall(procKey+":incounts", function(err, incounts) {
                                         if (incounts && incounts.rev) {
                                             incounts.rev = JSON.parse(incounts.rev);
                                         }
-                                        fullInfo[taskId].incounts = incounts;
+                                        fullInfo[procId].incounts = incounts;
                                         cb(err);
                                     });
                                 },
                                 function(cb) {
-                                    rcl.hgetall(taskKey+":outcounts", function(err, outcounts) {
-                                        fullInfo[taskId].outcounts = outcounts;
+                                    rcl.hgetall(procKey+":outcounts", function(err, outcounts) {
+                                        fullInfo[procId].outcounts = outcounts;
                                         cb(err);
                                     });
                                 }
@@ -1178,23 +1178,23 @@ function public_getWfMap(wfId, cb) {
                         });
                     });
                     asyncTasks.push(function(callback) {
-                        rcl.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+                        rcl.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) { 
                             if (err || ret == -1) { throw(new Error("Redis error")); }
-                            ins[taskId] = ret;
+                            ins[procId] = ret;
                             callback(null, ret);
-                            //ins[taskId].unshift(null); // inputs will be indexed from 1 instead of 0
+                            //ins[procId].unshift(null); // inputs will be indexed from 1 instead of 0
                         });
                     });
                     asyncTasks.push(function(callback) {
-                        rcl.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+                        rcl.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) { 
                             if (err || ret == -1) { throw(new Error("Redis error")); }
-                            outs[taskId] = ret;
-                            //outs[taskId].unshift(null);
+                            outs[procId] = ret;
+                            //outs[procId].unshift(null);
                             callback(null, ret);
                         });
                     });
                     asyncTasks.push(function(callback) {
-                        rcl.hgetall(taskKey+":cins", function(err, csigs) {
+                        rcl.hgetall(procKey+":cins", function(err, csigs) {
                             //onsole.log("CSIGS INS", JSON.stringify(csigs));
                             if (err || csigs == -1) { throw(new Error("Redis error")); }
                             if (csigs != null) {
@@ -1211,24 +1211,24 @@ function public_getWfMap(wfId, cb) {
                                         tmp[i] = tmp[i][0];
                                     }
                                 }
-                                if (!(taskId in cPortsInfo)) {
-                                    cPortsInfo[taskId] = {};
+                                if (!(procId in cPortsInfo)) {
+                                    cPortsInfo[procId] = {};
                                 }
-                                cPortsInfo[taskId].ins = tmp;
+                                cPortsInfo[procId].ins = tmp;
                                 //onsole.log("C PORTS INFO=", JSON.stringify(cPortsInfo));
                             }
                             callback(null, csigs);
                         });
                     });
                     asyncTasks.push(function(callback) {
-                        rcl.hgetall(taskKey+":couts", function(err, ret) {
+                        rcl.hgetall(procKey+":couts", function(err, ret) {
                             //onsole.log("Proc COUTS WFLIB", ret);
                             if (err || ret == -1) { throw(new Error("Redis error")); }
                             if (ret != null) {
-                                if (!(taskId in cPortsInfo)) {
-                                    cPortsInfo[taskId] = {};
+                                if (!(procId in cPortsInfo)) {
+                                    cPortsInfo[procId] = {};
                                 }
-                                cPortsInfo[taskId].outs = ret;
+                                cPortsInfo[procId].outs = ret;
                             }
                             callback(null, ret);
                         });
@@ -1298,14 +1298,14 @@ function public_getWfMap(wfId, cb) {
  *                      ==> which task(s) (if any) consume a given output
  *                          "108,1" means task 108, port id 1
  */
-function public_getTaskMap(wfId, taskId, cb) {
+function public_getTaskMap(wfId, procId, cb) {
     var ins = [], outs = [], sources = {}, sinks = {};
     var multi = rcl.multi();
-    var taskKey = "wf:"+wfId+":task:"+taskId;
-    multi.zrangebyscore(taskKey+":ins", 0, "+inf", function(err, ret) { 
+    var procKey = "wf:"+wfId+":task:"+procId;
+    multi.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) { 
         ins = ret;
     });
-    multi.zrangebyscore(taskKey+":outs", 0, "+inf", function(err, ret) { 
+    multi.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) { 
         outs = ret;
     });
     multi.exec(function(err, reps) {
@@ -1565,6 +1565,14 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
 		conf.appId = wfId;
 		conf.procId = procId;
 		conf.firingId = firingId;
+                conf.taskId = conf.hfId + ":" + conf.appId + ":" + conf.procId + ":" + conf.firingId;
+
+                var getTaskStatus = function() {
+                    const taskId = conf.taskId;
+                    return taskId;
+                }
+
+                conf.taskStatus = getTaskStatus;
 
 		// Pass the workflow working directory
                 if (appConfig.workdir) {
@@ -1636,10 +1644,10 @@ function sendSignalLua(wfId, sigValue, cb) {
         local sigIdx = ARGV[3] \
         redis.call("HSET", KEYS[2], sigIdx, ARGV[2]) \
         local sinks = redis.call("ZRANGE", KEYS[4], 0, -1) \
-        for k,taskId in pairs(sinks) do \
+        for k,procId in pairs(sinks) do \
             local ret \
-            local isStickyKey = KEYS[5] .. ":task:" .. taskId .. ":sticky" \
-            local sigQueueKey = KEYS[5] .. ":task:" .. taskId .. ":ins:" .. ARGV[1] \
+            local isStickyKey = KEYS[5] .. ":task:" .. procId .. ":sticky" \
+            local sigQueueKey = KEYS[5] .. ":task:" .. procId .. ":ins:" .. ARGV[1] \
             if redis.call("SISMEMBER", isStickyKey, ARGV[1]) == 1 then \
                 local len = redis.call("LLEN", sigQueueKey) \
                 if (len > 0) then \
@@ -1763,11 +1771,11 @@ function public_sendSignal(wfId, sig, cb) {
                 if (err) { return cb(err); }
                 // insert the signal (its index in the hash) in the queues of its sinks
                 //onsole.log("SINKS: ", sinks);
-                async.each(sinks, function iterator(taskId, doneIter) {
-                    pushInput(wfId, taskId, sigId, idx, function(err) {
+                async.each(sinks, function iterator(procId, doneIter) {
+                    pushInput(wfId, procId, sigId, idx, function(err) {
                         doneIter(err);
                     });
-                    //var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sigId;
+                    //var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sigId;
                     //rcl.rpush(queueKey, idx, function(err, rep) {
                     //   doneIter(err);
                     //});
@@ -1860,15 +1868,15 @@ function getStickySigs(wfId, procId, cb) {
 // Example: waitForSignals(1, 44, { "data": [1,2,3,3,4,4,5] }, function(err) { })
 //
 // TODO DEPRECATED: delete this function, deprecated by fetchSignals and no longer used
-function public_waitForSignals(wfId, taskId, spec, cb) {
+function public_waitForSignals(wfId, procId, spec, cb) {
     for (group in spec) {
         // add the group name to the set of all waiting groups
-        rcl.sadd("wf:"+wfId+":task:"+taskId+":waiting", group, function(err, reply) {
+        rcl.sadd("wf:"+wfId+":task:"+procId+":waiting", group, function(err, reply) {
             if (err) return cb(err); 
             // For each group, add the sigIds to their respective waiting set, increasing its score by 1 for each
             // occurrence of the sigId
             async.each(spec.group, function iterator(sigId, doneIter) {
-                var waitSetKey = "wf:"+wfId+":task:"+taskId+":waiting:"+group;
+                var waitSetKey = "wf:"+wfId+":task:"+procId+":waiting:"+group;
                 rcl.zincrby(waitSetKey, 1, sigId, function(err, rep) {
                     doneIter(err);
                 });
@@ -1881,12 +1889,12 @@ function public_waitForSignals(wfId, taskId, spec, cb) {
 
 // checks if all signals with specified ids are ready for a given task; if so, returns their values
 // @spec - array of elements: [ { "id": id, "count": count }, { "id": id, "count": count }, ... ] where
-//             id    - input signal identifier for task taskId
+//             id    - input signal identifier for task procId
 //             count - number of instances of this signal which are waited for (typically 1, but
 //                     a task may also consume multiple data elements at once from a given port)
-function public_getInsIfReady(wfId, taskId, spec, cb) {
+function public_getInsIfReady(wfId, procId, spec, cb) {
     async.reduce(spec, 0, function iterator(memo, sig, cbNext) {
-        var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig.id;
+        var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sig.id;
         rcl.llen(queueKey, function(err, len) {
             err ?  cbNext(err): cbNext(null, memo + (len == sig.count ? 1: 0));
         });
@@ -1894,7 +1902,7 @@ function public_getInsIfReady(wfId, taskId, spec, cb) {
         if (err) return cb(err); 
         if (result == spec.length) {
             // all signals are ready
-            var queueKey = "wf:"+wfId+":task:"+taskId+":ins:"+sig.id; 
+            var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sig.id; 
             // TODO: retrieve signals
             //rcl.lrange(queueKey, 0, )
         } else {
@@ -1917,10 +1925,10 @@ function getTasks1(wfId, from, to, dataNum, cb) {
         // The following "push" calls need to be wrapped in an anynomous function to create 
         // a separate scope for each value of "i". See http://stackoverflow.com/questions/2568966
         (function(i) {
-            var taskKey = "wf:"+wfId+":task:"+i;
+            var procKey = "wf:"+wfId+":task:"+i;
             // Retrieve task info
             asyncTasks.push(function(callback) {
-                rcl.hmget(taskKey, "uri", "name", "status", "fun", function(err, reply) {
+                rcl.hmget(procKey, "uri", "name", "status", "fun", function(err, reply) {
                     if (err) {
                         tasks[i-from] = err;
                         callback(err);
@@ -1938,7 +1946,7 @@ function getTasks1(wfId, from, to, dataNum, cb) {
 
             // Retrieve all ids of inputs of the task
             asyncTasks.push(function(callback) {
-                rcl.sort(taskKey+":ins", function(err, reply) {
+                rcl.sort(procKey+":ins", function(err, reply) {
                     if (err) {
                         ins[i-from] = err;
                         callback(err);
@@ -1951,7 +1959,7 @@ function getTasks1(wfId, from, to, dataNum, cb) {
 
             // Retrieve all ids of outputs of the task
             asyncTasks.push(function(callback) {
-                rcl.sort(taskKey+":outs", function(err, reply) {
+                rcl.sort(procKey+":outs", function(err, reply) {
                     if (err) {
                         outs[i-from] = err;
                         callback(err);
