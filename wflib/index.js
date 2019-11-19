@@ -1,6 +1,6 @@
 /* HyperFlow workflow engine
  ** API over redis-backed workflow instance
- ** Author: Bartosz Balis (2013-2015)
+ ** Author: Bartosz Balis (2013-2019)
  */
 var fs = require('fs'),
     redis = require('redis'),
@@ -409,7 +409,7 @@ exports.init = function(redisClient) {
         }
 
         rcl.incrby("wfglobal:nextId", 1, function(err, ret) {
-            if (err) { return cb(err); }
+            if (err) { throw err; }
 
             // FIXME: "setnx" should be done synchronously, before moving to createWfInstance 
             // (but a race is probably impossible such that "recoveryMode" is set incorrectly)
@@ -762,6 +762,7 @@ exports.init = function(redisClient) {
             return ret';
 
         rcl.eval([pushScript, 2, isStickyKey, queueKey, sigId, sigIdx], function(err, res) {
+	    if (err) throw err;
             cb(err);
         });
         return; 
@@ -821,6 +822,7 @@ exports.init = function(redisClient) {
             return {sigval,idx}';
 
         rcl.eval([popScript, 3, sigQueueKey, sigInstanceKey, isStickyKey, sigId], function(err, res) {
+	    if (err) throw err;
             var sig = JSON.parse(res[0]);
             //sig.sigIdx = res[1];
             cb(err, sig);
@@ -1565,14 +1567,30 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
 		conf.appId = wfId;
 		conf.procId = procId;
 		conf.firingId = firingId;
+                // 'task' denotes a process firing/activation
                 conf.taskId = conf.hfId + ":" + conf.appId + ":" + conf.procId + ":" + conf.firingId;
 
-                var getTaskStatus = function() {
-                    const taskId = conf.taskId;
-                    return taskId;
+                // this function is passed to the Process' Function (through 'context')
+                // and can be used to poll for task status. It reads a key from redis that
+                // should be set by the task's executor 
+		// Create duplicate redis client for blocking blpop (one per task)
+		var redisCliBlocking = rcl.duplicate(); 
+                var getTaskStatus = async function(timeout) {
+                    return new Promise(function(resolve, reject) {
+                        const taskId = conf.taskId;
+			const redis_cli = redisCliBlocking;
+
+                        redis_cli.blpop(taskId, timeout, function(err, reply) {
+                            if (err) reject(err)
+                            else {
+                                resolve(reply);
+                            }
+                        });
+                    });
                 }
 
                 conf.taskStatus = getTaskStatus;
+                conf.redis_url = "redis://" + rcl.address;
 
 		// Pass the workflow working directory
                 if (appConfig.workdir) {
@@ -1672,7 +1690,7 @@ function sendSignalLua(wfId, sigValue, cb) {
             /*var delay = 0;
               if (toobusy()) { onsole.log("TOO BUSY !!!!!!!!!!!!!!!!!!!!!!!!!!"); delay = 40; }
               setTimeout(function() { cb(err, res); }, delay);*/
-            if (err) return cb(err);
+            if (err) throw err;
 
             if (sigValue.remoteSinks) {
                 rcl.smembers(sigKey+":remotesinks", function(err, remoteSinks) {
