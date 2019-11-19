@@ -8,3 +8,5 @@ This example demonstrates how remote job executors can notify the HyperFlow engi
  - The Process Function also gets the Redis URL in `context.redis_url` which can be passed to the remote executors.
  - The parameter to the `context.taskStatus` function is a timeout in seconds (0 denotes infinity). One can use a retry library, such as [promise-retry](https://www.npmjs.com/package/promise-retry), to implement an exponential retry strategy.
  
+ To run the workflow, simply do `hflow run .` in this directory. 
+ 
