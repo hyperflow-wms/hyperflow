@@ -15,9 +15,9 @@ var taskId = process.argv[2],
 
 var rcl = redis.createClient(redis_url);
 
-// After some delay, push to Redis list to notify job completion
+// After some delay, do a RPUSH to the Redis list to notify job completion
 var delay=Math.random()*3000;
-console.log("Delay:", delay);
+// console.log("Delay:", delay);
 setTimeout(function() {
     rcl.rpush(taskId, "OK", function(err, reply) {
         if (err) {
