@@ -39,6 +39,7 @@
     "request": "2.x",
     "requestretry": "1.x",
     "shell-quote": "1.6.1",
+    "shortid": "^2.2.15",
     "stringstream": "^1.0.0",
     "traverse": "0.6.x",
     "twitter": "^1.7.1",
