@@ -213,6 +213,7 @@ function hflow_run() {
   var createWf = function(cb) {
     rcl.select(dbId, function(err, rep) {
       //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
+	if (err) throw err;
         wflib.createInstanceFromFile(wffile, '', { vars: wf_vars }, function(err, id, wfJson) {
           cb(err, id, wfJson.name);
         });
