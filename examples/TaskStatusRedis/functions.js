@@ -21,7 +21,7 @@ async function task_status_redis_test(ins, outs, context, cb) {
 	//console.log('Process exited with code', code);
     });
 
-    // wait for the task to finish indefinitely (timeout=0)
+    // wait for the task to finish (timeout=0 means indefinite)
     try {
         var taskStatus = await context.taskStatus(0);
 	console.log('Received task status:', taskStatus);
