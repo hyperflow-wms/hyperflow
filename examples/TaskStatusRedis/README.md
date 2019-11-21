@@ -1,4 +1,4 @@
-## Job notification mechanism example
+## Communication with remote Jobs using Redis
 This example demonstrates how HyperFlow can communicate with remote job executors using Redis. 
 
  - The workflow invokes function `job_status_redis_test` from `functions.js` 100 times. This function simulates submission of jobs by starting 100 parallel processes of `handler.js`.
