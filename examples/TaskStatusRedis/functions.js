@@ -1,13 +1,26 @@
 var spawn = require('child_process').spawn;
 
 // Spawns a job "node handler.js" and waits for the notification of its
-// completion using the Redis task status notification mechanism
-async function task_status_redis_test(ins, outs, context, cb) {
+// completion using the Redis job status notification mechanism
+async function job_status_redis_test(ins, outs, context, cb) {
   var n = Number(ins.number.data[0]);
 
   //console.log("Spawning process...");
 
-  var proc = spawn('node', ['handler.js', context.taskId, context.redis_url]);
+  const executable = context.executor.executable;
+  let jobMessage = JSON.stringify({
+        "executable": executable,
+        "args": context.executor.args,
+        "env": (context.executor.env || {}),
+        "inputs": ins.map(i => i),
+        "outputs": outs.map(o => o),
+        "stdout": context.executor.stdout, // if present, denotes file name to which stdout should be redirected
+      	"redis_url": context.redis_url,
+      	"taskId": context.taskId
+  });
+
+  // "submit" job (start the handler process)
+  var proc = spawn('npm', ['start', context.taskId, context.redis_url], {shell: true});
 
   proc.stderr.on('data', function(data) {
     console.log(data.toString());
@@ -21,17 +34,25 @@ async function task_status_redis_test(ins, outs, context, cb) {
     //console.log('Process exited with code', code);
   });
 
-  // wait for the task to finish (timeout=0 means indefinite)
+  // send message to the job (command to be executed)
   try {
-    var taskStatus = await context.taskStatus(0);
-    console.log('Received task status:', taskStatus);
+      await context.sendMsgToJob(jobMessage);
+  } catch(err) {
+      console.error(err);
+      throw err;
+  }
+
+  // wait for the job to finish (timeout=0 means indefinite)
+  try {
+    var jobStatus = await context.jobStatus(0);
+    console.log('Received job status:', jobStatus);
     setTimeout(function() {
       cb(null, outs);
     }, 5000);
   } catch(err) {
-    console.err(err);
+    console.error(err);
     throw err;
   }
 }
 
-exports.task_status_redis_test = task_status_redis_test;
+exports.job_status_redis_test = job_status_redis_test;

@@ -1575,7 +1575,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // should be set by the task's executor
                 // Create duplicate redis client for blocking blpop (one per task)
                 var redisCliBlocking = rcl.duplicate();
-                var getTaskStatus = async function(timeout) {
+                var getJobStatus = async function(timeout) {
                   return new Promise(function(resolve, reject) {
                     const taskId = conf.taskId;
                     const redis_cli = redisCliBlocking;
@@ -1589,8 +1589,23 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                   });
                 }
 
-                conf.taskStatus = getTaskStatus;
+                conf.jobStatus = getJobStatus;
                 conf.redis_url = "redis://" + rcl.address;
+
+                var sendMessageToJob = async function(message) {
+                  return new Promise(function(resolve, reject) {
+                          const taskMessageKey=conf.taskId+"_msg";
+                          const redis_cli = redisCliBlocking;
+                          redis_cli.lpush(taskMessageKey, message, function(err, reply) {
+                              if (err) reject(err)
+                              else {
+                                resolve(reply);
+                              }
+                          });
+                  });
+                }
+
+                conf.sendMsgToJob = sendMessageToJob;
 
                 // Pass the workflow working directory
                 if (appConfig.workdir) {
