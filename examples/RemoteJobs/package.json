@@ -7,7 +7,6 @@
   },
   "dependencies": {
     "async": "^2.6.2",
-    "aws-sdk": "^2.429.0",
     "redis": "^2.8.0"
   }
 }
