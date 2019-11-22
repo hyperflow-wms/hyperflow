@@ -1575,7 +1575,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // should be set by the task's executor
                 // Create duplicate redis client for blocking blpop (one per task)
                 var redisCliBlocking = rcl.duplicate();
-                var getJobStatus = async function(timeout) {
+                var getJobResult = async function(timeout) {
                   return new Promise(function(resolve, reject) {
                     const taskId = conf.taskId;
                     const redis_cli = redisCliBlocking;
@@ -1589,7 +1589,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                   });
                 }
 
-                conf.jobStatus = getJobStatus;
+                conf.jobResult = getJobResult;
                 conf.redis_url = "redis://" + rcl.address;
 
                 var sendMessageToJob = async function(message) {

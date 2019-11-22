@@ -44,8 +44,8 @@ async function job_status_redis_test(ins, outs, context, cb) {
 
   // wait for the job to finish (timeout=0 means indefinite)
   try {
-    var jobStatus = await context.jobStatus(0);
-    console.log('Received job status:', jobStatus);
+    var jobResult = await context.jobResult(0);
+    console.log('Received job result:', jobResult);
     setTimeout(function() {
       cb(null, outs);
     }, 5000);
