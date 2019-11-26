@@ -20,7 +20,7 @@ async function job_status_redis_test(ins, outs, context, cb) {
   });
 
   // "submit" job (start the handler process)
-  var proc = spawn('npm', ['start', context.taskId, context.redis_url], {shell: true});
+  var proc = spawn('node', ['handler.js', context.taskId, context.redis_url], {shell: true});
 
   proc.stderr.on('data', function(data) {
     console.log(data.toString());
