@@ -20,10 +20,7 @@ var getJobMessage = async function (timeout) {
     return new Promise(function (resolve, reject) {
         const jobMsgKey = taskId + "_msg";
         rcl.brpop(jobMsgKey, timeout, function (err, reply) {
-            if (err) reject(err)
-            else {
-                resolve(reply);
-            }
+            err ? reject(err): resolve(reply)
         });
     });
 }
@@ -32,10 +29,7 @@ var getJobMessage = async function (timeout) {
 var notifyJobCompletion = async function () {
     return new Promise(function (resolve, reject) {
         rcl.rpush(taskId, "OK", function (err, reply) {
-            if (err) reject(err)
-            else {
-                resolve(reply);
-            }
+            err ? reject(err): resolve(reply)
         });
     });
 }
