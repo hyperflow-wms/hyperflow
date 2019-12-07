@@ -1,5 +1,6 @@
 // Executor of 'jobs' using the Redis task status notification mechanism
-var redis = require('redis');
+const redis = require('redis');
+const { spawn } = require('child_process');
 
 if (process.argv.length < 4) {
   console.error("Usage: node handler.js <taskId> <redis_url>");
@@ -44,23 +45,32 @@ async function executeJob() {
         console.error(err);
         throw err;
     }
-    console.log("Received job message:", jobMessage);
+    //console.log("Received job message:", jobMessage);
 
-    // 2. HERE the job would be executed
+    // 2. Execute job
+    var jm = JSON.parse(jobMessage[1]);
 
-    // 3. Notify job completion (delay simulates execution time)
-    var delay = Math.random() * 3000;
-    // console.log("Delay:", delay);
-    setTimeout(async function () {
-        try {
-            await notifyJobCompletion();
-        } catch (err) {
-            console.error("Redis notification failed", err);
-            throw err;
-        }
+    const cmd = spawn(jm["executable"], jm["args"]);
 
-        process.exit(0);
-    }, delay);
-}
+    cmd.stdout.on('data', (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    cmd.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`);
+    });
+
+    cmd.on('close', async(code) => {
+      console.log(`child process exited with code ${code}`);
+      // 3. Notify job completion
+      try {
+          await notifyJobCompletion();
+      } catch (err) {
+          console.error("Redis notification failed", err);
+          throw err;
+      }
+      process.exit(0);
+    });
+ }
 
 executeJob()
