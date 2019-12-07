@@ -119,34 +119,6 @@ function chooseEvenOdd(ins, outs, config, cb) {
     cb(null, outs);
 }
 
-function scanDirForJs(ins, outs, config, cb) {
-    var inPath = ins[0].value, outPath;
-    if (outs[0].path) {
-        outPath = outs[0].path;
-    } else {
-        outPath = inPath + "/" + "matchingFilesOut.txt";
-        outs[0].path = outPath;
-        //outs[0].value = outPath;
-    }
-    scanDir(inPath, /.*js$/, outPath, function(err, result) {
-        err ? cb(err): cb(null, outs);
-    });
-}
-
-// TODO. (Currently only returns the input file path)
-function grepFile(ins, outs, config, cb) {
-    if (ins[0].path) {
-        outs[0].value = ins[0].path;
-    } else if (ins[0].value) {
-        outs[0].value = ins[0].value;
-    } else {
-        cb(new Error("grepFile: input file path not provided."));
-        return;
-    }
-    console.log("grepFile: '"+ ins[1].value+"'", outs[0].value);
-    cb(null, outs); 
-}
-
 
 //var cnt = 0;
 function count(ins, outs, config, cb) {
@@ -197,20 +169,12 @@ function noop(ins, outs, config, cb) {
     cb(null, outs);
 }
 
-/*
-function montage_mProjectPP(ins, outs, config, cb) {
-    var execName = "mProjectPP";
-    var execArgs = "-X -x "+config.f.scale+" "+ins[0].name+" "+outs[0].name+" "+ins[1].name;
-    // invoke executor(execName, exsecArgs)
-}
-*/
 
 exports.print = print;
 exports.print2 = print2;
 exports.add = add;
 exports.sqr = sqr;
 exports.length = length;
-exports.fileSplitter = fsp.fileSplitter;
 exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
 exports.RESTServiceCommand = RESTCmd.RESTServiceCommand;
@@ -219,8 +183,6 @@ exports.awsLambdaCommand = lambdaCmd.awsLambdaCommand;
 exports.exit = exit;
 exports.command_print = cmd.command_print;
 exports.command_notifyevents = cmd.command_notifyevents;
-exports.scanDirForJs = scanDirForJs;
-exports.grepFile = grepFile;
 exports.chooseEvenOdd = chooseEvenOdd;
 exports.echo = echo;
 exports.echoWithDelay = echoWithDelay;
