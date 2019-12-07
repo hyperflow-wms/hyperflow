@@ -8,7 +8,7 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 
 ## Getting started
 
-The latest release of HyperFlow is 1.2.0
+The latest release of HyperFlow is 1.3.0
 
 ### Installation
 * Install Node.js (http://nodejs.org)
