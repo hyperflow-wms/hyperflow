@@ -1526,16 +1526,14 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 var funModuleName = (fun && fun.module) ? fun.module : "functions.js";
                 var funPath = pathTool.join(appConfig.workdir ? appConfig.workdir : "", funModuleName);
 
-                try {
-                    f = require(funPath)[procInfo.fun];
-                } catch(err) {
-                    //console.log(err);
-                    //console.log("functions.js doesn't exist, trying default 'functions' module...");
-                    // caught if "functions.js" doesn't exist (no action needed)
-                }
-
-                // if the function could not be loaded, look in the core HyperFlow functions
-                if (!f) {
+                if (fs.existsSync(funPath)) {
+                    try {
+                        f = require(funPath)[procInfo.fun];
+                    } catch(err) {
+                        throw err;
+                    }
+                } else {
+                    // if the function could not be loaded, look in the core HyperFlow functions
                     funPath = pathTool.join(require('path').dirname(require.main.filename), "..", "functions");
                     f = require(funPath)[procInfo.fun];
                 }
