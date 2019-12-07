@@ -2,8 +2,24 @@
 
 var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined
 
-var docopt = require('docopt').docopt,
-    spawn = require('child_process').spawn,
+var docopt = require('docopt').docopt;
+
+var doc = "\
+Usage:\n\
+  hflow run <workflow_dir_or_file> [-s] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
+  hflow recover <persistence-log> [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
+  hflow start-server [-p <plugin_module_name> ...]\n\
+  hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
+  hflow -h | --help | --version";
+
+var opts = docopt(doc);
+
+if (opts['--version']) {
+    console.log(require('../package.json').version);
+    process.exit(0);
+};
+
+var spawn = require('child_process').spawn,
     fs = require('fs'),
     pathtool = require('path'),
     redis = require('redis'),
@@ -17,15 +33,6 @@ var docopt = require('docopt').docopt,
     recoveryMode = false, recoveryData = { 'input': [], 'outputs': {} },
     wfDirFull; // logged in the persistence journal
 
-var doc = "\
-Usage:\n\
-  hflow run <workflow_dir_or_file> [-s] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
-  hflow recover <persistence-log> [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
-  hflow start-server [-p <plugin_module_name> ...]\n\
-  hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
-  hflow -h | --help | --version";
-
-var opts = docopt(doc);
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
 
 // Workflow variables TODO: add support for config files
