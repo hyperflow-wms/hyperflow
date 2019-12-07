@@ -1,16 +1,16 @@
 
-FROM node:8.4.0
+FROM node:10
 
 WORKDIR /usr/src/app
 
-COPY package.json .
+#COPY package.json .
 
-RUN npm install
+RUN yarn install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz 
 
-COPY . .
+# COPY . .
 
-ENV PORT=80
+#ENV PORT=80
 
-EXPOSE ${PORT}
+#EXPOSE ${PORT}
 
-CMD [ "npm", "start" ]
+#CMD [ "npm", "start" ]
