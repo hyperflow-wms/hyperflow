@@ -35,8 +35,8 @@ async function redisCommand(ins, outs, context, cb) {
 
 
   // environment variables override 'container' and 'work_dir' settings
-  if (process.env.HF_VAR_CONTAINER) {
-    context.container=process.env.HF_VAR_CONTAINER;   
+  if (process.env.HF_VAR_WORKER_CONTAINER) {
+    context.container=process.env.HF_VAR_WORKER_CONTAINER;   
   }
   if (process.env.HF_VAR_WORK_DIR) {
     work_dir=process.env.HF_VAR_WORK_DIR;
