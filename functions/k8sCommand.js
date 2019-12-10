@@ -8,7 +8,7 @@ const yaml = require('js-yaml');
 const CLUSTER_ZONE = 'europe-west2-a';
 const CLUSTER_NAME = 'standard-cluster-1';
 
-async function k8sCommand(ins, outs, config, cb) {
+async function k8sCommand(ins, outs, context, cb) {
 
   let handlerStart = Date.now();
   console.log("[DEBUG] K8sInvoke called.");
@@ -20,7 +20,7 @@ async function k8sCommand(ins, outs, config, cb) {
 
   const k8sApi = kc.makeApiClient(k8s.BatchV1Api);
   try {
-    var command = 'hflow-job-execute ' + config.taskId + ' ' + config.redis_url;
+    var command = 'hflow-job-execute ' + context.taskId + ' ' + context.redis_url;
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
     var jobName = Math.random().toString(36).substring(7);
@@ -76,17 +76,17 @@ spec:
 
   // send message to the job (command to be executed)
   let jobMessage = JSON.stringify({
-    "executable": config.executor.executable,
-    "args": [].concat(config.executor.args),
-    // "env": config.executor.env || {},
+    "executable": context.executor.executable,
+    "args": [].concat(context.executor.args),
+    // "env": context.executor.env || {},
     "inputs": ins.map(i => i),
     "outputs": outs.map(o => o),
-    "stdout": config.executor.stdout, // if present, denotes file name to which stdout should be redirected
-    "redis_url": config.redis_url,
-    "taskId": config.taskId
+    "stdout": context.executor.stdout, // if present, denotes file name to which stdout should be redirected
+    "redis_url": context.redis_url,
+    "taskId": context.taskId
   });
   try {
-    await config.sendMsgToJob(jobMessage);
+    await context.sendMsgToJob(jobMessage);
   } catch (err) {
     console.error(err);
     throw err;
@@ -94,7 +94,7 @@ spec:
 
   // wait for the job to finish (timeout=0 means indefinite)
   try {
-    var jobResult = await config.jobResult(0);
+    var jobResult = await context.jobResult(0);
     let taskEnd = Date.now();
     console.log('Job ended with result:', jobResult);
     cb(null, outs);
