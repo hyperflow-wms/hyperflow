@@ -4,7 +4,8 @@ var cmd = require('./command.js'),
     fargateCmd = require('./awsFargateCommand.js'),
     lambdaCmd = require('./awsLambdaCommand.js'),
     commandLocalMock = require('./commandLocalMock.js'),
-    redisCommand = require('./redisCommand.js').redisCommand;
+    redisCommand = require('./redisCommand.js').redisCommand,
+    k8sCommand = require('./k8sCommand.js').k8sCommand;
 
 function print(ins, outs, config, cb) {
     //console.log("PRINT", JSON.stringify(ins));
@@ -192,3 +193,4 @@ exports.noop = noop;
 exports.genCollection = genCollection;
 exports.commandLocalMock = commandLocalMock.commandLocalMock;
 exports.redisCommand = redisCommand;
+exports.k8sCommand = k8sCommand;
