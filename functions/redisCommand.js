@@ -30,7 +30,8 @@ async function redisCommand(ins, outs, context, cb) {
     "outputs": outs.map(o => o),
     "stdout": context.executor.stdout, // if present, denotes file name to which stdout should be redirected
     "redis_url": context.redis_url,
-    "taskId": context.taskId
+    "taskId": context.taskId,
+    "name": context.name // domain-specific name of the task
   });
 
 
