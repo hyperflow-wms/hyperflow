@@ -1,4 +1,4 @@
-# HyperFlow: a scientific workflow execution engine
+# HyperFlow: a scientific workflow management system
 
 ## Description
 
