@@ -21,7 +21,7 @@ The latest release of HyperFlow is 1.3.0
 * Start the redis server: `redis-server`
 * Run example workflows using command `hflow run <wf_directory>`, for example:<br>```hflow run ./examples/Sqrsum```
 
-## Running locally using Docker images
+### Running locally using Docker images
 * Use the latest Docker image for the HyperFlow engine, published in Docker Hub as `hyperflowwms/hyperflow` 
 * You can build the image yourself: `make container`
 * Start redis container: `docker run -d --name redis redis --bind 127.0.0.1`
@@ -44,7 +44,7 @@ Where
 * current directory contains `workflow.json`
 * subdirectory `inputs` contains workflow input data 
 
-## Running in a distributed infrastructure using the RabbitMQ executor
+### Running in a distributed infrastructure using the RabbitMQ executor
 * Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
 * Add option `-e AMQP_URL=amqp://rabbitmq`
 * ...
