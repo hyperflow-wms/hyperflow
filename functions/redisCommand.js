@@ -39,8 +39,7 @@ async function redisCommand(ins, outs, context, cb) {
   if (process.env.HF_VAR_WORKER_CONTAINER) {
     context.container=process.env.HF_VAR_WORKER_CONTAINER;   
   }
-  // if in container mode, chdir inside the hyperflow container doesn't make sense
-  if (process.env.HF_VAR_WORK_DIR && !process.env.HF_VAR_WORKER_CONTAINER) {
+  if (process.env.HF_VAR_WORK_DIR) {
     work_dir=process.env.HF_VAR_WORK_DIR;
   }
 
@@ -56,7 +55,8 @@ async function redisCommand(ins, outs, context, cb) {
   } else cmd = 'hflow-job-execute'
 
   try {
-    if (work_dir) { process.chdir(work_dir); }
+    // if hyperflow also runs in container, chdir doesn't make sense
+    if (work_dir && !process.env.HF_VAR_HFLOW_IN_CONTAINER) { process.chdir(work_dir); }
   } catch (error) {
     throw error;
   }
