@@ -13,7 +13,7 @@ async function submitRemoteJob(ins, outs, context, cb) {
 
   var logger = log4js.getLogger();
 
-  logger.level = 'off';
+  logger.level = 'debug';
   console.log("Spawning process...");
 
   //console.log(ins.map(i => i));
@@ -60,10 +60,12 @@ async function submitRemoteJob(ins, outs, context, cb) {
 
   proc.stderr.on('data', function(data) {
     logger.debug(data.toString());
+    console.log(data.toString());
   });
 
   proc.stdout.on('data', function(data) {
     logger.debug(data.toString());
+    console.log(data.toString());
   });
 
   proc.on('exit', function(code) {
