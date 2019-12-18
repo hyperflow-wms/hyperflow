@@ -13,13 +13,13 @@ The latest release of HyperFlow is 1.3.0
 ### Installation
 * Install Node.js (http://nodejs.org)
 * Install Redis (http://redis.io) 
-* Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/v1.2.0.tar.gz`
+* Install HyperFlow: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/v1.3.0.tar.gz`
+* For latest features, install from the master branch: Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz
+* Add `<install_root>/node_modules/.bin` to your path
 
 ### Running
 * Start the redis server: `redis-server`
-* Go to hyperflow directory: `cd node_modules/hyperflow`
-* Run example workflows using command `hflow run <wf_directory>`, for example:<br>```./bin/hflow run ./examples/Sqrsum```
-* Optionally, you can add directory `<hyperflow_root_dir>/bin` to your system `PATH`
+* Run example workflows using command `hflow run <wf_directory>`, for example:<br>```hflow run ./examples/Sqrsum```
 
 ## Using Docker image
 * Use the latest Docker image for the HyperFlow engine, published in Docker Hub as `hyperflowwms/hyperflow`, OR 
