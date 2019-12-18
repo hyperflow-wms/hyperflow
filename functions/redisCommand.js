@@ -47,7 +47,7 @@ async function redisCommand(ins, outs, context, cb) {
   // if 'container' is present, run through Docker, mounting all directories if necessary
   if (!work_dir) { work_dir=process.cwd; }
   if (context.container) {
-    cmd = 'docker run --network container:redis --name ' + context.name + "_" + context.taskId;
+    cmd = 'docker run --network container:redis --name ' + context.name + "_" + context.taskId.replace(/:/g, '_');
     if (input_dir) cmd += ' -v ' + input_dir + ':/input_dir ';
     if (work_dir) cmd += ' -v ' + work_dir + ':/work_dir ';
     if (output_dir) cmd += ' -v ' + output_dir + ':/output_dir ';
