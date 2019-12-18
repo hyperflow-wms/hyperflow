@@ -39,15 +39,16 @@ async function redisCommand(ins, outs, context, cb) {
   if (process.env.HF_VAR_WORKER_CONTAINER) {
     context.container=process.env.HF_VAR_WORKER_CONTAINER;   
   }
-  if (process.env.HF_VAR_WORK_DIR) {
+  // if in container mode, chdir inside the hyperflow container doesn't make sense
+  if (process.env.HF_VAR_WORK_DIR && !process.env.HF_VAR_WORKER_CONTAINER) {
     work_dir=process.env.HF_VAR_WORK_DIR;
   }
 
   var cmd;
   // if 'container' is present, run through Docker, mounting all directories if necessary
-  if (!work_dir) { work_dir="."; }
+  if (!work_dir) { work_dir=process.cwd; }
   if (context.container) {
-    cmd = 'docker run --network container:redis';
+    cmd = 'docker run --network container:redis --name ' + context.name;
     if (input_dir) cmd += ' -v ' + input_dir + ':/input_dir ';
     if (work_dir) cmd += ' -v ' + work_dir + ':/work_dir ';
     if (output_dir) cmd += ' -v ' + output_dir + ':/output_dir ';
