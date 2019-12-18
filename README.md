@@ -17,15 +17,34 @@ The latest release of HyperFlow is 1.3.0
 * For latest features, install from the master branch: Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz
 * Add `<install_root>/node_modules/.bin` to your path
 
-### Running
+### Running locally
 * Start the redis server: `redis-server`
 * Run example workflows using command `hflow run <wf_directory>`, for example:<br>```hflow run ./examples/Sqrsum```
 
-## Using Docker image
-* Use the latest Docker image for the HyperFlow engine, published in Docker Hub as `hyperflowwms/hyperflow`, OR 
-* Build the image yourself: `docker build -t hyperflow .`
-* Start redis container: `docker run --name redis -d redis`
-    * [OPTIONAL] If you plan on using amqp executor, start a RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
-* Run the HyperFlow server container: `docker run -d --rm --link=redis -e "REDIS_URL=redis://redis" --name hyperflow -p 8080:80 hyperflow`
-    * [OPTIONAL] or with amqp executor: `docker run -d --rm --link=rabbitmq --link=redis -e "AMQP_URL=amqp://rabbitmq" -e "REDIS_URL=redis://redis" --name hyperflow -p 8080:80 hyperflow`
-* Verify that the server responds with: `curl localhost:8080 -v`, the output should contain a string: `Cannot GET /`
+## Running locally using Docker images
+* Use the latest Docker image for the HyperFlow engine, published in Docker Hub as `hyperflowwms/hyperflow` 
+* You can build the image yourself: `make container`
+* Start redis container: `docker run -d --name redis redis --bind 127.0.0.1`
+* Run workflow via HyperFlow container, for example:
+  
+```
+docker run -a stdout -a stderr --rm --network container:redis \
+       -e HF_VAR_WORKER_CONTAINER="hyperflowwms/soykb-worker" \ 
+       -e HF_VAR_WORK_DIR="$PWD/input" \ 
+       -e HF_VAR_HFLOW_IN_CONTAINER="true" \
+       -e HF_VAR_function="redisCommand" \
+       -e REDIS_URL="redis://127.0.0.1:6379" \
+       --name hyperflow \
+       -v /var/run/docker.sock:/var/run/docker.sock \
+       -v $PWD:/wfdir \
+       --entrypoint "/bin/sh" hyperflowwms/hyperflow -c "apk add docker && ls /wfdir && hflow run /wfdir"
+```
+Where
+* `hyperflowwms/soykb-worker` is the name of the workflow worker container ([Soykb](https://github.com/hyperflow-wms/soykb-workflow) in this case)
+* current directory contains `workflow.json`
+* subdirectory `inputs` contains workflow input data 
+
+## Running in a distributed infrastructure using the RabbitMQ executor
+* Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
+* Add option `-e AMQP_URL=amqp://rabbitmq`
+* ...
