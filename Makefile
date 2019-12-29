@@ -1,16 +1,13 @@
-TAG = $(shell git describe --tags --always)
-#PREFIX = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 3 | rev)
-#REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
-
-PREFIX=hyperflowwms
-REPO_NAME=hyperflow
+TAG = $(shell if [[ -z "$$(git status --porcelain)" ]]; then git describe --tags --always ; else echo $$(git describe --tags --always --long)-dev-$$(date +'%y.%m.%d.%H-%M-%S') ; fi ;)
+PREFIX = hyperflowwms
+REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
 
 all: push
 
-container: image
+container: image 
 
 image:
-	docker build -t $(PREFIX)/$(REPO_NAME) . # Build new image and automatically tag it as latest
+	docker build -t $(PREFIX)/$(REPO_NAME):$(TAG) . # Build new image and automatically tag it as latest
 	docker tag $(PREFIX)/$(REPO_NAME) $(PREFIX)/$(REPO_NAME):$(TAG)  # Add the version tag to the latest image
 
 push: image
