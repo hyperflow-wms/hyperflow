@@ -24,35 +24,12 @@ async function k8sCommand(ins, outs, context, cb) {
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
     var jobName = Math.random().toString(36).substring(7);
-    var job = yaml.safeLoad(`apiVersion: batch/v1
-kind: Job
-metadata:
-  name: job${jobName}
-spec:
-  template:
-    spec:
-      containers:
-      - name: test
-        image: ${containerName}
-        command:
-          - "/bin/sh"
-          - "-c"
-          - >
-            ${command};
-        workingDir: ${volumePath}
-        resources:
-          requests:
-            cpu: "1m"
-        volumeMounts:
-        - name: my-pvc-nfs
-          mountPath: ${volumePath}
-      restartPolicy: Never
-      volumes:
-      - name: workflow-data
-        emptyDir: {}
-      - name: my-pvc-nfs
-        persistentVolumeClaim:
-          claimName: nfs`);
+
+    // Load definition of the the worker job pod
+    // Note that the file 'job-template.yaml' should be provided 
+    // externally, e.g. mounted
+    var job = yaml.safeLoad(fs.readFileSync('/node_modules/hyperflow/functions/job-template.yaml', 'utf8'));
+
     var namespace = 'default';
 
     let taskStart = Date.now();
