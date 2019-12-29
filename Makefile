@@ -1,4 +1,4 @@
-TAG = $(shell if [[ -z "$$(git status --porcelain)" ]]; then git describe --tags --always ; else echo $$(git describe --tags --always --long)-dev-$$(date +'%y.%m.%d.%H-%M-%S') ; fi ;)
+TAG = $(shell git describe --tags --always)
 PREFIX = hyperflowwms
 REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
 
