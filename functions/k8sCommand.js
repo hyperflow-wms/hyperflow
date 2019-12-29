@@ -2,6 +2,7 @@
 
 const k8s = require('@kubernetes/client-node');
 const yaml = require('js-yaml');
+var fs = require('fs');
 // var getGCPToken = require('./_gcptoken.js');
 // var getCluster = require('./_cluster.js');
 
