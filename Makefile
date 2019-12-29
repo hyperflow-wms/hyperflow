@@ -7,7 +7,7 @@ all: push
 container: image 
 
 image:
-	docker build -t $(PREFIX)/$(REPO_NAME):$(TAG) . # Build new image and automatically tag it as latest
+	docker build -t $(PREFIX)/$(REPO_NAME) . # Build new image and automatically tag it as latest
 	docker tag $(PREFIX)/$(REPO_NAME) $(PREFIX)/$(REPO_NAME):$(TAG)  # Add the version tag to the latest image
 
 push: image
