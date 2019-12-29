@@ -28,7 +28,8 @@ async function k8sCommand(ins, outs, context, cb) {
     // Load definition of the the worker job pod
     // Note that the file 'job-template.yaml' should be provided 
     // externally, e.g. mounted
-    var job = yaml.safeLoad(fs.readFileSync('./job-template.yaml', 'utf8'));
+    var jobYaml = fs.readFileSync('./job-template.yaml', 'utf8');
+    var job = yaml.safeLoad(eval('`'+jobYaml+'`'));
 
     var namespace = 'default';
 
