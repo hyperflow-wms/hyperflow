@@ -27,10 +27,19 @@ async function k8sCommand(ins, outs, context, cb) {
     var jobName = Math.random().toString(36).substring(7);
 
     // Load definition of the the worker job pod
-    // Note that the file 'job-template.yaml' should be provided 
-    // externally, e.g. mounted
+    // File 'job-template.yaml' should be provided externally, e.g. mounted
     var jobYaml = fs.readFileSync('./job-template.yaml', 'utf8');
-    var job = yaml.safeLoad(eval('`'+jobYaml+'`'));
+    //var job = yaml.safeLoad(eval('`'+jobYaml+'`')); // this works, but eval unsafe
+
+    // use string replacement instead of eval to evaluate job template
+    // 'params' should contain values for variables to be replaced in job template yaml
+    var params = { 
+      command: command, containerName: containerName, 
+      jobName: jobName, volumePath: volumePath
+    }
+    // args[v] will evaluate to 'undefined' if 'v' doesn't exist
+    var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
+    var job = interpolate(jobYaml, params);
 
     var namespace = 'default';
 
