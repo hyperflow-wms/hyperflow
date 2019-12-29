@@ -24,7 +24,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var command = 'hflow-job-execute ' + context.taskId + ' ' + context.redis_url;
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
-    var jobName = Math.random().toString(36).substring(7);
+    var jobName = context.name + "_" + context.taskId.replace(/:/g, '_');
 
     // Load definition of the the worker job pod
     // File 'job-template.yaml' should be provided externally, e.g. mounted
