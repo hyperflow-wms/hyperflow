@@ -28,7 +28,8 @@ async function k8sCommand(ins, outs, context, cb) {
 
     // Load definition of the the worker job pod
     // File 'job-template.yaml' should be provided externally, e.g. mounted
-    var jobYaml = fs.readFileSync('./job-template.yaml', 'utf8');
+    var job_template_path = process.env.HF_VAR_JOB_TEMPLATE_PATH || "./job-template.yaml";
+    var jobYaml = fs.readFileSync(job_template_path, 'utf8');
     //var job = yaml.safeLoad(eval('`'+jobYaml+'`')); // this works, but eval unsafe
 
     // use string replacement instead of eval to evaluate job template
