@@ -24,10 +24,11 @@ async function k8sCommand(ins, outs, context, cb) {
     var command = 'hflow-job-execute ' + context.taskId + ' ' + context.redis_url;
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
-    var jobName = context.name + "_" + context.taskId.replace(/:/g, '_');
+    var jobName = Math.random().toString(36).substring(7);
+    //var jobName = context.name + "_" + context.taskId.replace(/:/g, '_');
 
     // Load definition of the the worker job pod
-    // File 'job-template.yaml' should be provided externally, e.g. mounted
+    // File 'job-template.yaml' should be provided externally during deployment
     var job_template_path = process.env.HF_VAR_JOB_TEMPLATE_PATH || "./job-template.yaml";
     var jobYaml = fs.readFileSync(job_template_path, 'utf8');
     //var job = yaml.safeLoad(eval('`'+jobYaml+'`')); // this works, but eval unsafe
