@@ -41,7 +41,7 @@ async function k8sCommand(ins, outs, context, cb) {
     }
     // args[v] will evaluate to 'undefined' if 'v' doesn't exist
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
-    var job = interpolate(jobYaml, params);
+    var job = yaml.safeLoad(interpolate(jobYaml, params));
 
     var namespace = 'default';
 
