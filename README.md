@@ -16,7 +16,7 @@ The latest release of HyperFlow is 1.3.0
 * Install Node.js (http://nodejs.org)
 * Install Redis (http://redis.io) 
 * Install HyperFlow: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/v1.3.0.tar.gz`
-* For latest features, install from the master branch: Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz
+* For latest features, install from the master branch: Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
 * Add `<install_root>/node_modules/.bin` to your path
 
 ### Running locally
