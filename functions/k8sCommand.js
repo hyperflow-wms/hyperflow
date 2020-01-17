@@ -20,6 +20,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
     var jobName = Math.random().toString(36).substring(7);
+    var cpuRequest = context.executor.cpuRequest || "1";
     //var jobName = context.name + "_" + context.taskId.replace(/:/g, '_');
 
     // Load definition of the the worker job pod
@@ -32,7 +33,8 @@ async function k8sCommand(ins, outs, context, cb) {
     // 'params' should contain values for variables to be replaced in job template yaml
     var params = { 
       command: command, containerName: containerName, 
-      jobName: jobName, volumePath: volumePath
+      jobName: jobName, volumePath: volumePath,
+      cpuRequest: cpuRequest
     }
     // args[v] will evaluate to 'undefined' if 'v' doesn't exist
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
