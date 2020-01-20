@@ -40,7 +40,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
     var job = yaml.safeLoad(interpolate(jobYaml, params));
 
-    var namespace = 'default';
+    var namespace = process.env.HF_VAR_NAMESPACE || 'default';
 
     let taskStart = Date.now();
     console.log("Staring task", taskStart);
