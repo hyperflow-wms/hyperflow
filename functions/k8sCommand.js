@@ -20,7 +20,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
     var jobName = Math.random().toString(36).substring(7) + '-' + context.name.replace(/_/g, '-') + "-" + context.procId;
-    jobName = jobName.replace(/[^0-9a-z-]/gi, ''); // remove chars not allowd in Pod names
+    jobName = jobName.replace(/[^0-9a-z-]/gi, '').toLowerCase(); // remove chars not allowd in Pod names
     var cpuRequest = context.executor.cpuRequest || "1";
 
     // Load definition of the the worker job pod
