@@ -1,4 +1,4 @@
-// Runs a job as a Pod (deployment) in a Kubernetes cluster
+// Runs a job as a Pod (Kubernetes Job) in a Kubernetes cluster
 
 const k8s = require('@kubernetes/client-node');
 const yaml = require('js-yaml');
@@ -19,9 +19,9 @@ async function k8sCommand(ins, outs, context, cb) {
     var command = 'hflow-job-execute ' + context.taskId + ' ' + context.redis_url;
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
-    var jobName = Math.random().toString(36).substring(7);
+    var jobName = Math.random().toString(36).substring(7) + '-' + context.name.replace(/_/g, '-') + "-" + context.procId;
+    jobName = jobName.replace(/[^0-9a-z-]/gi, ''); // remove chars not allowd in Pod names
     var cpuRequest = context.executor.cpuRequest || "1";
-    //var jobName = context.name + "_" + context.taskId.replace(/:/g, '_');
 
     // Load definition of the the worker job pod
     // File 'job-template.yaml' should be provided externally during deployment
