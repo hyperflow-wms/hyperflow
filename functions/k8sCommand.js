@@ -85,7 +85,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var jobResult = await context.jobResult(0);
     let taskEnd = Date.now();
     console.log('Job ended with result:', jobResult);
-    if (parseInt(jobResult)==0) {
+    if (parseInt(jobResult[1])==0) {
       cb(null, outs);
     } else {
       console.log('Error: job exited with error code, stopping workflow.');
