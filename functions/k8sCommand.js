@@ -81,7 +81,7 @@ async function k8sCommand(ins, outs, context, cb) {
   }
 
   // wait for the job to finish (timeout=0 means indefinite)
-  var awaitJob = () => {
+  var awaitJob = async() => {
     try {
       var jobResult = await context.jobResult(0);
       let taskEnd = Date.now();
