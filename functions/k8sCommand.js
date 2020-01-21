@@ -43,7 +43,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var namespace = process.env.HF_VAR_NAMESPACE || 'default';
 
     let taskStart = Date.now();
-    console.log("Staring task", taskStart);
+    console.log("Starting task", context.taskId, 'time=' + taskStart);
 
     k8sApi.createNamespacedJob(namespace, job).then(
       (response) => {
@@ -53,7 +53,7 @@ async function k8sCommand(ins, outs, context, cb) {
         console.log(job);
         console.log("Err");
         let taskEnd = Date.now();
-        console.log("Task ended with error", taskEnd);
+        console.log("Task ended with error, time=", taskEnd);
       },
     );
 
@@ -81,23 +81,28 @@ async function k8sCommand(ins, outs, context, cb) {
   }
 
   // wait for the job to finish (timeout=0 means indefinite)
-  try {
-    var jobResult = await context.jobResult(0);
-    let taskEnd = Date.now();
-    console.log('Job ended with result:', jobResult);
-    if (parseInt(jobResult[1])==0) {
-      cb(null, outs);
-    } else {
-      console.log('Error: job exited with error code, stopping workflow.');
-      process.exit(1);
+  var awaitJob = () => {
+    try {
+      var jobResult = await context.jobResult(0);
+      let taskEnd = Date.now();
+      console.log('Job ended with result:', jobResult, 'time:', taskEnd);
+      if (parseInt(jobResult[1])==0) { // job succeeded
+        cb(null, outs);
+      } else { // job failed
+        console.log('Job failed, waiting again (retry); taskId:', context.taskId)
+        return awaitJob(); // wait again; temporary for testing Kubernetes job retry mechanism
+        console.log('Error: job exited with error code, stopping workflow.');
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
-  } catch (err) {
-    console.error(err);
-    throw err;
   }
+  awaitJob();
 
   let handlerEnd = Date.now();
-  console.log("Ending handler", handlerEnd);
+  console.log("Ending handler, time:", handlerEnd);
 }
 
 exports.k8sCommand = k8sCommand;
