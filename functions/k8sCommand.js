@@ -23,6 +23,11 @@ async function k8sCommand(ins, outs, context, cb) {
     jobName = jobName.replace(/[^0-9a-z-]/gi, '').toLowerCase(); // remove chars not allowd in Pod names
     var cpuRequest = context.executor.cpuRequest || "1";
 
+    // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
+    const backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 6; // 6 is the default value (won't matter because var is undefined)
+    const restartPolicy = process.env.HF_VAR_BACKOFF_LIMIT ? "OnFailure": "Never"; 
+    var restartCount = 0;
+
     // Load definition of the the worker job pod
     // File 'job-template.yaml' should be provided externally during deployment
     var job_template_path = process.env.HF_VAR_JOB_TEMPLATE_PATH || "./job-template.yaml";
@@ -34,7 +39,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var params = { 
       command: command, containerName: containerName, 
       jobName: jobName, volumePath: volumePath,
-      cpuRequest: cpuRequest
+      cpuRequest: cpuRequest, restartPolicy: restartPolicy
     }
     // args[v] will evaluate to 'undefined' if 'v' doesn't exist
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
@@ -86,13 +91,18 @@ async function k8sCommand(ins, outs, context, cb) {
       var jobResult = await context.jobResult(0);
       let taskEnd = Date.now();
       console.log('Job ended with result:', jobResult, 'time:', taskEnd);
-      if (parseInt(jobResult[1])==0) { // job succeeded
+      var code = parseInt(jobResult[1]);
+      if (code==0) { // job succeeded
         cb(null, outs);
       } else { // job failed
-        console.log('Job failed, waiting again (retry); taskId:', context.taskId)
-        return awaitJob(); // wait again; temporary for testing Kubernetes job retry mechanism
-        console.log('Error: job exited with error code, stopping workflow.');
-        process.exit(1);
+        console.log('Job failed, taskId:', context.taskId);
+        if (restartPolicy == "OnFailure" && restartCount++ < backoffLimit)  {
+          console.log("Waiting again for job's restart (restartCount:", restartCount + ")");
+          return awaitJob(); // just wait again assuming Kubernetes will restart the job
+        } else {
+          console.log('Error: job exited with error code, stopping workflow.');
+          process.exit(1);
+        }
       }
     } catch (err) {
       console.error(err);
