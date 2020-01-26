@@ -24,8 +24,8 @@ async function k8sCommand(ins, outs, context, cb) {
     var cpuRequest = context.executor.cpuRequest || "1";
 
     // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
-    const backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 6; // 6 is the default value (won't matter because var is undefined)
-    const restartPolicy = process.env.HF_VAR_BACKOFF_LIMIT ? "OnFailure": "Never"; 
+    var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 6; // 6 is the default value (won't matter because var is undefined)
+    var restartPolicy = process.env.HF_VAR_BACKOFF_LIMIT ? "OnFailure": "Never"; 
     var restartCount = 0;
 
     // Load definition of the the worker job pod
