@@ -13,6 +13,7 @@
     "start": "node bin/hflow start-server"
   },
   "dependencies": {
+    "@dagrejs/graphlib": "^2.1.4",
     "@kubernetes/client-node": "^0.11.0",
     "adm-zip": "0.4.11",
     "amqplib": "0.5.2",
@@ -30,7 +31,6 @@
     "eyes": "0.1.8",
     "file": "0.2.x",
     "form-data": "2.3.x",
-    "graphlib": "^2.1.8",
     "hawk": "^7.0.10",
     "js-yaml": "^3.13.1",
     "log4js": "^6.1.0",

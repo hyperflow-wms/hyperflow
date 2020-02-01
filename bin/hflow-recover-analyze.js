@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 var fs = require('fs');
-var Graph = require("graphlib").Graph;
+var Graph = require("@dagrejs/graphlib").Graph;
 
 const recoveryFile = process.argv[2];
 
