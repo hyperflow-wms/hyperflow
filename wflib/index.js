@@ -1494,10 +1494,19 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 }, 100);
             }
 
+            function hasForceRecomputeFlag() {
+                var key = procId + "_" + firingId;
+                var s = appConfig.recoveryData ? appConfig.recoveryData.settings: undefined;
+                return s && s[key] && s[key].flags && s[key].flags.includes('forceRecompute');
+            }
+
             // when this is a recovered firing, unless the process has set flag "executeWhenRecovering",
-            // we don't invoke the function, just immediately return the recovered outputs!
-            if (recovered && !procInfo.executeWhenRecovering) {
-                return cb(null, ins, outs, {"recovered": "true"});
+            // and unless "forceRecompute" flag is set in the recovery file -- this means that
+            // something has changed (e.g. software version) and the task must be recomputed
+            var recomputeForced = hasForceRecomputeFlag();
+            console.log(procId, firingId, "recomputeForced="+recomputeForced)
+            if (recovered && !procInfo.executeWhenRecovering && !recomputeForced) {
+                return cb(null, ins, outs, {"recovered": "true", "recomputeForced": recomputeForced });
             }
 
             if ((procInfo.fun == "null") || (!procInfo.fun)) {

@@ -30,7 +30,7 @@ var spawn = require('child_process').spawn,
     readVars = require('../utils/readvars.js'),
     dbId = 0,
     plugins = [],
-    recoveryMode = false, recoveryData = { 'input': [], 'outputs': {} },
+    recoveryMode = false, recoveryData = { 'input': [], 'outputs': {}, 'settings': {} },
     wfDirFull; // logged in the persistence journal
 
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
@@ -240,11 +240,11 @@ function hflow_run() {
 function hflow_recover() {
     var recoveryFile = opts['<persistence-log>'];
     var persistLog = fs.readFileSync(recoveryFile, 'utf8').toString().trim().split('\n');
-    persistLog.forEach(function(entry, index) {
-            persistLog[index] = JSON.parse(entry)['1'];
-    });
+    persistLog.forEach((entry, index) => persistLog[index] = JSON.parse(entry));
 
-    persistLog.forEach(function(entry) {
+    persistLog.forEach(function(plogentry) {
+        let entry = plogentry['1'];
+        let settings = plogentry['2'];
         if (entry[0] == 'info') { // full wf dir path and command line options
             wfDirFull = entry[1]; 
             opts = JSON.parse(entry[2]); // we recover command line options used to run the workflow
@@ -259,6 +259,9 @@ function hflow_recover() {
             outs = entry[4],
             key = procId + '_' + firingId;
             recoveryData.outputs[key] = outs;
+            if (settings) { // additional annotations, flags, e.g. 'forceRecompute'
+                recoveryData.settings[key] = settings;
+            }
         }
     });
 
