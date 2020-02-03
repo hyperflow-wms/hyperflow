@@ -7,7 +7,9 @@
   "bin": {
     "hflow": "./bin/hflow",
     "hflow-convert-dax": "./bin/hflow-convert-dax",
-    "hflow-recover-analyze": "./bin/hflow-recover-analyze.js"
+    "hflow-recovery-analysis": "./bin/hflow-recover-analyze.js",
+    "hflow-dot": "./bin/hflow-dot"
+
   },
   "scripts": {
     "start": "node bin/hflow start-server"
@@ -31,6 +33,7 @@
     "eyes": "0.1.8",
     "file": "0.2.x",
     "form-data": "2.3.x",
+    "graphviz": "0.0.9",
     "hawk": "^7.0.10",
     "js-yaml": "^3.13.1",
     "log4js": "^6.1.0",
