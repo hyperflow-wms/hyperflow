@@ -2,7 +2,9 @@
 
 var fs       = require('fs'),
     graphviz = require('graphviz'),
-    Graph = require("@dagrejs/graphlib").Graph;
+    Graph = require("@dagrejs/graphlib").Graph,
+    colormap = require('colormap');
+ 
 
 if (!process.argv[2]) {
   console.log("hflow-dot: converts HyperFlow workflow.json to graphviz dot format");
@@ -36,9 +38,14 @@ var sigToId = function(sig) {
 
 var wfgraph = new Graph();
 
+var procNames = {}; // for colormap
 processes.forEach(function(proc, idx) {
   wfgraph.setNode("p:"+(idx+1), proc.name);
+  procNames[proc.name]="1";
 });
+var procNamesArray = Object.keys(procNames);
+procNamesArray.forEach((pn, idx) => procNames[pn]=idx); // map name to index
+
 signals.forEach(function(sig, idx) {
   wfgraph.setNode("s:"+(idx+1), sig.name);
 });
@@ -50,6 +57,13 @@ processes.forEach(function(proc, idx) {
     wfgraph.setEdge("p:"+(idx+1), "s:"+outsig)
   });
 });
+
+let colors = colormap({
+    colormap: 'rainbow-soft',
+    nshades: procNamesArray.length,
+    format: 'hex',
+    alpha: 1
+})
 
 var procg = new Graph();
 
@@ -63,7 +77,10 @@ processes.forEach(function(proc, idx) {
 
 procg.nodes().forEach(function(proc, idx) {
   var n = g.addNode(proc);
-  n.set('label', procg.node(proc));
+  var name = procg.node(proc);
+  n.set('label', name);
+  n.set('color', colors[procNames[name]]);
+  n.set('style', 'filled');
   procg.successors(proc).forEach(function(succ) {
     g.addEdge(proc, succ);
   });
