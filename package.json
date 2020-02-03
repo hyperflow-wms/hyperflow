@@ -1,6 +1,6 @@
 {
   "name": "hyperflow",
-  "version": "1.3.19",
+  "version": "1.3.20",
   "engines": {
     "node": "~10.15.1"
   },
@@ -9,7 +9,6 @@
     "hflow-convert-dax": "./bin/hflow-convert-dax",
     "hflow-recovery-analysis": "./bin/hflow-recover-analyze.js",
     "hflow-dot": "./bin/hflow-dot"
-
   },
   "scripts": {
     "start": "node bin/hflow start-server"
