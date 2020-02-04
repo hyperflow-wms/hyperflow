@@ -36,6 +36,7 @@ var sigToId = function(sig) {
   }
 };
 
+// first use the Graph lib to build a full workflow graph
 var wfgraph = new Graph();
 
 var procNames = {}; // for colormap
@@ -58,13 +59,15 @@ processes.forEach(function(proc, idx) {
   });
 });
 
+let cmap = procNamesArray.length > 10 ? 'rainbow-soft': 'jet';
 let colors = colormap({
-    colormap: 'rainbow-soft',
+    colormap: cmap,
     nshades: procNamesArray.length,
     format: 'hex',
     alpha: 1
-})
+});
 
+// then build a smaller graph with only processes (better for visualization)
 var procg = new Graph();
 
 processes.forEach(function(proc, idx) {
@@ -75,6 +78,7 @@ processes.forEach(function(proc, idx) {
   children.map(ch => procg.setEdge("p:"+(idx+1), ch));
 });
 
+// finally build the graphviz graph and save it
 procg.nodes().forEach(function(proc, idx) {
   var n = g.addNode(proc);
   var name = procg.node(proc);
