@@ -7,7 +7,8 @@
   "bin": {
     "hflow": "./bin/hflow",
     "hflow-convert-dax": "./bin/hflow-convert-dax",
-    "hflow-recovery-analysis": "./bin/hflow-recover-analyze.js"
+    "hflow-recovery-analysis": "./bin/hflow-recover-analyze.js",
+    "hflow-info": "./bin/hflow-info"
   },
   "scripts": {
     "start": "node bin/hflow start-server"
