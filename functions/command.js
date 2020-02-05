@@ -36,6 +36,7 @@ function command(ins, outs, config, cb) {
 }
 
 function command_print(ins, outs, config, cb) {
+    console.log("Executing", config.appId, config.procId, config.firingId);
     var exec = config.executor.executable,
         args = config.executor.args.join(' ');
 
