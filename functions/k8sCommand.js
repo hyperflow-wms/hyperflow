@@ -21,7 +21,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var volumePath = '/work_dir';
     var jobName = Math.random().toString(36).substring(7) + '-' + context.name.replace(/_/g, '-') + "-" + context.procId;
     jobName = jobName.replace(/[^0-9a-z-]/gi, '').toLowerCase(); // remove chars not allowd in Pod names
-    var cpuRequest = context.executor.cpuRequest || "1";
+    var cpuRequest = context.executor.cpuRequest || process.env.HF_VAR_CPU_REQUEST || "1";
 
     // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
     var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 6; // 6 is the default value (won't matter because var is undefined)
