@@ -1504,7 +1504,6 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
             // and unless "forceRecompute" flag is set in the recovery file -- this means that
             // something has changed (e.g. software version) and the task must be recomputed
             var recomputeForced = hasForceRecomputeFlag();
-            console.log(procId, firingId, "recomputeForced="+recomputeForced)
             if (recovered && !procInfo.executeWhenRecovering && !recomputeForced) {
                 return cb(null, ins, outs, {"recovered": "true", "recomputeForced": recomputeForced });
             }
