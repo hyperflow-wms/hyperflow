@@ -25,8 +25,8 @@ async function k8sCommand(ins, outs, context, cb) {
     var memRequest = context.executor.memRequest || process.env.HF_VAR_MEM_REQUEST || "50Mi";
 
     // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
-    var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 6; // 6 is the default value (won't matter because var is undefined)
-    var restartPolicy = process.env.HF_VAR_BACKOFF_LIMIT ? "OnFailure": "Never"; 
+    var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 0; 
+    var restartPolicy = backoffLimit > 0 ? "OnFailure": "Never"; 
     var restartCount = 0;
 
     // Load definition of the the worker job pod
@@ -41,7 +41,7 @@ async function k8sCommand(ins, outs, context, cb) {
       command: command, containerName: containerName, 
       jobName: jobName, volumePath: volumePath,
       cpuRequest: cpuRequest, memRequest: memRequest,
-      restartPolicy: restartPolicy
+      restartPolicy: restartPolicy, backoffLimit: backoffLimit
     }
     // args[v] will evaluate to 'undefined' if 'v' doesn't exist
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
