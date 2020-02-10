@@ -332,6 +332,7 @@ exports.init = function(redisClient) {
                     }
                 }
                 copy.fun = task.function ? task.function: "null"; // FIXME: unify this attr name
+                copy.wfname = wfname;
                 /*if (!copy.config)
                     copy.config = "null";*/
                 copy.status = "waiting";
@@ -1575,6 +1576,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 conf.firingId = firingId;
                 // 'task' denotes a process firing/activation
                 conf.taskId = conf.hfId + ":" + conf.appId + ":" + conf.procId + ":" + conf.firingId;
+                conf.wfname = procInfo.wfname;
 
                 // this function is passed to the Process' Function (through 'context')
                 // and can be used to poll for task status. It reads a key from redis that
