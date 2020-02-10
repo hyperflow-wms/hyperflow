@@ -29,7 +29,7 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 * Run workflow via HyperFlow container, for example:
 ```
 docker run -a stdout -a stderr --rm --network container:redis \
-       -e HF_VAR_WORKER_CONTAINER="hyperflowwms/soykb-worker" \ 
+       -e HF_VAR_WORKER_CONTAINER="hyperflowwms/soykb-workflow-worker" \ 
        -e HF_VAR_WORK_DIR="$PWD/input" \ 
        -e HF_VAR_HFLOW_IN_CONTAINER="true" \
        -e HF_VAR_function="redisCommand" \
@@ -37,10 +37,10 @@ docker run -a stdout -a stderr --rm --network container:redis \
        --name hyperflow \
        -v /var/run/docker.sock:/var/run/docker.sock \
        -v $PWD:/wfdir \
-       --entrypoint "/bin/sh" hyperflowwms/hyperflow -c "apk add docker && ls /wfdir && hflow run /wfdir"
+       --entrypoint "/bin/sh" hyperflowwms/hyperflow -c "apk add docker && hflow run /wfdir"
 ```
 Where
-* `hyperflowwms/soykb-worker` is the name of the workflow worker container ([Soykb](https://github.com/hyperflow-wms/soykb-workflow) in this case)
+* `hyperflowwms/soykb-workflow-worker` is the name of the workflow worker container ([Soykb](https://github.com/hyperflow-wms/soykb-workflow) in this case)
 * current directory contains `workflow.json`
 * subdirectory `inputs` contains workflow input data 
 
