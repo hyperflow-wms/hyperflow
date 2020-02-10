@@ -41,7 +41,10 @@ async function k8sCommand(ins, outs, context, cb) {
       command: command, containerName: containerName, 
       jobName: jobName, volumePath: volumePath,
       cpuRequest: cpuRequest, memRequest: memRequest,
-      restartPolicy: restartPolicy, backoffLimit: backoffLimit
+      restartPolicy: restartPolicy, backoffLimit: backoffLimit,
+      experimentId: context.hfId + ":" + context.appId,
+      workflowName: context.wfname, taskName: context.name,
+      appId: context.appId
     }
     // args[v] will evaluate to 'undefined' if 'v' doesn't exist
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
