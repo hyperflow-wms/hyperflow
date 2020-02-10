@@ -22,6 +22,7 @@ async function k8sCommand(ins, outs, context, cb) {
     var jobName = Math.random().toString(36).substring(7) + '-' + context.name.replace(/_/g, '-') + "-" + context.procId;
     jobName = jobName.replace(/[^0-9a-z-]/gi, '').toLowerCase(); // remove chars not allowd in Pod names
     var cpuRequest = context.executor.cpuRequest || process.env.HF_VAR_CPU_REQUEST || "1";
+    var memRequest = context.executor.memRequest || process.env.HF_VAR_MEM_REQUEST || "50Mi";
 
     // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
     var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 6; // 6 is the default value (won't matter because var is undefined)
@@ -39,7 +40,8 @@ async function k8sCommand(ins, outs, context, cb) {
     var params = { 
       command: command, containerName: containerName, 
       jobName: jobName, volumePath: volumePath,
-      cpuRequest: cpuRequest, restartPolicy: restartPolicy
+      cpuRequest: cpuRequest, memRequest: memRequest,
+      restartPolicy: restartPolicy
     }
     // args[v] will evaluate to 'undefined' if 'v' doesn't exist
     var interpolate = (tpl, args) => tpl.replace(/\${(\w+)}/g, (_, v) => args[v]);
