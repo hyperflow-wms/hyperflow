@@ -11,6 +11,19 @@ async function k8sCommand(ins, outs, context, cb) {
   // let cluster = await getCluster();
   // const token = await getGCPToken();
 
+  // support for two clusters (cloud bursting) 
+  // if 'HF_VAR_REMOTE_CLUSTER' is defined, we check where this job is assigned to:
+  // - the local cluster: we do nothing
+  // - the remote cluster: we set KUBECONFIG to load its configuration
+  var remoteClusterId = process.env.HF_VAR_REMOTE_CLUSTER;
+  if (remoteClusterId) {
+    let partition = context.executor.partition;
+    if (partition == remoteClusterId) {
+      // this will read the kube_config of the remote cluster
+      process.env.KUBECONFIG=process.env.HF_VAR_KUBE_CONFIG_PATH || "./kube_config";
+    }
+  }
+
   const kc = new k8s.KubeConfig();
   kc.loadFromDefault(); // loadFromString(JSON.stringify(kconfig))
 
