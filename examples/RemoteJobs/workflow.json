@@ -8,7 +8,7 @@
     "function": "submitRemoteJob",
     "config": {
       "command": {
-        "executable": "echo",
+        "executable": "./job.js",
         "args": ["Hello", "world"]
       }
     },
