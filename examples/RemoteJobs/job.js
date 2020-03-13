@@ -2,8 +2,6 @@
 
 // 3 seconds of high CPU load and 3 seconds of no CPU load
 
-var shouldRun = true;
-
 var t0 = (new Date()).getTime();
 
 function loadCpu(ms) {
