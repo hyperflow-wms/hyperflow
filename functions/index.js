@@ -5,7 +5,8 @@ var cmd = require('./command.js'),
     lambdaCmd = require('./awsLambdaCommand.js'),
     commandLocalMock = require('./commandLocalMock.js'),
     redisCommand = require('./redisCommand.js').redisCommand,
-    k8sCommand = require('./k8sCommand.js').k8sCommand;
+    k8sCommand = require('./k8sCommand.js').k8sCommand,
+    cloudRunCommand = require('./cloudRunCommand').cloudRunCommand;
 
 function print(ins, outs, config, cb) {
     //console.log("PRINT", JSON.stringify(ins));
@@ -194,3 +195,4 @@ exports.genCollection = genCollection;
 exports.commandLocalMock = commandLocalMock.commandLocalMock;
 exports.redisCommand = redisCommand;
 exports.k8sCommand = k8sCommand;
+exports.cloudRunCommand = cloudRunCommand;
