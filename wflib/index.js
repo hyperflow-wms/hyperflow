@@ -1578,39 +1578,40 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 conf.taskId = conf.hfId + ":" + conf.appId + ":" + conf.procId + ":" + conf.firingId;
                 conf.wfname = procInfo.wfname;
 
-                // this function is passed to the Process' Function (through 'context')
-                // and can be used to poll for task status. It reads a key from redis that
-                // should be set by the task's executor
+                // This function is passed to the Process' Function (through 'context')
+                // and can be used to wait for task completion. It reads a key from redis 
+                // that should be set by the task's executor. 
+                // 'taskId' to be waited for is read from the process context, but 
+                // optionally it can be set by the caller via parameter 'taskIdentifier' 
                 // Create duplicate redis client for blocking blpop (one per task)
                 var redisCliBlocking = rcl.duplicate();
-                var getJobResult = async function(timeout) {
-                  return new Promise(function(resolve, reject) {
-                    const taskId = conf.taskId;
-                    const redis_cli = redisCliBlocking;
+                var getJobResult = async function(timeout, taskIdentifier) {
+                    return new Promise(function(resolve, reject) {
+                        const taskId = taskIdentifier || conf.taskId;
+                        const redis_cli = redisCliBlocking;
 
-                    redis_cli.blpop(taskId, timeout, function(err, reply) {
-                      if (err) reject(err)
-                      else {
-                        resolve(reply);
-                      }
+                        redis_cli.blpop(taskId, timeout, function(err, reply) {
+                            err ? reject(err): resolve(reply);
+                        });
                     });
-                  });
                 }
 
                 conf.jobResult = getJobResult;
                 conf.redis_url = "redis://" + rcl.address;
 
-                var sendMessageToJob = async function(message) {
-                  return new Promise(function(resolve, reject) {
-                          const taskMessageKey=conf.taskId+"_msg";
-                          const redis_cli = redisCliBlocking;
-                          redis_cli.lpush(taskMessageKey, message, function(err, reply) {
-                              if (err) reject(err)
-                              else {
-                                resolve(reply);
-                              }
-                          });
-                  });
+                // This function is passed to the Process' Function (through 'context')
+                // and can be used to pass a job message (via Redis) to a job executor 
+                // 'taskId' to be waited for is read from the process context, but 
+                // optionally it can be set by the caller via parameter 'taskIdentifier' 
+                var sendMessageToJob = async function(message, taskIdentifier) {
+                    return new Promise(function(resolve, reject) {
+                        const taskId = taskIdentifier || conf.taskId;
+                        const taskMessageKey=taskId+"_msg";
+                        const redis_cli = redisCliBlocking;
+                        redis_cli.lpush(taskMessageKey, message, function(err, reply) {
+                            err ? reject(err): resolve(reply);
+                        });
+                    });
                 }
 
                 conf.sendMsgToJob = sendMessageToJob;
