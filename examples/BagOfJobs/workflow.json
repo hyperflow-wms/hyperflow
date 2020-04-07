@@ -1,0 +1,17 @@
+{
+    "name": "BagOfJobsExample",
+    "processes": [ {
+        "name": "BojExecutor",
+	"type": "dataflow",
+	"firingLimit": 1,
+        "function": "BojK8sCommand",
+        "ins": [ "jobSetsFile" ],
+        "outs": [ ]
+    } ],
+    "signals": [ {
+        "name": "jobSetsFile",
+        "data": [ "job_sets.json" ]
+    } ],
+    "ins": [ "jobSetsFile" ],
+    "outs": [ ]
+}

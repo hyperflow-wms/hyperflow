@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job${jobName}
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: test
+        image: ${containerName}
+        env:
+          - name: HF_VAR_ENABLE_NETHOGS
+            value: "1"
+          - name: HF_VAR_WORK_DIR
+            value: "${volumePath}"
+          - name: HF_VAR_WAIT_FOR_INPUT_FILES
+            value: "0"
+          - name: HF_VAR_NUM_RETRIES
+            value: "1"
+        command:
+          - "/bin/sh"
+          - "-c"
+          - >
+            ${command}; exitCode=$? ;
+            if [ $exitCode -ne 0 ]; then echo "Command ${command} returned exit code. $exitCode. Job fails." ; exit 1 ; fi ;
+        workingDir: ${volumePath}
+        resources:
+          requests:
+            cpu: ${cpuRequest}
+            memory: ${memRequest}
+        volumeMounts:
+        - name: my-pvc-nfs
+          mountPath: ${volumePath}
+      volumes:
+      - name: workflow-data
+        emptyDir: {}
+      - name: my-pvc-nfs
+        persistentVolumeClaim:
+          claimName: nfs
