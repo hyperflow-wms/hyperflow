@@ -16,6 +16,7 @@
   "dependencies": {
     "@dagrejs/graphlib": "^2.1.4",
     "@kubernetes/client-node": "^0.11.0",
+    "@supercharge/promise-pool": "^1.2.0",
     "adm-zip": "0.4.11",
     "amqplib": "0.5.2",
     "async": "0.2.x",
