@@ -19,8 +19,8 @@ async function k8sCommand(ins, outs, context, cb) {
   if (remoteClusterId) {
     let partition = context.executor.partition;
     if (partition == remoteClusterId) {
-      // this will read the kube_config of the remote cluster
-      process.env.KUBECONFIG=process.env.HF_VAR_KUBE_CONFIG_PATH || "./kube_config";
+      // this will cause reading the kube_config of the remote cluster
+      process.env.KUBECONFIG = process.env.HF_VAR_KUBE_CONFIG_PATH || "./kube_config";
     }
   }
 
