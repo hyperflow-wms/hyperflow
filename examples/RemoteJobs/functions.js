@@ -75,7 +75,7 @@ async function submitRemoteJob(ins, outs, context, cb) {
 
   // send message to the job (command to be executed)
   try {
-    await context.sendMsgToJob(jobMessage);
+    await context.sendMsgToJob(jobMessage, context.taskId);
     logger.info('[' + context.taskId + '] job message sent');
   } catch(err) {
     console.error(err);
@@ -84,7 +84,7 @@ async function submitRemoteJob(ins, outs, context, cb) {
 
   // wait for the job to finish (timeout=0 means indefinite)
   try {
-    var jobResult = await context.jobResult(0);
+    var jobResult = await context.jobResult(0, context.taskId);
     logger.info('[' + context.taskId + '] job result received:', jobResult);
     console.log('Received job result:', jobResult);
     cb(null, outs);
