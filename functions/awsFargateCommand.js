@@ -9,7 +9,7 @@ let runningTasks = 0;
 
 async function awsFargateCommand(ins, outs, config, cb) {
 
-    while (runningTasks >= 50) { // AWS Fargate supports up to 50 instances at a given time
+    while (runningTasks >= 100) { // AWS Fargate supports up to 100 instances at a given time
         await sleep(3000);
     }
     runningTasks++;
@@ -67,7 +67,7 @@ async function awsFargateCommand(ins, outs, config, cb) {
     const runTaskWithRetryStrategy = (times) => new Promise(() => {
         return runTask()
             .catch(error => {
-                if (["ThrottlingException", "NetworkingError", "TaskLimitError"].includes(error.name)) {
+                if (["ThrottlingException", "NetworkingError", "TaskLimitError", "InvalidParameterException"].includes(error.name)) {
                     console.log("Fargate runTask method threw " + error.name + ", performing retry number " + (times + 1));
                     return backoffWait(times)
                         .then(runTaskWithRetryStrategy.bind(null, times + 1));

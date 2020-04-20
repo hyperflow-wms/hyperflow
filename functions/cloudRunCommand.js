@@ -1,12 +1,10 @@
 const request = require('requestretry');
 let runningTasks = 0;
-let completed = 0;
-let failed = 0;
-const retryCodes = new Set([400, 429, 500, 502, 503])
+const retryCodes = new Set([400, 429, 500, 502, 503]);
 
 async function cloudRunCommand(ins, outs, config, cb) {
 
-    while (runningTasks >= 1000) { // AWS Fargate supports up to 50 instances at a given time
+    while (runningTasks >= 99999) { // only use in case you want to limit workflow's task for some reason
         await sleep(3000);
     }
     runningTasks++;
@@ -44,7 +42,7 @@ async function cloudRunCommand(ins, outs, config, cb) {
         timeout: 900000,
         url: url,
         json: jobMessage,
-        maxAttempts: 1,
+        maxAttempts: 10,
         retryDelay: 3000,
         retryStrategy: retry,
         headers: {'Content-Type': 'application/json', 'Accept': '*/*'}
@@ -54,13 +52,7 @@ async function cloudRunCommand(ins, outs, config, cb) {
                 console.log("Function: " + executable + " response status code: " + response.statusCode + " number of request attempts: " + response.attempts);
                 console.log("Metrics: task: " + executable + " fire time " + fireTime + " " + response.body);
             }
-            if(response.statusCode === 200) {
-               completed++;
-            } else {
-                failed++;
-            }
             console.log(new Date() + " Cloud Run task: " + executable + " completed successfully.");
-            console.log("Completed - " + completed + ", failed - " + failed);
             cb(null, outs);
         })
         .catch(function (error) {
