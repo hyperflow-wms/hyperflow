@@ -4,7 +4,14 @@
         "name": "BojExecutor",
 	"type": "dataflow",
 	"firingLimit": 1,
-        "function": "BojK8sCommand",
+        "function": "k8sCommand",
+	"config": {
+		"executor": {
+			"image": "hyperflowwms/montage-workflow-worker",
+			"executable": "echo",
+			"args": ["Hello", "World"]
+		}
+	},
         "ins": [ "jobSetsFile" ],
         "outs": [ ]
     } ],
