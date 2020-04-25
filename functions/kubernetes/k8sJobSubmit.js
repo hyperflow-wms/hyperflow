@@ -33,7 +33,7 @@ var createK8sJobSpec = (job, taskId, context, jobYamlTemplate, customParams) => 
   // remove chars not allowd in Pod names
   jobName = jobName.replace(/[^0-9a-z-]/gi, '').toLowerCase(); 
 
-  var cpuRequest = job.cpuRequest || process.env.HF_VAR_CPU_REQUEST || "1";
+  var cpuRequest = job.cpuRequest || process.env.HF_VAR_CPU_REQUEST || "0.5";
   var memRequest = job.memRequest || process.env.HF_VAR_MEM_REQUEST || "50Mi";
 
   // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
@@ -104,9 +104,6 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
     return 0;
   }
 
-  console.log(JSON.stringify(jobYaml, null, 4));
-  console.log(JSON.stringify(jobMessage, null, 2));
- 
   var namespace = process.env.HF_VAR_NAMESPACE || 'default';
 
   let taskStart = Date.now();
@@ -131,7 +128,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
   }
 
   try {
-    await context.sendMsgToJob(jobMessage, taskId);
+    await context.sendMsgToJob(JSON.stringify(jobMessage), taskId);
   } catch (err) {
     console.error(err);
     throw err;

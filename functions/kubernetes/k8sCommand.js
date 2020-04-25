@@ -6,8 +6,8 @@ var fs = require('fs');
 
 async function k8sCommand(ins, outs, context, cb) {
 
-  let handlerStart = Date.now();
-  console.log("[DEBUG] K8sInvoke called.");
+  let startTime = Date.now();
+  console.log("k8sCommand started, time:", startTime);
   // let cluster = await getCluster();
   // const token = await getGCPToken();
 
@@ -43,8 +43,15 @@ async function k8sCommand(ins, outs, context, cb) {
 
   let jobExitCode = await submitK8sJob(kubeconfig, job, context.taskId, context, customParams);
 
-  let handlerEnd = Date.now();
-  console.log("Ending handler, time:", handlerEnd);
+  let endTime = Date.now();
+  console.log("Ending k8sCommand function, time:", endTime);
+
+  if (jobExitCode != 0) {
+    console.log('Error: job exited with error code, stopping workflow.');
+    process.exit(1);
+  }
+
+  cb(null, outs);
 }
 
 exports.k8sCommand = k8sCommand;
