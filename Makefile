@@ -1,6 +1,7 @@
 TAG = $(shell git describe --tags --always)
 PREFIX = hyperflowwms
-REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
+REPO_NAME = hyperflow
+#REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
 
 all: push
 
