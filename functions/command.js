@@ -1,22 +1,27 @@
 var spawn = require('cross-spawn'),
     fs = require('fs');
 
-function command(ins, outs, config, cb) {
-    var exec = config.executor.executable,
-        args = config.executor.args;
+function command(ins, outs, context, cb) {
+    var exec = context.executor.executable,
+        args = context.executor.args;
 
-    var stdoutStream;
+    var stdoutStream, stderrStream;
 
     console.log("Executing:", exec, args);
 
 //    var proc = spawn(exec, [ args ]);
     var proc = spawn(exec,  args );
 
-    if (config.executor.stdout) {
-        stdoutStream = fs.createWriteStream(config.executor.stdout, {flags: 'w'});
+    if (context.executor.stdout) {
+        stdoutStream = fs.createWriteStream(context.executor.stdout, {flags: 'w'});
         proc.stdout.pipe(stdoutStream);
     }
 
+    if (context.executor.stderr) {
+        stderrStream = fs.createWriteStream(context.executor.stderr, {flags: 'w'});
+        proc.stderr.pipe(stderrStream);
+    }
+ 
     proc.stdout.on('data', function(data) {
         console.log(exec, 'stdout:' + data);
     });
@@ -35,10 +40,10 @@ function command(ins, outs, config, cb) {
     });
 }
 
-function command_print(ins, outs, config, cb) {
-    console.log("Executing", config.appId, config.procId, config.firingId);
-    var exec = config.executor.executable,
-        args = config.executor.args.join(' ');
+function command_print(ins, outs, context, cb) {
+    console.log("Executing", context.appId, context.procId, context.firingId);
+    var exec = context.executor.executable,
+        args = context.executor.args.join(' ');
 
     setTimeout(function() {
         console.log(exec, args);
@@ -46,11 +51,11 @@ function command_print(ins, outs, config, cb) {
     }, 1);
 }
 
-function command_notifyevents(ins, outs, config, cb) {
-    var exec = config.executor.executable,
-        args = config.executor.args;
+function command_notifyevents(ins, outs, context, cb) {
+    var exec = context.executor.executable,
+        args = context.executor.args;
 
-    var eventServer = config['eventServer'];
+    var eventServer = context['eventServer'];
     if(typeof eventServer !== 'undefined' && eventServer) {
         eventServer.emit("trace.job", exec, args);
     } else {
