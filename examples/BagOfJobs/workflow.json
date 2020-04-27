@@ -9,7 +9,8 @@
 		"executor": {
 			"image": "hyperflowwms/montage-workflow-worker",
 			"executable": "echo",
-			"args": ["Hello", "World"]
+			"args": ["Hello", "World"],
+			"stdout": "test.stdout"
 		}
 	},
         "ins": [ "jobSetsFile" ],
