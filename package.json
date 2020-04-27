@@ -55,7 +55,6 @@
     "walkdir": "0.0.7",
     "when": "3.x",
     "which": "1.x",
-    "xml2js": "0.4.x",
     "xmldom": "0.1.x",
     "xpath": "0.x",
     "z-schema": "2.0.x"
