@@ -71,6 +71,9 @@ var createK8sJobSpec = (job, taskId, context, jobYamlTemplate, customParams) => 
     "inputs": job.ins.map(i => i),
     "outputs": job.outs.map(o => o),
     "stdout": job.stdout, // if present, denotes file name to which stdout should be redirected
+    "stderr": job.stderr, // if present, denotes file name to which stderr should be redirected
+    "stdoutAppend": job.stdoutAppend, // redirect stdout in append mode
+    "stderrAppend": job.stderrAppend, // redirect stderr in append mode
     "redis_url": context.redis_url,
     "taskId": taskId,
     "name": job.name
