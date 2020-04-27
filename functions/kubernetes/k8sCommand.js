@@ -27,16 +27,10 @@ async function k8sCommand(ins, outs, context, cb) {
   const kubeconfig = new k8s.KubeConfig();
   kubeconfig.loadFromDefault(); // loadFromString(JSON.stringify(kconfig))
 
-  var job = {
-    name: context.name,
-    executable: context.executor.executable,
-    args: context.executor.args,
-    stdout: context.executor.stdout, // optional file name to which stdout should be redirected
-    ins: ins,
-    outs: outs
-  }
-
-  if (context.executor.image) { job.image = context.executor.image; }
+  var job = context.executor; // object containing 'executable', 'args' and others
+  job.name = context.name;
+  job.ins = ins;
+  job.outs = outs;
 
   // custom parameters to the job YAML template (will overwrite default values)
   var customParams = {};
