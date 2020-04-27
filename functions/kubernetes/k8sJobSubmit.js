@@ -162,7 +162,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
         console.error(err);
         throw err;
       }
-      return awaitJob(); // just wait again assuming Kubernetes will restart the job
+      return awaitJob(taskId); // just wait again assuming Kubernetes will restart the job
     } 
     return code;
   }
