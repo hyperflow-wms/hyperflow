@@ -13,7 +13,6 @@
  */
 
 var fs = require('fs'),
-    xml2js = require('xml2js'),
     fsm = require('./automata.js'),
     async = require('async'),
     eventServerFactory = require('../eventlog');
