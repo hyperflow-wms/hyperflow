@@ -21,4 +21,6 @@ function loadCpu(ms) {
 
 loadCpu(3000);
 
-
+// for testing stdout and stderr redirection
+console.log("Hello world"); 
+console.error("Hello world error"); 

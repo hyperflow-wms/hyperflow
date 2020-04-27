@@ -7,9 +7,11 @@
     "firingLimit": 10,
     "function": "submitRemoteJob",
     "config": {
-      "command": {
+      "executor": {
         "executable": "./job.js",
-        "args": ["Hello", "world"]
+        "args": ["Hello", "world"],
+        "stdout": "RemoteJobTest.stdout",
+        "stderr": "RemoteJobTest.error"
       }
     },
     "ins": [ "number", "number2" ],
