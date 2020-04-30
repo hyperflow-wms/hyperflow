@@ -41,8 +41,9 @@ async function k8sCommand(ins, outs, context, cb) {
   console.log("Ending k8sCommand function, time:", endTime);
 
   // Stop the entire workflow if a job fails (controlled by an environment variable)
-  if (jobExitCode != 0 && process.env.HF_VAR_STOP_WORKFLOW_WHEN_JOB_FAILED) {
+  if (jobExitCode != 0 && process.env.HF_VAR_STOP_WORKFLOW_WHEN_JOB_FAILED=="1") {
     console.log('Error: job exited with error code, stopping workflow.');
+    console.log('Error details: job.name: ' + job.name + ', job.args: ' + job.args.join(' '));
     process.exit(1);
   }
 
