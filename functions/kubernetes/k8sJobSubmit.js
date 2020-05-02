@@ -114,21 +114,34 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
 
   const k8sApi = kubeconfig.makeApiClient(k8s.BatchV1Api);
 
-  try {
-    k8sApi.createNamespacedJob(namespace, jobYaml).then(
-      (response) => {
-      },
-      (err) => {
-        console.log(err);
-        console.log(job);
-        console.log("Err");
-        let taskEnd = Date.now();
-        console.log("Task ended with error, time=", taskEnd);
-      },
-    );
-  } catch (e) {
-    console.error(e);
+  // Create the job via the Kubernetes API. We implement a simple retry logic
+  // in case the API is overloaded and returns HTTP 429 (Too many requests). 
+  var createJob = function(attempt) {
+    try {
+      k8sApi.createNamespacedJob(namespace, jobYaml).then(
+        (response) => {
+        },
+        (err) => {
+          // If the error is HTTP "Too many requests", we wait and retry
+          if (err.response.statusCode == 429) { 
+            // We should get the 'retry-after' header
+            let delay = Number(err.response.headers.retry-after || 1)*1000;
+            logger.info("Create k8s job HTTP error 429 (attempt " + attempt + "), retrying after " + delay + "s." );
+            setTimeout(() => createJob(attempt+1), delay);
+          } else {
+            console.error("Err");
+            console.error(err);
+            console.error(job);
+            let taskEnd = Date.now();
+            console.log("Task ended with error, time=", taskEnd);
+          }
+        },
+      );
+    } catch (e) {
+      console.error(e);
+    }
   }
+  createJob(1); 
 
   try {
     await context.sendMsgToJob(JSON.stringify(jobMessage), taskId);
