@@ -125,8 +125,8 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
           // If the error is HTTP "Too many requests", we wait and retry
           if (err.response.statusCode == 429) { 
             // We should get the 'retry-after' header
-            let delay = Number(err.response.headers.retry-after || 1)*1000;
-            logger.info("Create k8s job HTTP error 429 (attempt " + attempt + "), retrying after " + delay + "s." );
+            let delay = Number(err.response.headers['retry-after'] || 1)*1000;
+            console.info("Create k8s job HTTP error 429 (attempt " + attempt + "), retrying after " + delay + "ms." );
             setTimeout(() => createJob(attempt+1), delay);
           } else {
             console.error("Err");
