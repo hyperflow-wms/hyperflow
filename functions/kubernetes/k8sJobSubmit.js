@@ -122,20 +122,30 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
         (response) => {
         },
         (err) => {
-          // If the error is HTTP "Too many requests", we wait and retry
-          if (err.response.statusCode == 429) { 
-            // We should get the 'retry-after' header
-            let delay = Number(err.response.headers['retry-after'] || 1)*1000;
-            console.info("Create k8s job HTTP error 429 (attempt " + attempt + "), retrying after " + delay + "ms." );
-            setTimeout(() => createJob(attempt+1), delay);
-          } else {
-            console.error("Err");
-            console.error(err);
-            console.error(job);
-            let taskEnd = Date.now();
-            console.log("Task ended with error, time=", taskEnd);
+          try {
+            let statusCode = err.response.statusCode;
+          } catch(e) {
+            // We didn't get a response, probably connection error
+            throw(err);
           }
-        },
+          switch(statusCode) {
+            // if we get 409 or 429 ==> wait and retry
+            case 409: // 'Conflict' -- "Operation cannot be fulfilled on reourcequotas"; bug in k8s?
+            case 429: // 'Too many requests' -- API overloaded
+              // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
+              let delay = Number(err.response.headers['retry-after'] || 1)*1000;
+              console.info("Create k8s job HTTP error " + statusCode + " (attempt " + attempt + 
+                           "), retrying after " + delay + "ms." );
+              setTimeout(() => createJob(attempt+1), delay);
+              break;
+            default:
+              console.error("Err");
+              console.error(err);
+              console.error(job);
+              let taskEnd = Date.now();
+              console.log("Task ended with error, time=", taskEnd);
+          }
+        }
       );
     } catch (e) {
       console.error(e);
