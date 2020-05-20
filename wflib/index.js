@@ -1625,6 +1625,8 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 if (recovered) { conf.recovered = true; }
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG
+                    // Close connection of the duplicate Redis client
+                    redisCliBlocking.quit();
                     if (recovered) {
                         if (!options) {
                             options = { recovered: true }
