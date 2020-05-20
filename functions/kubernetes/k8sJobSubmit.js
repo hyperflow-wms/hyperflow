@@ -123,7 +123,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
         },
         (err) => {
           try {
-            let statusCode = err.response.statusCode;
+            var statusCode = err.response.statusCode;
           } catch(e) {
             // We didn't get a response, probably connection error
             throw(err);
