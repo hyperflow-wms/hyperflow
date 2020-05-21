@@ -134,7 +134,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
             case 429: // 'Too many requests' -- API overloaded
               // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
               let delay = Number(err.response.headers['retry-after'] || 1)*1000;
-              console.info("Create k8s job HTTP error " + statusCode + " (attempt " + attempt + 
+              console.log("Create k8s job HTTP error " + statusCode + " (attempt " + attempt + 
                            "), retrying after " + delay + "ms." );
               setTimeout(() => createJob(attempt+1), delay);
               break;
@@ -154,6 +154,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
   createJob(1); 
 
   try {
+    console.log("Sending job message to", taskId);
     await context.sendMsgToJob(JSON.stringify(jobMessage), taskId);
   } catch (err) {
     console.error(err);
