@@ -109,7 +109,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
 
   var namespace = process.env.HF_VAR_NAMESPACE || 'default';
 
-  let taskStart = Date.now();
+  let taskStart = new Date().toISOString();
   console.log("Starting task", taskId, 'time=' + taskStart);
 
   const k8sApi = kubeconfig.makeApiClient(k8s.BatchV1Api);
@@ -134,7 +134,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
             case 429: // 'Too many requests' -- API overloaded
               // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
               let delay = Number(err.response.headers['retry-after'] || 1)*1000;
-              console.log("Create k8s job HTTP error " + statusCode + " (attempt " + attempt + 
+              console.log("Create k8s job", taskId, "HTTP error " + statusCode + " (attempt " + attempt + 
                            "), retrying after " + delay + "ms." );
               setTimeout(() => createJob(attempt+1), delay);
               break;
@@ -142,7 +142,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
               console.error("Err");
               console.error(err);
               console.error(job);
-              let taskEnd = Date.now();
+              let taskEnd = new Date().toISOString();
               console.log("Task ended with error, time=", taskEnd);
           }
         }
@@ -173,7 +173,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
       console.error(err);
       throw err;
     }
-    let taskEnd = Date.now();
+    let taskEnd = new Date().toISOString();
     console.log('Job ended with result:', jobResult, 'time:', taskEnd);
     var code = parseInt(jobResult[1]); // job exit code
     // if job failed and restart policy is enabled, restart the job
