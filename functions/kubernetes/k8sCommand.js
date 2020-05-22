@@ -47,6 +47,13 @@ async function k8sCommand(ins, outs, context, cb) {
     process.exit(1);
   }
 
+  // if we're here, the job should have succesfully completed -- we write this
+  // information to Redis (job executor may make use of it).
+  try {
+    await context.markTaskCompleted();
+  } catch {
+    console.error("Marking job", context.taskId, "as completed failed.")
+  }
   cb(null, outs);
 }
 

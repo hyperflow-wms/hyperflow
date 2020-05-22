@@ -1599,6 +1599,33 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 conf.jobResult = getJobResult;
                 conf.redis_url = "redis://" + rcl.address;
 
+                // The next two functions may be used by the job function/executor to, 
+                // respectively, mark that or check if the task has been completed.
+                // Useful e.g. in Kubernetes which sometimes restarts a succesfully 
+                // completed job for uknown reason.
+                var markTaskCompleted = async function(taskIdentifier) {
+                    return new Promise(function(resolve, reject) {
+                        const completedTasksSetKey = "wf:" + wfId + ":completedTasks";
+                        const taskId = taskIdentifier || conf.taskId;
+                        const redis_cli = redisCliBlocking;
+                        redis_cli.sadd(completedTasksSetKey, taskId, function(err, reply) {
+                            err ? reject(err): resolve(reply);
+                        });
+                    });
+                }
+                var checkTaskCompletion = async function(taskIdentifier) {
+                    return new Promise(function(resolve, reject) {
+                        const completedTasksSetKey = "wf:" + wfId + ":completedTasks";
+                        const taskId = taskIdentifier || conf.taskId;
+                        const redis_cli = redisCliBlocking;
+                        redis_cli.sismember(completedTasksSetKey, taskId, function(err, hasCompleted) {
+                            err ? reject(err): resolve(hasCompleted);
+                        });
+                    });
+                }
+                conf.markTaskCompleted = markTaskCompleted;
+                conf.checkTaskCompletion = checkTaskCompletion;
+
                 // This function is passed to the Process' Function (through 'context')
                 // and can be used to pass a job message (via Redis) to a job executor 
                 // 'taskId' to be waited for is read from the process context, but 
