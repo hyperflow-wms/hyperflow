@@ -924,9 +924,9 @@ exports.init = function(redisClient) {
     }
 
     // Returns a 'map' of a workflow. Should be passed a callback:
-    // function(nTasks, nData, err, ins, outs, sources, sinks, types, cPortsInfo), where:
-    // - nTasks        = number of tasks (also length of ins and outs arrays)
-    // - nData         = number of data elements (also length of sources and sinks arrays)
+    // function(nProcs, nData, err, ins, outs, sources, sinks, types, cPortsInfo), where:
+    // - nProcs        = number of processes (also length of ins and outs arrays)
+    // - nSigs         = number of data elements (also length of sources and sinks arrays)
     // - ins[i][j]     = data id mapped to j-th input port of i-th task
     // - outs[i][j]    = data id mapped to j-th output port of i-th task
     // - sources[i][1] = task id which produces data element with id=i (if none, sources[i]=[])
@@ -936,192 +936,194 @@ exports.init = function(redisClient) {
     // - types         = ids of tasks with type other than default "task"; format:
     //                   { "foreach": [1,2,5], "choice": [3,4] }
     // - cPortsInfo    = information about all control ports of all tasks; format:
-    //                   { procId: { "ins": { portName: dataId } ... }, "outs": { ... } } }
+    //                   { procId: { "ins": { portName: sigId } ... }, "outs": { ... } } }
     //                   e.g.: { '1': { ins: { next: '2' }, outs: { next: '2', done: '4' } } }
     // - fullInfo[i]   = all additional attributes of i-th task (e.g. firingInterval etc.)
 function public_getWfMap(wfId, cb) {
     var asyncTasks = [];
     var wfKey = "wf:"+wfId;
-    rcl.zcard(wfKey+":tasks", function(err, ret) {
-        if (err || ret == -1) { throw(new Error("Redis error")); }
-        var nTasks = ret;
-        rcl.zcard(wfKey+":data", function(err, ret) {
-            if (err || ret == -1) { throw(new Error("Redis error")); }
-            var nData = ret;
-            var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, fullInfo = [];
-            //var multi = rcl.multi();
-            for (var i=1; i<=nTasks; ++i) {
-                (function(procId) {
-                    var procKey = wfKey+":task:"+procId;
-                    asyncTasks.push(function(callback) {
-                        rcl.hgetall(procKey, function(err, taskInfo) {
-                            //onsole.log("FULL TASK INFO:", taskInfo);
-                            fullInfo[procId] = taskInfo;
-                            // add additional info to fullInfo
-                            async.parallel([
-                                function(cb) {
-                                    if (taskInfo.sticky) {
-                                        var stickyKey = procKey+":sticky";
-                                        rcl.smembers(stickyKey, function(err, stickySigs) {
-                                            if (!stickySigs) stickySigs = [];
-                                            fullInfo[procId].stickySigs = {};
-                                            stickySigs.forEach(function(s) {
-                                                fullInfo[procId].stickySigs[+s] = true;
-                                            });
-                                            cb(err);
-                                        });
-                                    } else {
-                                        cb(null);
-                                    }
-                                },
-                                function(cb) {
-                                    rcl.smembers(procKey+":cinset", function(err, cins) {
-                                        if (!cins) cins = [];
-                                        fullInfo[procId].cinset = {};
-                                        cins.forEach(function(c) {
-                                            fullInfo[procId].cinset[+c] = true;
-                                        });
-                                        cb(err);
-                                    });
-                                },
-                                function(cb) {
-                                    rcl.smembers(procKey+":coutset", function(err, couts) {
-                                        if (!couts) couts = [];
-                                        //onsole.log("COUTS", couts);
-                                        fullInfo[procId].coutset = {};
-                                        couts.forEach(function(c) {
-                                            fullInfo[procId].coutset[+c] = true;
-                                        });
-                                        cb(err);
-                                    });
-                                },
-                                function(cb) {
-                                    rcl.hgetall(procKey+":incounts", function(err, incounts) {
-                                        if (incounts && incounts.rev) {
-                                            incounts.rev = JSON.parse(incounts.rev);
-                                        }
-                                        fullInfo[procId].incounts = incounts;
-                                        cb(err);
-                                    });
-                                },
-                                function(cb) {
-                                    rcl.hgetall(procKey+":outcounts", function(err, outcounts) {
-                                        fullInfo[procId].outcounts = outcounts;
-                                        cb(err);
-                                    });
-                                }
-                            ],
-                            function done(err) {
-                                callback(err, taskInfo);
-                            });
-                        });
-                    });
-                    asyncTasks.push(function(callback) {
-                        rcl.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            ins[procId] = ret;
-                            callback(null, ret);
-                            //ins[procId].unshift(null); // inputs will be indexed from 1 instead of 0
-                        });
-                    });
-                    asyncTasks.push(function(callback) {
-                        rcl.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            outs[procId] = ret;
-                            //outs[procId].unshift(null);
-                            callback(null, ret);
-                        });
-                    });
-                    asyncTasks.push(function(callback) {
-                        rcl.hgetall(procKey+":cins", function(err, csigs) {
-                            //onsole.log("CSIGS INS", JSON.stringify(csigs));
-                            if (err || csigs == -1) { throw(new Error("Redis error")); }
-                            if (csigs != null) {
-                                var tmp = {};
-                                for (var s in csigs) {
-                                    if (tmp[csigs[s]]) {
-                                        tmp[csigs[s]].push(s);
-                                    } else {
-                                        tmp[csigs[s]] = [s];
-                                    }
-                                }
-                                for (var i in tmp) {
-                                    if (tmp[i].length == 1) {
-                                        tmp[i] = tmp[i][0];
-                                    }
-                                }
-                                if (!(procId in cPortsInfo)) {
-                                    cPortsInfo[procId] = {};
-                                }
-                                cPortsInfo[procId].ins = tmp;
-                                //onsole.log("C PORTS INFO=", JSON.stringify(cPortsInfo));
-                            }
-                            callback(null, csigs);
-                        });
-                    });
-                    asyncTasks.push(function(callback) {
-                        rcl.hgetall(procKey+":couts", function(err, ret) {
-                            //onsole.log("Proc COUTS WFLIB", ret);
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            if (ret != null) {
-                                if (!(procId in cPortsInfo)) {
-                                    cPortsInfo[procId] = {};
-                                }
-                                cPortsInfo[procId].outs = ret;
-                            }
-                            callback(null, ret);
-                        });
-                    });
-                })(i);
-            }
-            for (var i=1; i<=nData; ++i) {
-                (function(dataId) {
-                    var dataKey = wfKey+":data:"+dataId;
-                    // info about all signal sources
-                    asyncTasks.push(function(callback) {
-                        rcl.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            sources[dataId] = ret;
-                            //onsole.log(dataId+";"+ret);
-                            //sources[dataId].unshift(null);
-                            callback(null, ret);
-                        });
-                    });
-                    // info about signal sinks
-                    /*asyncTasks.push(function(callback) {
-                        rcl.zrange(dataKey+":sinks", 0, -1, function(err, ret) {
-                            if (err || ret == -1) { throw(new Error("Redis error")); }
-                            sinks[dataId] = ret;
-                            //sinks[dataId].unshift(null);
-                            callback(null, ret);
-                        });
-                    });*/
-                })(i);
-            }
-            // Create info about task types (all remaining tasks have the default type "task")
-            // TODO: pull the list of types dynamically from redis
-            asyncTasks.push(function(callback) {
-                async.each(["foreach", "splitter", "csplitter", "choice", "cchoice", "dataflow", "join"],
-                    function iterator(type, next) {
-                        rcl.smembers(wfKey+":tasktype:"+type, function(err, rep) {
-                            if (err || rep == -1) { throw(new Error("Redis error")); }
-                            if (rep) {
-                                //onsole.log(type, rep); // DEBUG
-                                types[type] = rep;
-                            }
-                            next();
-                        });
-                    },
-                    function done(err) {
-                        callback(null, types);
-                    }
-                );
-            });
 
-            //onsole.log("async tasks: "+asyncTasks.length);
-            async.parallel(asyncTasks, function done(err, result) {
-                cb(null, nTasks, nData, ins, outs, sources, sinks, types, cPortsInfo, fullInfo);
+    var getNumProcsAndSignals = function(cb) {
+        rcl.zcard(wfKey+":tasks", function(err, nProcs) {
+            if (err || nProcs == -1) { throw(new Error("Redis error")); }
+            rcl.zcard(wfKey+":data", function(err, nSigs) {
+                if (err || nSigs == -1) { throw(new Error("Redis error")); }
+                cb(nProcs, nSigs);
             });
+        });
+    }
+
+    getNumProcsAndSignals(function(nProcs, nSigs) {
+        var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, fullInfo = [];
+        for (i=1; i<=nProcs; ++i) {
+            let procId = i;
+            let procKey = wfKey+":task:"+procId;
+            asyncTasks.push(function(callback) {
+                rcl.hgetall(procKey, function(err, taskInfo) {
+                    //onsole.log("FULL TASK INFO:", taskInfo);
+                    fullInfo[procId] = taskInfo;
+                    // add additional info to fullInfo
+                    async.parallel([
+                        function(cb) {
+                            if (taskInfo.sticky) {
+                                var stickyKey = procKey+":sticky";
+                                rcl.smembers(stickyKey, function(err, stickySigs) {
+                                    if (!stickySigs) stickySigs = [];
+                                    fullInfo[procId].stickySigs = {};
+                                    stickySigs.forEach(function(s) {
+                                        fullInfo[procId].stickySigs[+s] = true;
+                                    });
+                                    cb(err);
+                                });
+                            } else {
+                                cb(null);
+                            }
+                        },
+                        function(cb) {
+                            rcl.smembers(procKey+":cinset", function(err, cins) {
+                                if (!cins) cins = [];
+                                fullInfo[procId].cinset = {};
+                                cins.forEach(function(c) {
+                                    fullInfo[procId].cinset[+c] = true;
+                                });
+                                cb(err);
+                            });
+                        },
+                        function(cb) {
+                            rcl.smembers(procKey+":coutset", function(err, couts) {
+                                if (!couts) couts = [];
+                                //onsole.log("COUTS", couts);
+                                fullInfo[procId].coutset = {};
+                                couts.forEach(function(c) {
+                                    fullInfo[procId].coutset[+c] = true;
+                                });
+                                cb(err);
+                            });
+                        },
+                        function(cb) {
+                            rcl.hgetall(procKey+":incounts", function(err, incounts) {
+                                if (incounts && incounts.rev) {
+                                    incounts.rev = JSON.parse(incounts.rev);
+                                }
+                                fullInfo[procId].incounts = incounts;
+                                cb(err);
+                            });
+                        },
+                        function(cb) {
+                            rcl.hgetall(procKey+":outcounts", function(err, outcounts) {
+                                fullInfo[procId].outcounts = outcounts;
+                                cb(err);
+                            });
+                        }
+                    ],
+                    function done(err) {
+                        callback(err, taskInfo);
+                    });
+                });
+            });
+            asyncTasks.push(function(callback) {
+                rcl.zrangebyscore(procKey+":ins", 0, "+inf", function(err, ret) {
+                    if (err || ret == -1) { throw(new Error("Redis error")); }
+                    ins[procId] = ret;
+                    callback(null, ret);
+                    //ins[procId].unshift(null); // inputs will be indexed from 1 instead of 0
+                });
+            });
+            asyncTasks.push(function(callback) {
+                rcl.zrangebyscore(procKey+":outs", 0, "+inf", function(err, ret) {
+                    if (err || ret == -1) { throw(new Error("Redis error")); }
+                    outs[procId] = ret;
+                    //outs[procId].unshift(null);
+                    callback(null, ret);
+                });
+            });
+            asyncTasks.push(function(callback) {
+                rcl.hgetall(procKey+":cins", function(err, csigs) {
+                    //onsole.log("CSIGS INS", JSON.stringify(csigs));
+                    if (err || csigs == -1) { throw(new Error("Redis error")); }
+                    if (csigs != null) {
+                        var tmp = {};
+                        for (var s in csigs) {
+                            if (tmp[csigs[s]]) {
+                                tmp[csigs[s]].push(s);
+                            } else {
+                                tmp[csigs[s]] = [s];
+                            }
+                        }
+                        for (var i in tmp) {
+                            if (tmp[i].length == 1) {
+                                tmp[i] = tmp[i][0];
+                            }
+                        }
+                        if (!(procId in cPortsInfo)) {
+                            cPortsInfo[procId] = {};
+                        }
+                        cPortsInfo[procId].ins = tmp;
+                        //onsole.log("C PORTS INFO=", JSON.stringify(cPortsInfo));
+                    }
+                    callback(null, csigs);
+                });
+            });
+            asyncTasks.push(function(callback) {
+                rcl.hgetall(procKey+":couts", function(err, ret) {
+                    //onsole.log("Proc COUTS WFLIB", ret);
+                    if (err || ret == -1) { throw(new Error("Redis error")); }
+                    if (ret != null) {
+                        if (!(procId in cPortsInfo)) {
+                            cPortsInfo[procId] = {};
+                        }
+                        cPortsInfo[procId].outs = ret;
+                    }
+                    callback(null, ret);
+                });
+            });
+        }
+        for (i=1; i<=nSigs; ++i) {
+            let sigId = i;
+            let dataKey = wfKey+":data:"+sigId;
+            // info about all signal sources
+            asyncTasks.push(function(callback) {
+                rcl.zrangebyscore(dataKey+":sources", 0, "+inf", "withscores", function(err, ret) {
+                    if (err || ret == -1) { throw(new Error("Redis error")); }
+                    sources[sigId] = ret;
+                    //onsole.log(sigId+";"+ret);
+                    //sources[sigId].unshift(null);
+                    callback(null, ret);
+                });
+            });
+            // info about signal sinks
+            /*asyncTasks.push(function(callback) {
+                rcl.zrange(dataKey+":sinks", 0, -1, function(err, ret) {
+                    if (err || ret == -1) { throw(new Error("Redis error")); }
+                    sinks[sigId] = ret;
+                    //sinks[sigId].unshift(null);
+                    callback(null, ret);
+                });
+            });*/
+        }
+        // Create info about task types (all remaining tasks have the default type "task")
+        // TODO: pull the list of types dynamically from redis
+        asyncTasks.push(function(callback) {
+            async.each(["foreach", "splitter", "csplitter", "choice", "cchoice", "dataflow", "join"],
+                function iterator(type, next) {
+                    rcl.smembers(wfKey+":tasktype:"+type, function(err, rep) {
+                        if (err || rep == -1) { throw(new Error("Redis error")); }
+                        if (rep) {
+                            //onsole.log(type, rep); // DEBUG
+                            types[type] = rep;
+                        }
+                        next();
+                    });
+                },
+                function done(err) {
+                    callback(null, types);
+                }
+            );
+        });
+
+        //onsole.log("async tasks: "+asyncTasks.length);
+        async.parallel(asyncTasks, function done(err, result) {
+            cb(null, nProcs, nSigs, ins, outs, sources, sinks, types, cPortsInfo, fullInfo);
         });
     });
 }
@@ -1609,6 +1611,7 @@ function sendSignalLua(wfId, sigValue, cb) {
 }
 
 
+/*
 // Part of NEW API for continuous processes with FIFO queues
 // @sig format:
 // ... TODO
@@ -1704,6 +1707,7 @@ function public_sendSignal(wfId, sig, cb) {
         }
     );
 }
+*/
 
 function getSigRemoteSinks(wfId, sigId, cb) {
     var rsKey = "wf:"+wfId+":data:"+sigId+":remotesinks";
