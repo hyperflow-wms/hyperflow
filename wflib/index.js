@@ -332,7 +332,7 @@ exports.init = function(redisClient) {
                     }
                 }
                 copy.fun = task.function ? task.function: "null"; // FIXME: unify this attr name
-                copy.wfname = wfname;
+                copy.wfname = wfname || "null";
                 /*if (!copy.config)
                     copy.config = "null";*/
                 copy.status = "waiting";
