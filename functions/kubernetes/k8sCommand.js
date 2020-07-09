@@ -11,17 +11,29 @@ async function k8sCommand(ins, outs, context, cb) {
   // let cluster = await getCluster();
   // const token = await getGCPToken();
 
-  // support for two clusters (cloud bursting) 
-  // if 'HF_VAR_REMOTE_CLUSTER' is defined, we check where this job is assigned to:
-  // - the local cluster: we do nothing
-  // - the remote cluster: we set KUBECONFIG to load its configuration
-  var remoteClusterId = process.env.HF_VAR_REMOTE_CLUSTER;
-  if (remoteClusterId) {
-    let partition = context.executor.partition;
-    if (partition == remoteClusterId) {
-      // this will cause reading the kube_config of the remote cluster
-      process.env.KUBECONFIG = process.env.HF_VAR_KUBE_CONFIG_PATH || "./kube_config";
-    }
+  // support for two (or more) clusters (for cloud bursting) 
+  // if 'partition' is defined, check if there is a custom config file
+  // for that partition. This config file may override parameters of the job,
+  // possibly even define a path to a different kube_config to be loaded
+  let partition = context.executor.partition; 
+  let partitionConfigDir = process.env.HF_VAR_PARTITION_CONFIG_DIR || "/opt/hyperflow/partitions";
+  let partitionConfigFile = partitionConfigDir + "/" + "part." + partition + ".config.json";
+
+  // custom parameters for the job YAML template (will overwrite default values)
+  var customParams = {};
+  try {
+    // if file exists, all configuration parameters will be read to 'customParams'
+    let rawdata = fs.readFileSync(partitionConfigFile);
+    customParams = JSON.parse(rawdata);
+  } catch {
+  }
+  console.log(partitionConfigFile);
+  console.log("CUSTOM...", customParams);
+
+  // Set kube_config path if overridden 
+  if (customParams.kubeConfigPath) {
+      process.env.KUBECONFIG = customParams.kubeConfigPath;
+      console.log(process.env.KUBECONFIG);
   }
 
   const kubeconfig = new k8s.KubeConfig();
@@ -31,9 +43,6 @@ async function k8sCommand(ins, outs, context, cb) {
   job.name = context.name;
   job.ins = ins;
   job.outs = outs;
-
-  // custom parameters to the job YAML template (will overwrite default values)
-  var customParams = {};
 
   let jobExitCode = await submitK8sJob(kubeconfig, job, context.taskId, context, customParams);
 

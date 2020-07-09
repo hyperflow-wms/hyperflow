@@ -101,7 +101,7 @@ var submitK8sJob = async(kubeconfig, job, taskId, context, customParams) => {
   var jobMessage = jobSpec.jobMessage;
 
   // Test mode -- just print, do not actually create jobs
-  if (process.env.HF_VAR_K8S_TEST) {
+  if (process.env.HF_VAR_K8S_TEST=="1") {
     console.log(JSON.stringify(jobYaml, null, 4));
     console.log(JSON.stringify(jobMessage, null, 2));
     return 0;
