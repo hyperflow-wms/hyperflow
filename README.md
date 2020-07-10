@@ -54,4 +54,4 @@ See [HyperFlow Kubernetes deployment](https://github.com/hyperflow-wms/hyperflow
 ### Running in a distributed infrastructure using the RabbitMQ executor
 * Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
 * Add option `-e AMQP_URL=amqp://rabbitmq`
-* ...
+* More information in the [hyperflow-amqp-executor](https://github.com/hyperflow-wms/hyperflow-amqp-executor) project (warning: currently not maintained and not tested with latest HyperFlow versions)
