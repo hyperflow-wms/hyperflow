@@ -13,8 +13,8 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 ### Installation
 * Install Node.js (http://nodejs.org)
 * Install Redis (http://redis.io) 
-* Install HyperFlow: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/v1.3.0.tar.gz`
-* For latest features, install from the master branch: Install HyperFlow:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
+* Install HyperFlow: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/{version}.tar.gz` (where `{version}` is for example `v1.3.38`) 
+* For latest features, install from the master branch: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
 * Add `<install_root>/node_modules/.bin` to your path
 
 ### Running locally
