@@ -1421,15 +1421,16 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // that should be set by the task's executor. 
                 // 'taskId' to be waited for is read from the process context, but 
                 // optionally it can be set by the caller via parameter 'taskIdentifier' 
-                // Create duplicate redis client for blocking blpop (one per task)
-                var redisCliBlocking = rcl.duplicate();
                 var getJobResult = async function(timeout, taskIdentifier) {
                     return new Promise(function(resolve, reject) {
+                        // Create duplicate Redis client for blocking blpop (one per task)
+                        var redisCliBlocking = rcl.duplicate();
                         const taskId = taskIdentifier || conf.taskId;
-                        const redis_cli = redisCliBlocking;
 
-                        redis_cli.blpop(taskId, timeout, function(err, reply) {
+                        redisCliBlocking.blpop(taskId, timeout, function(err, reply) {
                             err ? reject(err): resolve(reply);
+                            // Close connection of the duplicate Redis client
+                            redisCliBlocking.quit();
                         });
                     });
                 }
@@ -1445,8 +1446,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                     return new Promise(function(resolve, reject) {
                         const completedTasksSetKey = "wf:" + wfId + ":completedTasks";
                         const taskId = taskIdentifier || conf.taskId;
-                        const redis_cli = redisCliBlocking;
-                        redis_cli.sadd(completedTasksSetKey, taskId, function(err, reply) {
+                        rcl.sadd(completedTasksSetKey, taskId, function(err, reply) {
                             err ? reject(err): resolve(reply);
                         });
                     });
@@ -1455,8 +1455,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                     return new Promise(function(resolve, reject) {
                         const completedTasksSetKey = "wf:" + wfId + ":completedTasks";
                         const taskId = taskIdentifier || conf.taskId;
-                        const redis_cli = redisCliBlocking;
-                        redis_cli.sismember(completedTasksSetKey, taskId, function(err, hasCompleted) {
+                        rcl.sismember(completedTasksSetKey, taskId, function(err, hasCompleted) {
                             err ? reject(err): resolve(hasCompleted);
                         });
                     });
@@ -1472,8 +1471,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                     return new Promise(function(resolve, reject) {
                         const taskId = taskIdentifier || conf.taskId;
                         const taskMessageKey=taskId+"_msg";
-                        const redis_cli = redisCliBlocking;
-                        redis_cli.lpush(taskMessageKey, message, function(err, reply) {
+                        rcl.lpush(taskMessageKey, message, function(err, reply) {
                             err ? reject(err): resolve(reply);
                         });
                     });
@@ -1490,8 +1488,6 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 if (recovered) { conf.recovered = true; }
                 f(ins, outs, conf, function(err, outs, options) {
                     //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG
-                    // Close connection of the duplicate Redis client
-                    redisCliBlocking.quit();
                     if (recovered) {
                         if (!options) {
                             options = { recovered: true }
