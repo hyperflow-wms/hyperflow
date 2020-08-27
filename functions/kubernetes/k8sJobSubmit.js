@@ -24,7 +24,7 @@ const yaml = require('js-yaml');
 //   * jobYaml: job YAML to create the k8s job
 //   * jobMessage: job command to be sent to a remote executor
 var createK8sJobSpec = (job, taskId, context, jobYamlTemplate, customParams) => {
-  var command = 'hflow-job-execute ' + taskId + ' ' + context.redis_url;
+  var command = 'hflow-job-execute "' + taskId + '" ' + context.redis_url;
   var containerName = job.image || process.env.HF_VAR_WORKER_CONTAINER;
   var volumePath = '/work_dir';
   var jobName = Math.random().toString(36).substring(7) + '-' + 
