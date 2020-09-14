@@ -1,7 +1,7 @@
 # HyperFlow: a scientific workflow management system
 
-[![](https://images.microbadger.com/badges/version/hyperflowwms/hyperflow.svg)](https://microbadger.com/images/hyperflowwms/hyperflow "Get your own version badge on microbadger.com")
 
+![HyperFLow](https://img.shields.io/docker/v/hyperflowwms/hyperflow)
 ## Description
 
 HyperFlow is a Workflow Management System (WMS) dedicated for scientific workflows. 
