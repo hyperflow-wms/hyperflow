@@ -13,6 +13,7 @@ var fs = require('fs'),
     //toobusy = require('toobusy'),
     shortid = require('shortid'),
     Mustache = require('mustache'),
+    RemoteJobConnector = require('./connector'),
     rcl;
 
 
@@ -23,6 +24,8 @@ var sendSignalTime = 0;
 
 var global_hfid = 0; // global UUID of this HF engine instance (used for logging)
 var globalInfo = {}; // object holding global information for a given HF engine instance
+
+let jobConnectors = {}; // object holding remote jobs' connectors
 
 function p0() {
     return (new Date()).getTime();
@@ -208,6 +211,9 @@ exports.init = function(redisClient) {
             rcl.hmset(wfKey, "uri", baseUri,
                     "status", "waiting",
                     function(err, ret) { });
+
+            jobConnectors[wfId] = new RemoteJobConnector(rcl, wfId, 3000);
+            jobConnectors[wfId].run();
 
            var multi = rcl.multi(); // FIXME: change this to async.parallel
 
@@ -1417,22 +1423,15 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 conf.wfname = procInfo.wfname;
 
                 // This function is passed to the Process' Function (through 'context')
-                // and can be used to wait for task completion. It reads a key from redis 
-                // that should be set by the task's executor. 
-                // 'taskId' to be waited for is read from the process context, but 
-                // optionally it can be set by the caller via parameter 'taskIdentifier' 
+                // and can be used to wait for task completion. It reads a key from redis
+                // that should be set by the task's executor.
+                // 'taskId' to be waited for is read from the process context, but
+                // optionally it can be set by the caller via parameter 'taskIdentifier'
                 var getJobResult = async function(timeout, taskIdentifier) {
-                    return new Promise(function(resolve, reject) {
-                        // Create duplicate Redis client for blocking blpop (one per task)
-                        var redisCliBlocking = rcl.duplicate();
-                        const taskId = taskIdentifier || conf.taskId;
-
-                        redisCliBlocking.blpop(taskId, timeout, function(err, reply) {
-                            err ? reject(err): resolve(reply);
-                            // Close connection of the duplicate Redis client
-                            redisCliBlocking.quit();
-                        });
-                    });
+                    const taskId = taskIdentifier || conf.taskId;
+                    let wfId = taskId.split(':')[1];
+                    let connector = jobConnectors[wfId];
+                    return connector.waitForTask(taskId);
                 }
 
                 conf.jobResult = getJobResult;
