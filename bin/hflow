@@ -160,7 +160,6 @@ function hflow_run() {
           console.log("Error reading/parsing workflow config file ", file, e);
       }
   });
-  console.log(wfConfig);
 
   var runWf = function(wfId, wfName) {
 
