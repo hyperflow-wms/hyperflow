@@ -31,6 +31,7 @@ var spawn = require('child_process').spawn,
     dbId = 0,
     plugins = [],
     recoveryMode = false, recoveryData = { 'input': [], 'outputs': {}, 'settings': {} },
+    glob = require('glob'),
     wfDirFull; // logged in the persistence journal
 
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
@@ -132,6 +133,35 @@ function hflow_run() {
 
   wfDirFull = pathtool.resolve(wfpath);
 
+  // Read workflow configuration files if exist
+  // all files matching pattern `workflow.config[.name].json` will be matched
+  // all config will be passed to workflow functions via `context.appConfig[.name]`
+  var wfConfig = {};
+  // 1. Look for main config file -- workflow.config.json
+  var wfConfigFilePath = pathtool.join(wfDirFull, "workflow.config.json");
+  if (fs.existsSync(wfConfigFilePath)) {
+    try {
+        let rawdata = fs.readFileSync(wfConfigFilePath);
+        wfConfig = JSON.parse(rawdata);
+    } catch(e) {
+        console.log("Error reading/parsing workflow config file:", e);
+    }
+  }
+  // 2. Look for secondary config files -- workflow.config.{name}.json
+  var configFiles = glob.sync("workflow.config.*.json");
+  configFiles.forEach(function(file) {
+      try {
+          let rawdata = fs.readFileSync(file);
+          let secondaryConfig = JSON.parse(rawdata);
+          let match = file.match(/workflow\.config\.(.*).json/);
+          let name = match[1];
+          wfConfig[name] = secondaryConfig;
+      } catch (e) {
+          console.log("Error reading/parsing workflow config file ", file, e);
+      }
+  });
+  console.log(wfConfig);
+
   var runWf = function(wfId, wfName) {
 
     /*function makeId() {
@@ -144,7 +174,9 @@ function hflow_run() {
         return id.join("");
     }*/
 
-    var config = {"emulate":"false", "workdir": wfDirFull};
+    var config = wfConfig;
+    config["emulate"] = "false";
+    config["workdir"] = wfDirFull;
     
     if (recoveryMode) {
         config.recoveryData = recoveryData;

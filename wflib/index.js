@@ -1406,6 +1406,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 //onsole.log(JSON.stringify(procInfo.config));  //DEBUG
                 var conf = procInfo.config ? JSON.parse(procInfo.config): {};
                 conf.name = procInfo.name;
+                conf.appConfig = appConfig;
                 //var executor = procInfo.executor ? procInfo.executor: null;
 
                 //onsole.log("INS VALUES", insValues);
