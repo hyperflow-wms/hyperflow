@@ -55,3 +55,31 @@ See [HyperFlow Kubernetes deployment](https://github.com/hyperflow-wms/hyperflow
 * Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
 * Add option `-e AMQP_URL=amqp://rabbitmq`
 * More information in the [hyperflow-amqp-executor](https://github.com/hyperflow-wms/hyperflow-amqp-executor) project (warning: currently not maintained and not tested with latest HyperFlow versions)
+
+### Local configuration files
+You can provide workflow configuration through local configuration files:
+* `workflow.config.json` -- main configuration file 
+* `workflow.config.{name}.json` -- any number of secondary configuration files
+
+The content from all configuration files will be merged and passed to workflow functions via `context.appConfig`. For example for files:
+```
+workflow.config.json:
+{
+  "main": "mainValue"
+}
+
+workflow.config.foo.json:
+{
+   "secondary": "secondaryValue"
+}
+```
+The following will be passed in `context.appConfig`:
+```
+{
+  "main": "mainValue",
+  "foo": {
+     "secondary": "secondaryValue"
+  }
+}
+```
+
