@@ -148,7 +148,8 @@ function hflow_run() {
     }
   }
   // 2. Look for secondary config files -- workflow.config.{name}.json
-  var configFiles = glob.sync("workflow.config.*.json");
+  let globOpts = {"cwd": wfDirFull, "absolute": true};
+  var configFiles = glob.sync("workflow.config.*.json", globOpts);
   configFiles.forEach(function(file) {
       try {
           let rawdata = fs.readFileSync(file);
