@@ -65,34 +65,42 @@ async function k8sCommandGroup(bufferItems) {
     cbArr.push(cb);
   }
 
+  // All jobs in the group must have a similar context! 
+  // Here we retrieve the context of the first job in the group.
+  // It is used below to read configuration for ALL jobs in the group.
   let context = contextArr[0];
 
   // let cluster = await getCluster();
   // const token = await getGCPToken();
 
-  // support for two (or more) clusters (for cloud bursting)
-  // if 'partition' is defined, check if there is a custom config file
-  // for that partition. This config file may override parameters of the job,
-  // possibly even define a path to a different kube_config to be loaded
-  let partition = context.executor.partition;
-  let partitionConfigDir = process.env.HF_VAR_PARTITION_CONFIG_DIR || "/opt/hyperflow/partitions";
-  let partitionConfigFile = partitionConfigDir + "/" + "part." + partition + ".config.json";
+  // Read custom parameters for job template '${var}' variables. These can be
+  // provided in 'workflow.config.jobvars.json' file. 
+  //
+  // In addition, to support two (or more) clusters (for cloud bursting), if 
+  // 'partition' is defined, check if there is a custom configuration for that 
+  // partition -- it can be provided in file 'workflow.config.jobvars{$partNum}.json'.
+  // This partition-specific config may override parameters of the job, possibly even 
+  // define a path to a different kubeconfig to be loaded.
+
+  let partition = context.executor.partition; // could be 'undefined'
+  //let partitionConfigDir = process.env.HF_VAR_PARTITION_CONFIG_DIR || "/opt/hyperflow/partitions";
+  //let partitionConfigFile = partitionConfigDir + "/" + "part." + partition + ".config.json";
 
   // custom parameters for the job YAML template (will overwrite default values)
-  var customParams = {};
-  try {
-    // if file exists, all configuration parameters will be read to 'customParams'
-    let rawdata = fs.readFileSync(partitionConfigFile);
-    customParams = JSON.parse(rawdata);
-  } catch {
+  // partition-specific configuration, if exists, overrides general configuration
+  let customParams = context.appConfig.jobvars || {}; // general configuration
+  let customParamsPartition = partition ? context.appConfig['jobvars'+partition]: null;
+  if (customParamsPartition) { // partition-specific configuration
+    Object.keys(customParamsPartition).forEach(function(key) {
+      customParams[key] = customParamsPartition[key];
+    });
   }
-  console.log(partitionConfigFile);
-  console.log("CUSTOM...", customParams);
 
-  // Set kube_config path if overridden
+  //console.log("CUSTOM params...", customParams);
+
+  // Set kubeconfig path if overridden (could point to a remote cluster)
   if (customParams.kubeConfigPath) {
       process.env.KUBECONFIG = customParams.kubeConfigPath;
-      console.log(process.env.KUBECONFIG);
   }
 
   const kubeconfig = new k8s.KubeConfig();
