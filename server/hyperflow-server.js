@@ -6,9 +6,6 @@
 */
 
 'use strict';
-
-
-var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined;
 // for express
 var express = require('express'),
     bodyParser = require('body-parser'),
@@ -19,44 +16,30 @@ var express = require('express'),
     fs = require('fs'),
     which = require('which'),
     pathtool = require('path'),
-    AdmZip = require('adm-zip'),
+    AdmZip = require('adm-zip'), 
+    request = require('request'),
     app = express();
 
-var redis = require('redis'),
-    rcl = redisURL ? redis.createClient(redisURL): redis.createClient();
-
+var hflowRun = require('../common/wfRun.js').hflowRun;
 var server = http.createServer(app);
-var wflib = require('../wflib').init(rcl);
+var wflib, rcl;
 var plugins = [];
 var Engine = require('../engine2');
 var engine = {}; // engine.i contains the engine object for workflow instance 'i'
-var request = require('request');
-
-var timers = require('timers');
-
-
 //var $ = require('jquery');
-
-var _ = require('underscore');
 
 // global data
 var contentType = 'text/html';
 //var baseUrl = 'http://localhost:'+process.env.PORT;
 var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
-
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))
-
 // parse application/json
 app.use(bodyParser.json())
-
 app.disable('strict routing');
-
-
 /////////////////////////////////////////////////////////////////
 ////           REST API for HyperFlow workflows              ////
 /////////////////////////////////////////////////////////////////
-
 // returns a list of all workflow instances (aka 'apps')
 app.get('/apps', function(req, res) {
     var renderHTML = function() {
@@ -75,109 +58,100 @@ app.get('/apps', function(req, res) {
         'application/json': renderJSON
     });
 });
-
 // creates a new workflow instance ('app')
 // body can be:
 // - a valid workflow description in JSON
 // - or a complete workflow directory packed as zip
 // FIXME: validate workflow description
 // FIXME: add proper/more detailed error info instead of "badRequest(res)"
-app.post('/apps', function(req, res) {
+app.post('/apps', function (req, res) {
     var ctype = req.headers["content-type"];
-
     // TODO: makeId6 now moved to 'utils' -- use it
     function makeId6() {
         var id = [];
         var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-        for (var i=0; i<6; i++ ) {
+        for (var i = 0; i < 6; i++) {
             id[i] = possible.charAt(Math.floor(Math.random() * possible.length));
         }
-
         return id.join("");
     }
-
-    var runWorkflow = function(wfDir, appId) {
-	var config = {"emulate":"false", "workdir": wfDir};
-	engine[appId] = new Engine(config, wflib, appId, function(err) {
-	    if (err) return badRequest(res);
-		plugins.forEach(function(plugin) {
-			plugin.init(rcl, wflib, engine[appId]);
-		});
-	    engine[appId].runInstance(function(err) {
-		if (err) return badRequest(res);
-		res.header('Location', req.url + '/' + appId);
-		res.send(201, null);
-		//res.redirect(req.url + '/' + appId, 302);
-		// TODO: implement sending all input signals (just like -s flag in runwf.js)
-	    });
-	});
+    var runWorkflow = function (wfDir, appId) {
+        var config = { "emulate": "false", "workdir": wfDir };
+        engine[appId] = new Engine(config, wflib, appId, function (err) {
+            if (err) return badRequest(res);
+            plugins.forEach(function (plugin) {
+                plugin.init(rcl, wflib, engine[appId]);
+            });
+            engine[appId].runInstance(function (err) {
+                if (err) return badRequest(res);
+                res.header('Location', req.url + '/' + appId);
+                res.send(201, null);
+                //res.redirect(req.url + '/' + appId, 302);
+                // TODO: implement sending all input signals (just like -s flag in runwf.js)
+            });
+        });
     }
 
     var hfid = wflib.hfid, tmpdir = pathtool.join(os.tmpdir(), "HF-" + hfid);
-    if (!fs.existsSync(tmpdir)){
+
+    if (!fs.existsSync(tmpdir)) {
         fs.mkdirSync(tmpdir);
     }
 
     var wfDir = pathtool.join(tmpdir, makeId6());
-    fs.mkdirSync(wfDir);
-    console.log("WF DIR:", wfDir);
 
+    //fs.mkdirSync(wfDir);
+    //console.log("WF DIR:", wfDir);
+    console.log("ctype", ctype);
 
     // 1. Workflow can be sent as a zipped directory
     if (ctype == "application/zip") { 
+        console.log("app/zip");
         var zipData = [], size = 0;
 
-	req.on('data', function (data) {
-	    zipData.push(data);
-	    size += data.length;
-	    //onsole.log('Got chunk: ' + data.length + ' total: ' + size);
-	});
+        req.on('data', function (data) {
+            zipData.push(data);
+            size += data.length;
+            //onsole.log('Got chunk: ' + data.length + ' total: ' + size);
+        });
 
-	req.on('end', function () {
-	    var wffile;
-	    //onsole.log("total size = " + size);
-
-	    var buf = new Buffer(size);
-	    for (var i=0, len = zipData.length, pos = 0; i < len; i++) { 
-		zipData[i].copy(buf, pos); 
-		pos += zipData[i].length; 
-	    } 
-
-	    var zip = new AdmZip(buf);
-	    var zipEntries = zip.getEntries();
-	    //onsole.log("ZIP ENTRIES:", zipEntries.length);
-	    zip.extractAllTo(wfDir);
-
-	    // Make sure this works correctly both when the zip contains a directory, or just files
-	    process.chdir(wfDir);
-	    var files = fs.readdirSync(wfDir);
-	    if (files.length == 1) {
-		var fstats = fs.lstatSync(files[0]);
-		if (fstats.isDirectory()) {
-		    wfDir = pathtool.join(wfDir, files[0]); 
+        req.on('end', function () {
+            var wffile;
+            //onsole.log("total size = " + size);
+            var buf = new Buffer.alloc(size);
+            for (var i=0, len = zipData.length, pos = 0; i < len; i++) { 
+                zipData[i].copy(buf, pos); 
+                pos += zipData[i].length; 
+            } 
+            var zip = new AdmZip(buf);
+            var zipEntries = zip.getEntries();
+            //onsole.log("ZIP ENTRIES:", zipEntries.length);
+            zip.extractAllTo(wfDir);
+            // Make sure this works correctly both when the zip contains a directory, or just files
+            process.chdir(wfDir);
+            var files = fs.readdirSync(wfDir);
+            if (files.length == 1) {
+                var fstats = fs.lstatSync(files[0]);
+                if (fstats.isDirectory()) {
+                    wfDir = pathtool.join(wfDir, files[0]); 
                     process.chdir(wfDir);
-		} 
-	    } 
-	    wffile = pathtool.join(wfDir, "workflow.json");
-	    //onsole.log("WF FILE:", wffile);
-
+                } 
+            } 
+            wffile = pathtool.join(wfDir, "workflow.json");
+            //onsole.log("WF FILE:", wffile);
             // if there is a "package.json" file, install dependencies (npm install -d)
             // TODO: improve error checking etc.
-	    if (fs.existsSync("package.json")) { // TODO: check if it is a file
+            if (fs.existsSync("package.json")) { // TODO: check if it is a file
                 // find path to npm executable in a portable way 
                 // (using which, TODO: test portability)
                 var npmexec = which.sync('npm'); // TODO: throws if not found
                 var proc = spawn(npmexec, ["install", "-d"]);
-
                 proc.stdout.on('data', function(data) {
                     console.log(data.toString().trimRight());
                 });
-
                 proc.stderr.on('data', function(data) {
                     console.log(data.toString().trimRight());
                 });
-
                 // TODO: check exit code
                 proc.on('exit', function(code, signal) {
                     // TODO: add support for passing variables (used in rendering wf JSON; for now empty array 'vars' is passed)
@@ -190,32 +164,30 @@ app.post('/apps', function(req, res) {
                     runWorkflow(wfDir, appId);
                 });
             }
-	}); 
+        }); 
 
-	req.on('error', function(e) {
-	    console.log("ERROR ERROR: " + e.message);
-	});
+        req.on('error', function(e) {
+            console.log("ERROR ERROR: " + e.message);
+        });
+        return;
 
-	return;
-
-	// TODO: switch to "mkdtemp" after migrating to Node 6.x
-	/*fs.mkdtemp(tmpdir, (err, dir) => {
-	  console.log(dir);
-	  return res.send(201, null);
-	  });*/
+        // TODO: switch to "mkdtemp" after migrating to Node 6.x
+        /*fs.mkdtemp(tmpdir, (err, dir) => {
+            console.log(dir);
+            return res.send(201, null);
+        });*/
     }
 
-    // 2. Workflow can also be sent as a JSON
+    // 2. If JSON is received, we assume it is an 'opts' object (full command
+    // used to run the workflow), and the workfllow path is available
+    // locally -- we simply run it! 
     if (ctype == "application/json") { 
-	var wfJson = req.body, baseUrl = '';
-	//onsole.log(wfJson);
-	var hfid = wflib.hfid, zipData = [], size = 0;
-	wflib.createInstance(wfJson, baseUrl, function(err, appId) {
-	    if (err) return badRequest(res);
-	    runWorkflow(wfDir, appId);
-	});
+        let opts = req.body;
+        hflowRun(opts, function(engine) {
+            res.status(201).send(null);
+        });
+        return;
     }
-
 });
 
 // returns workflow instance ('app') info
@@ -223,9 +195,7 @@ app.get('/apps/:i', function(req, res) {
     var appId = req.params.i;
     var appIns, appOuts;
     var wfInstanceStatus = "unknown";
-
     if (!(appId in engine)) return notfound(res); // 404
-
     var renderHTML = function() {
         var start, end;
         var ctype = acceptsXml(req);
@@ -248,7 +218,6 @@ app.get('/apps/:i', function(req, res) {
             res.statuscode = 200;
             res.send(html);
         });
-
     }
 
     var renderJSON = function() {
@@ -268,7 +237,7 @@ app.get('/apps/:i', function(req, res) {
     });
 });
 
-// emits a signal to a workflow
+// Sends a signal to a workflow
 // body must be a valid signal representation, such as:
 // {
 //   "name": <signame>
@@ -281,7 +250,6 @@ app.get('/apps/:i', function(req, res) {
 app.post('/apps/:i', function(req, res) {
     var appId = req.params.i;
     if (!(appId in engine)) return notfound(res); // 404
-
     var ctype = req.headers["content-type"];
     var sigValue;
     if (ctype == "application/json") {
@@ -294,7 +262,6 @@ app.post('/apps/:i', function(req, res) {
     //onsole.log(sigValue.name);
     //onsole.log(req.headers);
     if (!("name" in sigValue)) return badrequest(res);
-
     var sigName = sigValue.name;
     wflib.getSigByName(appId, sigName, function(err, sigId) {
         if (err) return badrequest(res); // FIXME: add detailed error info
@@ -306,9 +273,7 @@ app.post('/apps/:i', function(req, res) {
             res.send('Emit signal OK!');
         });
     });
-
 });
-
 
 // returns a list of signals consumed/emitted by the workflow
 app.get('/apps/:i/sigs', function(req, res) {
@@ -326,12 +291,10 @@ app.get('/apps/:i/sigs', function(req, res) {
     });
 });
 
-
 // returns a list of input signals for the workflow
 app.get('/apps/:i/ins', function(req, res) {
     var wfId = req.params.i;
     var wfInsInfo;
-
     var renderHTML = function() {
         var ctype = acceptsXml(req);
         res.header('content-type', ctype);
@@ -343,12 +306,10 @@ app.get('/apps/:i/ins', function(req, res) {
             submit_ins_uri: req.url
         });
     }
-
     var renderJSON = function() {
         res.header('content-type', 'application/json');
         res.send(wfInsInfo);
     }
-
     wflib.getWfIns(wfId, false, function(err, wfIns) {
         wflib.getSignalInfo(wfId, wfIns, function(err, sigsInfo) {
             wfInsInfo = sigsInfo;
@@ -364,31 +325,29 @@ app.get('/apps/:i/ins', function(req, res) {
 app.get('/apps/:i/sigs/:j', function(req, res) {
     var appId = req.params.i, sigId = req.params.j;
     wflib.getDataInfoFull(appId, sigId, function(err, wfData, dSource, dSinks) {
-	if (err) {
-	    res.statusCode = 404;
-	    res.send(inst.toString());
-	} else {
-	    var ctype = acceptsXml(req);
-	    res.header('content-type', ctype);
-	    res.render('workflow-data', {
-		title: 'workflow data',
-		wfname: "Application",
-		data: wfData,
-		source: dSource,
-		data_id: sigId,
-		sinks: dSinks
-	    });
-	}
+        if (err) {
+            res.statusCode = 404;
+            res.send(inst.toString());
+        } else {
+            var ctype = acceptsXml(req);
+            res.header('content-type', ctype);
+            res.render('workflow-data', {
+                title: 'workflow data',
+                wfname: "Application",
+                data: wfData,
+                source: dSource,
+                data_id: sigId,
+                sinks: dSinks
+            });
+        }
     });
 });
-
 
 // returns a list of remote sinks of a signal
 app.get('/apps/:i/sigs/:name/remotesinks', function(req, res) {
     var appId = req.params.i;
     var sigName = req.params.name;
     var remoteSinks = req.body;
-
     var renderHTML = function(rsinks) {
         var ctype = acceptsXml(req);
         res.header('content-type', ctype);
@@ -398,7 +357,6 @@ app.get('/apps/:i/sigs/:name/remotesinks', function(req, res) {
         res.send(200, "TODO");
         // TODO
     }
-
     wflib.getSigByName(appId, sigName, function(err, sigId) {
         wflib.getSigRemoteSinks(appId, sigId, function(err, rsinks) {
             renderHTML(rsinks);
@@ -410,14 +368,12 @@ app.get('/apps/:i/sigs/:name/remotesinks', function(req, res) {
     });
 });
 
-
 // sets remote sinks for a given signal
 // body: JSON array of objects: [ { "uri": uri1 }, { "uri": uri2 }, ... ]
 app.put('/apps/:i/sigs/:name/remotesinks', function(req, res) {
     var appId = req.params.i;
     var sigName = req.params.name;
     var remoteSinks = req.body;
-
     wflib.getSigByName(appId, sigName, function(err, sigId) {
         if (err) return badrequest(res);
         wflib.setSigRemoteSinks(appId, sigId, remoteSinks, { "replace": true }, function(err) {
@@ -425,46 +381,33 @@ app.put('/apps/:i/sigs/:name/remotesinks', function(req, res) {
             res.send(200, "Remote sinks set succesfully");
         });
     });
-
 });
-
 
 ////////////////////////////////////////////////////////////////////////
 ////                        REST API (END)                         /////
 ////////////////////////////////////////////////////////////////////////
-
-
-
-
 /* validate user (from  db) via HTTP Basic Auth */
 
 function validateUser(req, res, next) {
-
 	var parts, auth, scheme, credentials;
 	var view, options;
-
 	// handle auth stuff
 	auth = req.headers["authorization"];
 	if (!auth) {
 		return authRequired(res, 'Microblog');
 	}
-
 	parts = auth.split(' ');
 	scheme = parts[0];
 	credentials = new Buffer(parts[1], 'base64').toString().split(':');
-
 	if ('Basic' != scheme) {
 		return badRequest(res);
 	}
 	req.credentials = credentials;
-
 	// ok, let's look this user up
 	view = '/_design/microblog/_view/users_by_id';
-
 	options = {};
 	options.descending = 'true';
 	options.key = String.fromCharCode(34) + req.credentials[0] + String.fromCharCode(34);
-
 	db.view('microblog/users_by_id', function(err, doc) {
 		try {
 			if (doc[0].value.password === req.credentials[1]) {
@@ -480,13 +423,10 @@ function validateUser(req, res, next) {
 	});
 }
 
-
 /* support various content-types from clients */
-
 function acceptsXml(req) {
 	var ctype = contentType;
 	var acc = req.headers["accept"];
-
 	switch (acc) {
 		case "text/xml":
 			ctype = "text/xml";
@@ -505,57 +445,42 @@ function acceptsXml(req) {
 }
 
 /* compute the current date/time as a simple date */
-
 function today() {
-
 	var y, m, d, dt;
-
 	dt = new Date();
-
 	y = String(dt.getFullYear());
-
 	m = String(dt.getMonth() + 1);
 	if (m.length === 1) {
 		m = '0' + m;
 	}
-
 	d = String(dt.getDate());
 	if (d.length === 1) {
 		d = '0' + d.toString();
 	}
-
 	return y + '-' + m + '-' + d;
 }
 
 /* compute the current date/time */
-
 function now() {
 	var y, m, d, h, i, s, dt;
-
 	dt = new Date();
-
 	y = String(dt.getFullYear());
-
 	m = String(dt.getMonth() + 1);
 	if (m.length === 1) {
 		m = '0' + m;
 	}
-
 	d = String(dt.getDate());
 	if (d.length === 1) {
 		d = '0' + d.toString();
 	}
-
 	h = String(dt.getHours() + 1);
 	if (h.length === 1) {
 		h = '0' + h;
 	}
-
 	i = String(dt.getMinutes() + 1);
 	if (i.length === 1) {
 		i = '0' + i;
 	}
-
 	s = String(dt.getSeconds() + 1);
 	if (s.length === 1) {
 		s = '0' + s;
@@ -564,11 +489,8 @@ function now() {
 }
 
 /* return standard 403 response */
-
 function forbidden(res) {
-
 	var body = 'Forbidden';
-
 	res.setHeader('Content-Type', 'text/plain');
 	res.setHeader('Content-Length', body.length);
 	res.statusCode = 403;
@@ -578,16 +500,13 @@ function forbidden(res) {
 // 404 response
 function notfound(res) {
     var body = 'Resource not found (404)';
-
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Content-Length', body.length);
     res.statusCode = 404;
     res.end(body);
 }
 
-
 /* return standard 'auth required' response */
-
 function authRequired(res, realm) {
 	var r = (realm || 'Authentication Required');
 	res.statusCode = 401;
@@ -596,26 +515,21 @@ function authRequired(res, realm) {
 }
 
 /* return standard 'bad inputs' response */
-
 function badRequest(res) {
 	res.statusCode = 400;
 	res.end('Bad Request');
 }
 
 /* iterate over json array and invoke callback */
-
-
 function clone(obj) {
 	// Handle the 3 simple types, and null or undefined
 	if (null == obj || "object" != typeof obj) return obj;
-
 	// Handle Date
 	if (obj instanceof Date) {
 		var copy = new Date();
 		copy.setTime(obj.getTime());
 		return copy;
 	}
-
 	// Handle Array
 	if (obj instanceof Array) {
 		var copy = [];
@@ -624,7 +538,6 @@ function clone(obj) {
 		}
 		return copy;
 	}
-
 	// Handle Object
 	if (obj instanceof Object) {
 		var copy = {};
@@ -633,7 +546,6 @@ function clone(obj) {
 		}
 		return copy;
 	}
-
 	throw new Error("Unable to copy obj! Its type isn't supported.");
 }
 
