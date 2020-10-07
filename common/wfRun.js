@@ -75,16 +75,13 @@ function hflow_start() {
 /*
 ** Function hflowRun: run a workflow
 ** 
-** Parameters:
-** - wfVars -- values for '{{var}}' variables that may exist in workflow.json
-** - opts -- docopt JSON object from 'hflow' command with additional options:
+** Parameters are passed as 'opts' -- docopt JSON object from 'hflow' command:
 **  '<workflow_dir_or_file>': (string/null) -- path to 'workflow'json' or directory that contains it
 **  '--log-provenance': (true/false) -- if true, provenance will be logged
 **  '--persist': (true/false) -- if true, workflow state will be persisted
 **  '--provenance-output': (string/null) -- path to file where provenance should be saved (defaults to 'provenance_log.txt')
-**  '--var': [],
-**  '--with-server': (true/false) -- 
-**  '-p': (true/false) --
+**  '--var': (array of strings) -- some {{vars}} can be passed using this array
+**  '-p': (true/false) -- if true, load plugin modules
 **  '-s': (true/false) -- if true, initial signals to all workflow inputs will be sent (obsolete)
 **  recover: (true/false) -- if true, this is a recovery mode (workflow is replayed from a recovery file)
 **  '<persistence-log>': (string/null) -- name/path to the recovery file (must be set if 'recover' is true)
