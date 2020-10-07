@@ -22,7 +22,7 @@ if (opts['--version']) {
 }
 
 if (opts.submit) {
-    hflowSubmit(wf_vars, opts);
+    hflowSubmit(opts);
     return;
 }
 
@@ -56,10 +56,10 @@ if (opts.run) {
 } else if (opts.recover) {
     hflowRun(wf_vars, opts, function(err, engine) { });
 } /*else if (opts.submit) {
-    hflowSubmit(wf_vars, opts);
+    hflowSubmit(opts);
 }*/
 
-function hflowSubmit(wf_vars, opts) {
+function hflowSubmit(opts) {
     let hfserver = opts['--url'],
         url = hfserver + '/apps';
 

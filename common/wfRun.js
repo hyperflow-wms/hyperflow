@@ -93,12 +93,14 @@ function hflow_start() {
 ** Returns runCb(engine):
 ** - engine: Engine object that represents the execution of the worklfow
 */   
-function hflowRun(wfVars, opts, runCb) {
+function hflowRun(opts, runCb) {
     var dbId = 0, 
         plugins = [],
         recoveryMode = false, 
         recoveryData, 
         wfDirFull; // logged in the persistence journal
+
+    var wfVars = readVars([], opts['--var']);
 
     // for writing writes provenance logs etc.
     var cargo = async.cargo(handle_writes, 5000);
