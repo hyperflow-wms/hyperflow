@@ -83,3 +83,18 @@ The following will be passed in `context.appConfig`:
 }
 ```
 
+### HyperFlow server
+The HyperFlow engine can be started in a server mode using command: ```hflow start-server```
+
+If succesfully started, the server prints its URL:
+```
+HyperFlow server started at http://localhost:38775
+```
+
+Workflows can be run through the HyperFlow server as follows:
+
+```
+hflow run --submit=<hyperflow_server_url> <workflow_dir>
+```
+
+Currently `<workflow_dir>` must be a local directory accessbile by the server. This allows running multiple workflows (concurrently) using the same instance of the HyperFlow engine.
