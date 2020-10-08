@@ -66,6 +66,12 @@ function handle_writes(entries, cb) {
     });
 }
 
+
+/*
+** Function hflowStartServer: start HyperFlow server
+** TODO: support external IP address and configurable port number
+** 
+*/
 function hflowStartServer() {
     var server = require('../server/hyperflow-server.js')(rcl, wflib);
     let hostname = '127.0.0.1', port = process.env.PORT;
@@ -73,7 +79,6 @@ function hflowStartServer() {
         console.log("HyperFlow server started at: http://%s:%d", server.address().address, server.address().port);
     });
 }
-
 
 
 /*
