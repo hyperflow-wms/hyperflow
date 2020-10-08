@@ -33,7 +33,6 @@ var fs = require('fs'),
     wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
-    readVars = require('../utils/readvars.js'),
     AdmZip = require('adm-zip'),
     dbId = 0,
     plugins = [],
@@ -45,16 +44,15 @@ var fs = require('fs'),
 var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
 
 // Workflow variables TODO: add support for config files
-var wf_vars = readVars([], opts['--var']);
 
 if (opts.run) {
-    hflowRun(wf_vars, opts, function(err, engine) { });
+    hflowRun(opts, function(err, engine) { });
 } else if (opts.send) {
     hflow_send();
 } else if (opts['start-server']) {
     hflow_start();
 } else if (opts.recover) {
-    hflowRun(wf_vars, opts, function(err, engine) { });
+    hflowRun(opts, function(err, engine) { });
 } /*else if (opts.submit) {
     hflowSubmit(opts);
 }*/
