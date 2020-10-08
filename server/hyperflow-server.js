@@ -6,7 +6,7 @@
 */
 
 'use strict';
-// for express
+
 var express = require('express'),
     bodyParser = require('body-parser'),
     cons = require('consolidate'),
@@ -25,21 +25,21 @@ var server = http.createServer(app);
 var wflib, rcl;
 var plugins = [];
 var Engine = require('../engine2');
-var engine = {}; // engine.i contains the engine object for workflow instance 'i'
+var engine = {}; // engine[i] contains the engine object for workflow instance 'i'
 //var $ = require('jquery');
 
 // global data
 var contentType = 'text/html';
-//var baseUrl = 'http://localhost:'+process.env.PORT;
-var baseUrl = ''; // with empty baseUrl all links are relative; I couldn't get hostname to be rendered properly in htmls
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))
 // parse application/json
 app.use(bodyParser.json())
 app.disable('strict routing');
+
 /////////////////////////////////////////////////////////////////
 ////           REST API for HyperFlow workflows              ////
 /////////////////////////////////////////////////////////////////
+
 // returns a list of all workflow instances (aka 'apps')
 app.get('/apps', function(req, res) {
     var renderHTML = function() {
@@ -58,10 +58,11 @@ app.get('/apps', function(req, res) {
         'application/json': renderJSON
     });
 });
+
 // creates a new workflow instance ('app')
 // body can be:
-// - a valid workflow description in JSON
-// - or a complete workflow directory packed as zip
+// - or a complete workflow directory packed as zip (TODO)
+// - docopt JSON (from 'hflow run' command) (workflow directory must be available locally)
 // FIXME: validate workflow description
 // FIXME: add proper/more detailed error info instead of "badRequest(res)"
 app.post('/apps', function (req, res) {
@@ -129,6 +130,7 @@ app.post('/apps', function (req, res) {
             zip.extractAllTo(wfDir);
             // Make sure this works correctly both when the zip contains a directory, or just files
             process.chdir(wfDir);
+
             var files = fs.readdirSync(wfDir);
             if (files.length == 1) {
                 var fstats = fs.lstatSync(files[0]);
@@ -137,7 +139,9 @@ app.post('/apps', function (req, res) {
                     process.chdir(wfDir);
                 } 
             } 
+
             wffile = pathtool.join(wfDir, "workflow.json");
+
             //onsole.log("WF FILE:", wffile);
             // if there is a "package.json" file, install dependencies (npm install -d)
             // TODO: improve error checking etc.
@@ -183,7 +187,8 @@ app.post('/apps', function (req, res) {
     // locally -- we simply run it! 
     if (ctype == "application/json") { 
         let opts = req.body;
-        hflowRun(opts, function(engine) {
+        hflowRun(opts, function(engineInstance, appId, wfName) {
+            engine[appId] = engineInstance;
             res.status(201).send(null);
         });
         return;
@@ -386,8 +391,8 @@ app.put('/apps/:i/sigs/:name/remotesinks', function(req, res) {
 ////////////////////////////////////////////////////////////////////////
 ////                        REST API (END)                         /////
 ////////////////////////////////////////////////////////////////////////
-/* validate user (from  db) via HTTP Basic Auth */
 
+/* validate user (from  db) via HTTP Basic Auth */
 function validateUser(req, res, next) {
 	var parts, auth, scheme, credentials;
 	var view, options;
@@ -444,49 +449,6 @@ function acceptsXml(req) {
 	return ctype;
 }
 
-/* compute the current date/time as a simple date */
-function today() {
-	var y, m, d, dt;
-	dt = new Date();
-	y = String(dt.getFullYear());
-	m = String(dt.getMonth() + 1);
-	if (m.length === 1) {
-		m = '0' + m;
-	}
-	d = String(dt.getDate());
-	if (d.length === 1) {
-		d = '0' + d.toString();
-	}
-	return y + '-' + m + '-' + d;
-}
-
-/* compute the current date/time */
-function now() {
-	var y, m, d, h, i, s, dt;
-	dt = new Date();
-	y = String(dt.getFullYear());
-	m = String(dt.getMonth() + 1);
-	if (m.length === 1) {
-		m = '0' + m;
-	}
-	d = String(dt.getDate());
-	if (d.length === 1) {
-		d = '0' + d.toString();
-	}
-	h = String(dt.getHours() + 1);
-	if (h.length === 1) {
-		h = '0' + h;
-	}
-	i = String(dt.getMinutes() + 1);
-	if (i.length === 1) {
-		i = '0' + i;
-	}
-	s = String(dt.getSeconds() + 1);
-	if (s.length === 1) {
-		s = '0' + s;
-	}
-	return y + '-' + m + '-' + d + ' ' + h + ':' + i + ':' + s;
-}
 
 /* return standard 403 response */
 function forbidden(res) {
