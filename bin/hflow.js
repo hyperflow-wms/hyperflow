@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined
-
 var docopt = require('docopt').docopt;
 
 var doc = "\
@@ -25,22 +23,9 @@ if (opts['--submit']) {
     return;
 }
 
-var fs = require('fs'),
-    pathtool = require('path'),
-    redis = require('redis'),
-    rcl = redisURL ? redis.createClient(redisURL): redis.createClient(),
-    wflib = require('../wflib').init(rcl),
-    Engine = require('../engine2'),
-    async = require('async'),
-    AdmZip = require('adm-zip'),
-    dbId = 0,
-    plugins = [],
-    recoveryMode = false, recoveryData = { 'input': [], 'outputs': {}, 'settings': {} },
-    glob = require('glob'),
-    wfDirFull,
-    hflowRun = require('../common/wfRun.js').hflowRun;
+var hflowRun = require('../common/wfRun.js').hflowRun,
+    hflowStartServer = require('../common/wfRun.js').hflowStartServer;
 
-var hfroot = pathtool.join(require('path').dirname(require.main.filename), "..");
 
 // Workflow variables TODO: add support for config files
 
@@ -70,14 +55,6 @@ function hflowSubmit(opts) {
         data: opts
     }).
     then(function(response) {
-    });
-}
-
-function hflowStartServer() {
-    var server = require('../server/hyperflow-server.js')(rcl, wflib, plugins);
-    let hostname = '127.0.0.1', port = process.env.PORT;
-    server.listen(port,  () => { 
-        console.log("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
     });
 }
 

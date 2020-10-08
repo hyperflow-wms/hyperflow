@@ -66,11 +66,15 @@ function handle_writes(entries, cb) {
     });
 }
 
-function hflow_start() {
-    var server = require('../server/hyperflow-server.js')(rcl, wflib, plugins);
-    server.listen(process.env.PORT, function() { });
-    console.log("HyperFlow server started, app factory URI: http://%s:%d/apps", server.address().address, server.address().port);
+function hflowStartServer() {
+    var server = require('../server/hyperflow-server.js')(rcl, wflib);
+    let hostname = '127.0.0.1', port = process.env.PORT;
+    server.listen(port, hostname, () => { 
+        console.log("HyperFlow server started at: http://%s:%d", server.address().address, server.address().port);
+    });
 }
+
+
 
 /*
 ** Function hflowRun: run a workflow
@@ -292,3 +296,4 @@ function hflowSend() {
 }
 
 exports.hflowRun = hflowRun;
+exports.hflowStartServer = hflowStartServer;
