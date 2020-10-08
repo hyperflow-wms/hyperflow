@@ -1,6 +1,6 @@
 /*
 ** HyperFlow engine
-** Author: Bartosz Balis (2012-2019)
+** Author: Bartosz Balis (2012-2020)
 **
 ** HyperFlow server implementing the REST API for HyperFlow workflows.
 */
@@ -555,9 +555,8 @@ function clone(obj) {
 	console.log("HyperFlow server. App factory URI: http://%s:%d/apps", server.address().address, server.address().port);
 }*/
 
-module.exports = function(rcl_, wflib_, plugins_) {
+module.exports = function(rcl_, wflib_) {
     rcl = rcl_;
     wflib = wflib_;
-	plugins = plugins_;
     return server;
 }
