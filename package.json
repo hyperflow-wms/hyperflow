@@ -5,7 +5,7 @@
     "node": "~12.16.3"
   },
   "bin": {
-    "hflow": "./bin/hflow",
+    "hflow": "./bin/hflow.js",
     "hflow-recovery-analysis": "./bin/hflow-recover-analyze.js"
   },
   "scripts": {
