@@ -96,8 +96,10 @@ function hflowStartServer() {
 **  '<persistence-log>': (string/null) -- name/path to the recovery file (must be set if 'recover' is true)
 **  '<plugin_module_name>': (array of strings) -- array of plugin modules to be loaded
 **
-** Returns runCb(engine):
+** Returns runCb(engine, wfId, wfName):
 ** - engine: Engine object that represents the execution of the worklfow
+** - wfId: unique workflow identifier
+** - wfName: workflow name (from workflow.json)
 */   
 function hflowRun(opts, runCb) {
     var dbId = 0, 
@@ -255,7 +257,7 @@ function hflowRun(opts, runCb) {
         createWf(function (err, wfId, wfName) {
             runWf(wfId, wfName, function(engine) {
                 if (runCb) {
-                    runCb(null, engine);
+                    runCb(null, engine, wfId, wfName);
                 }
             });
         });

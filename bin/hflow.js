@@ -33,13 +33,13 @@ if (opts.run) {
     if (opts['--with-server']) {
         hflowStartServer();
     }
-    hflowRun(opts, function(err, engine) { });
+    hflowRun(opts, function(err, engine, wfId, wfName) { });
 } else if (opts.send) {
     hflowSend(opts);
 } else if (opts['start-server']) {
     hflowStartServer();
 } else if (opts.recover) {
-    hflowRun(opts, function(err, engine) { });
+    hflowRun(opts, function(err, engine, wfId, wfName) { });
 } /*else if (opts.submit) {
     hflowSubmit(opts);
 }*/
