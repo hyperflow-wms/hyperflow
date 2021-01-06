@@ -19,7 +19,7 @@
     "amqplib": "0.5.2",
     "async": "0.2.x",
     "aws-sdk": "^2.2.1",
-    "axios": "^0.20.0",
+    "axios": "^0.21.1",
     "body-parser": "^1.18.3",
     "consolidate": "0.10.x",
     "crc": "0.2.1",
