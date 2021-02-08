@@ -33,11 +33,14 @@ async function k8sCommandGroup(bufferItems) {
   let restartFn = (bufferIndex) => {
     let bufferItem = bufferItems[bufferIndex];
     let taskId = bufferItem.context.taskId;
+    try {
+      var partition = bufferItem.context.executor.partition; // in case 'executor' doesn't exist
+    } catch(error) { }
     if (restartCounter.isRestartPossible(taskId)) {
       let restartVal = restartCounter.increase(taskId);
       console.log("Readding task", taskId, "to buffer (restartCount:", restartVal + ") ...");
       let itemName = bufferItem.context.name;
-      bufferManager.addItem(itemName, bufferItem);
+      bufferManager.addItem(itemName, bufferItem, partition);
     }
     return;
   }
@@ -179,7 +182,11 @@ async function k8sCommand(ins, outs, context, cb) {
     "context": context,
     "cb": cb
   };
-  bufferManager.addItem(context.name, item);
+
+  try {
+    var partition = context.executor.partition; // in case 'executor' doesn't exist
+  } catch(error) { }
+  bufferManager.addItem(context.name, item, partition);
 
   return;
 }
