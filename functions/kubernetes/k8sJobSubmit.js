@@ -109,7 +109,7 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
 
   // Load definition of the the worker job pod
   // File 'job-template.yaml' should be provided externally during deployment
-  var jobTemplatePath = process.env.HF_VAR_JOB_TEMPLATE_PATH || "./job-template.yaml";
+  var jobTemplatePath = customParams.jobTemplatePath || process.env.HF_VAR_JOB_TEMPLATE_PATH || "./job-template.yaml";
   var jobYamlTemplate = fs.readFileSync(jobTemplatePath, 'utf8');
   //var job = yaml.safeLoad(eval('`'+jobYaml+'`')); // this works, but eval unsafe
 
