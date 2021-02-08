@@ -128,7 +128,7 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
   if (process.env.HF_VAR_K8S_TEST=="1") {
     console.log(JSON.stringify(jobYaml, null, 4));
     console.log(JSON.stringify(jobMessages, null, 2));
-    return 0;
+    return taskIdArr.map(x => 0);
   }
 
   var namespace = process.env.HF_VAR_NAMESPACE || 'default';
