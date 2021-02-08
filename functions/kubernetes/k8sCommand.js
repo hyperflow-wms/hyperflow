@@ -99,6 +99,7 @@ async function k8sCommandGroup(bufferItems) {
   //console.log("CUSTOM params...", customParams);
 
   // Set kubeconfig path if overridden (could point to a remote cluster)
+  delete process.env.KUBECONFIG;
   if (customParams.kubeConfigPath) {
       process.env.KUBECONFIG = customParams.kubeConfigPath;
   }
