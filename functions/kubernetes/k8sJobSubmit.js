@@ -131,7 +131,7 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
     return taskIdArr.map(x => 0);
   }
 
-  var namespace = process.env.HF_VAR_NAMESPACE || 'default';
+  var namespace = customParams.k8sNamespace || process.env.HF_VAR_NAMESPACE || 'default';
 
   let taskStart = new Date().toISOString();
   console.log("Starting tasks", taskIdArr, 'time=' + taskStart);
