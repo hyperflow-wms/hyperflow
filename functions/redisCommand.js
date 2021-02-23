@@ -61,7 +61,7 @@ async function redisCommand(ins, outs, context, cb) {
     throw error;
   }
 
-  console.log("Spawning:", cmd, context.taskId, context.redis_url);
+  console.log("Spawning:", cmd, '--', context.taskId, context.redis_url);
 
   // "submit" job (start the handler process)
   var proc = spawn(cmd, [context.taskId, context.redis_url], {shell: true});
