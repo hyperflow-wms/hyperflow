@@ -4,7 +4,7 @@
     "name": "SubmitRemoteJob",
     "type": "dataflow",
     "parlevel": 0,
-    "firingLimit": 10,
+    "firingLimit": 1,
     "function": "submitRemoteJob",
     "config": {
       "executor": {
@@ -15,6 +15,20 @@
       }
     },
     "ins": [ "number", "number2" ],
+    "outs": [ ]
+  }, {
+    "name": "RemoteJobWithPipes",
+    "type": "dataflow",
+    "firingLimit": 1,
+    "function": "submitRemoteJob",
+    "config": {
+      "executor": {
+        "executable": "ls",
+        "args": ["-l", "|", "sort", "-r"],
+	"shell": true
+      }
+    },
+    "ins": [ "number" ],
     "outs": [ ]
   } ],
   "signals": [ {
