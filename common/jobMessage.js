@@ -23,7 +23,7 @@ var createJobMessage = function(ins, outs, context, customTaskId) {
     jobMessageJSON.stdoutAppend = context.executor.stdoutAppend; // if present, redirect stdout in append mode
     jobMessageJSON.stderrAppend = context.executor.stderrAppend; // if present, redirect stderr in append mode
 
-    return JSON.stringify(jobMessageJSON);
+    return jobMessageJSON;
 }
 
 exports.createJobMessage = createJobMessage;
