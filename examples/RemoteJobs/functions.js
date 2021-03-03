@@ -1,5 +1,6 @@
 var spawn = require('child_process').spawn;
 var log4js = require('log4js');
+var createJobMessage = require('../../common/jobMessage.js').createJobMessage;
 
 
 // Spawns a job "node handler.js" and waits for the notification of its
@@ -22,25 +23,7 @@ async function submitRemoteJob(ins, outs, context, cb) {
       work_dir = context.executor.work_dir,
       output_dir = context.executor.output_dir;
     
-  let jobMessage = JSON.stringify({
-    "name": context.name,
-    "executable": context.executor.executable,
-    "args": context.executor.args,
-    "env": context.executor.env || {},
-    "input_dir": input_dir, // input data files
-    "work_dir": work_dir, // working directory
-    "output_dir": output_dir, // if present, copy output files there
-    "inputs": ins.map(i => i),
-    "outputs": outs.map(o => o),
-    "stdout": context.executor.stdout, // file name to which stdout should be redirected (optional)
-    "stderr": context.executor.stderr, // file name to which stderr should be redirected (optional)
-    "stdoutAppend": context.executor.stdoutAppend, // redirect stdout in append mode
-    "stderrAppend": context.executor.stderrAppend, // redirect stderr in append mode
-    "redis_url": context.redis_url,
-    "taskId": context.taskId
-  });
-
-  //console.log(jobMessage.inputs, jobMessage.outputs);
+  let jobMessage = JSON.stringify(createJobMessage(ins, outs, context));
 
   var cmd;
 
