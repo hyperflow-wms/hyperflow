@@ -3,6 +3,19 @@
 
 var spawn = require('child_process').spawn;
 var log4js = require('log4js');
+var createJobMessage = require('../common/jobMessage.js').createJobMessage;
+
+// limit of parallel jobs
+const MAX_PARALLELISM = process.env.HF_VAR_REDIS_CMD_MAX_PARALLELISM || 10;
+// how long to sleep in the case max parallelism is achieved
+const WAIT_TIME_MS = process.env.HF_VAR_REDIS_CMD_WAIT_TIME_MS || 2000;
+
+// number of jobs currently running
+var numParallelJobs = 0;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function redisCommand(ins, outs, context, cb) {
   let fname='wftrace-' + context.hfId + '-' + context.appId + '.log';
@@ -19,21 +32,7 @@ async function redisCommand(ins, outs, context, cb) {
       work_dir = context.executor.work_dir,
       output_dir = context.executor.output_dir;
     
-  let jobMessage = JSON.stringify({
-    "executable": context.executor.executable,
-    "args": context.executor.args,
-    "env": context.executor.env || {},
-    "input_dir": input_dir, // input data files
-    "work_dir": work_dir, // working directory
-    "output_dir": output_dir, // if present, copy output files there
-    "inputs": ins.map(i => i),
-    "outputs": outs.map(o => o),
-    "stdout": context.executor.stdout, // if present, denotes file name to which stdout should be redirected
-    "redis_url": context.redis_url,
-    "taskId": context.taskId,
-    "name": context.name // domain-specific name of the task
-  });
-
+  let jobMessage = JSON.stringify(createJobMessage(ins, outs, context));
 
   // environment variables override 'container' and 'work_dir' settings
   if (process.env.HF_VAR_WORKER_CONTAINER) {
@@ -61,6 +60,14 @@ async function redisCommand(ins, outs, context, cb) {
     throw error;
   }
 
+  // Wait in the case max parallelism is achieved
+  while (numParallelJobs == MAX_PARALLELISM) {
+    console.log("Max parallelism acheived, sleeping", WAIT_TIME_MS + "ms...")
+    await sleep(WAIT_TIME_MS);
+  }
+
+  numParallelJobs++;
+  console.log("Jobs currently running:", numParallelJobs);
   console.log("Spawning:", cmd, '--', context.taskId, context.redis_url);
 
   // "submit" job (start the handler process)
@@ -94,6 +101,7 @@ async function redisCommand(ins, outs, context, cb) {
     var jobResult = await context.jobResult(0);
     logger.info('[' + context.taskId + '] job result received:', jobResult);
     console.log('Received job result:', jobResult);
+    numParallelJobs--;
     cb(null, outs);
   } catch(err) {
     console.error(err);
