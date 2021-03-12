@@ -48,7 +48,7 @@
     "walk": "2.x",
     "when": "3.x",
     "which": "1.x",
-    "xmldom": "0.1.x",
+    "xmldom": "0.5.x",
     "xpath": "0.x",
     "z-schema": "2.0.x"
   },
