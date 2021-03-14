@@ -1,6 +1,7 @@
 const k8s = require('@kubernetes/client-node');
 var fs = require('fs');
 const yaml = require('js-yaml');
+const createJobMessage = require('../../common/jobMessage').createJobMessage;
 
 // k8sJobSubmit.js
 // Common functions for job submission to Kubernetes clusters
@@ -105,8 +106,6 @@ var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) =>
 // Returns: job exit code
 var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams, restartFn) => {
 
-  let context = contextArr[0];
-
   // Load definition of the the worker job pod
   // File 'job-template.yaml' should be provided externally during deployment
   var jobTemplatePath = customParams.jobTemplatePath || process.env.HF_VAR_JOB_TEMPLATE_PATH || "./job-template.yaml";
@@ -114,20 +113,21 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
   //var job = yaml.safeLoad(eval('`'+jobYaml+'`')); // this works, but eval unsafe
 
   // CAUTION: When creating job YAML first job details (requests, container) are used.
-  var jobYaml = createK8sJobYaml(jobArr[0], taskIdArr, context, jobYamlTemplate, customParams);
+  var jobYaml = createK8sJobYaml(jobArr[0], taskIdArr, contextArr[0], jobYamlTemplate, customParams);
   let jobMessages = [];
   for (var i=0; i<jobArr.length; i++) {
     let job = jobArr[i];
     let taskId = taskIdArr[i];
 
-    let jobMessage = createK8sJobMessage(job, taskId, context);
+    //let jobMessage = createK8sJobMessage(job, taskId, context);
+    let jobMessage = createJobMessage(job.ins, job.outs, contextArr[i], taskId);
     jobMessages.push(jobMessage);
   }
 
   // Test mode -- just print, do not actually create jobs
   if (process.env.HF_VAR_K8S_TEST=="1") {
-    console.log(JSON.stringify(jobYaml, null, 4));
-    console.log(JSON.stringify(jobMessages, null, 2));
+    console.log("Job yaml", JSON.stringify(jobYaml, null, 4));
+    console.log("Job message", JSON.stringify(jobMessages, null, 2));
     return taskIdArr.map(x => 0);
   }
 
