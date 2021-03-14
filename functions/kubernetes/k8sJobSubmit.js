@@ -112,6 +112,8 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
   var jobYamlTemplate = fs.readFileSync(jobTemplatePath, 'utf8');
   //var job = yaml.safeLoad(eval('`'+jobYaml+'`')); // this works, but eval unsafe
 
+  let context = contextArr[0]; 
+
   // CAUTION: When creating job YAML first job details (requests, container) are used.
   var jobYaml = createK8sJobYaml(jobArr[0], taskIdArr, contextArr[0], jobYamlTemplate, customParams);
   let jobMessages = [];
