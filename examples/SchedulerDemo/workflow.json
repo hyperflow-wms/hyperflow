@@ -1,0 +1,27 @@
+{
+  "name": "SchedulerDemo",
+  "processes": [ {
+    "name": "task1",
+    "type": "dataflow",
+    "firingLimit": 1,
+    "function": "taskFunction",
+    "ins": [ "number", "number2" ],
+    "outs": [ ]
+  }, {
+    "name": "task2",
+    "type": "dataflow",
+    "firingLimit": 1,
+    "function": "taskFunction",
+    "ins": [ "number" ],
+    "outs": [ ]
+  } ],
+  "signals": [ {
+    "name": "number",
+    "data": [ 1 ]
+  }, {
+    "name": "number2",
+    "data": [ 1 ]
+  } ],
+  "ins": [ "number" ],
+  "outs": [ ]
+}
