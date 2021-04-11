@@ -12,7 +12,7 @@ var fs = require('fs'),
     readVars = require('../utils/readvars.js'),
     glob = require('glob');
 
-function load_plugin(plugin_name) {
+function load_plugin(plugins, plugin_name) {
     try {
         var Plugin = require(plugin_name);
         plugins.push(new Plugin());
@@ -114,7 +114,7 @@ function hflowRun(opts, runCb) {
     var cargo = async.cargo(handle_writes, 5000);
 
     if (opts['-p']) {
-        opts['<plugin_module_name>'].forEach(load_plugin);
+        opts['<plugin_module_name>'].forEach((plugin_name) => load_plugin(plugins, plugin_name));
     }
 
     if (opts.recover) {
@@ -166,7 +166,7 @@ function hflowRun(opts, runCb) {
         }
     });
 
-    var runWf = function(wfId, wfName, cb) {
+    var runWf = function(wfId, wfName, wfJson, cb) {
         var config = wfConfig;
         config["emulate"] = "false";
         config["workdir"] = wfDirFull;
@@ -186,7 +186,12 @@ function hflowRun(opts, runCb) {
             // });
 
             plugins.forEach(function(plugin) {
-                plugin.init(rcl, wflib, engine);
+                let config = {};
+                if (plugin.pgType == "scheduler") {
+                    config.wfJson = wfJson;
+                    config.wfId = wfId;
+                }
+                plugin.init(rcl, wflib, engine, config);
             });
 
             engine.syncCb = function () {
@@ -247,15 +252,15 @@ function hflowRun(opts, runCb) {
             //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
             if (err) throw err;
                 wflib.createInstanceFromFile(wffile, '', { vars: wfVars }, function(err, id, wfJson) {
-                cb(err, id, wfJson.name);
+                cb(err, id, wfJson.name, wfJson);
             });
             //});
         });
     }
 
     var startWf = function() {
-        createWf(function (err, wfId, wfName) {
-            runWf(wfId, wfName, function(engine) {
+        createWf(function (err, wfId, wfName, wfJson) {
+            runWf(wfId, wfName, wfJson, function(engine) {
                 if (runCb) {
                     runCb(null, engine, wfId, wfName);
                 }
