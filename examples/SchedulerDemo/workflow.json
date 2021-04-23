@@ -4,14 +4,14 @@
     "name": "task1",
     "type": "dataflow",
     "firingLimit": 1,
-    "function": "taskFunction",
+    "function": "taskFunction1",
     "ins": [ "number", "number2" ],
     "outs": [ ]
   }, {
     "name": "task2",
     "type": "dataflow",
     "firingLimit": 1,
-    "function": "taskFunction",
+    "function": "taskFunction2",
     "ins": [ "number" ],
     "outs": [ ]
   } ],
