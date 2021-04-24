@@ -16,3 +16,7 @@ This is an asynchronous alternative of `getTaskExecutionPermission`, also enabli
 scheduler.notifyTaskCompletion(context.appId, context.procId);
 ```
 This function should be used to notify that a task has been completed. This allows the scheduler to trigger subsequent tasks, or even update the execution schedule. 
+
+## Running the example
+
+See [Hyperflow simple scheduler](https://github.com/hyperflow-wms/hyperflow-simple-scheduler) 
