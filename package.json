@@ -1,6 +1,6 @@
 {
   "name": "hyperflow",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "engines": {
     "node": "~12.16.3"
   },
