@@ -179,20 +179,22 @@ function hflowRun(opts, runCb) {
         //console.log(JSON.stringify(recoveryData, null, 2));
         //process.exit(1);
 
-        var engine = new Engine(config, wflib, wfId, function(err) {
+        var engine = new Engine(config, wflib, wfId, async function(err) {
             // This represent custom plugin listening on event from available eventServer
             // engine.eventServer.on('trace.*', function(exec, args) {
             //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
             // });
 
-            plugins.forEach(function(plugin) {
-                let config = {};
-                if (plugin.pgType == "scheduler") {
-                    config.wfJson = wfJson;
-                    config.wfId = wfId;
+            await Promise.all(
+                plugins.map(function(plugin) {
+                    let config = {};
+                    if (plugin.pgType == "scheduler") {
+                        config.wfJson = wfJson;
+                        config.wfId = wfId;
+                    }
+                    return plugin.init(rcl, wflib, engine, config);
                 }
-                plugin.init(rcl, wflib, engine, config);
-            });
+            ));
 
             engine.syncCb = function () {
                 process.exit();
