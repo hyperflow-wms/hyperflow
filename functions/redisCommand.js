@@ -4,6 +4,7 @@
 var spawn = require('child_process').spawn;
 var log4js = require('log4js');
 var createJobMessage = require('../common/jobMessage.js').createJobMessage;
+var os = require('os');
 
 // limit of parallel jobs
 const MAX_PARALLELISM = process.env.HF_VAR_REDIS_CMD_MAX_PARALLELISM || 10;
@@ -12,6 +13,9 @@ const WAIT_TIME_MS = process.env.HF_VAR_REDIS_CMD_WAIT_TIME_MS || 2000;
 
 // number of jobs currently running
 var numParallelJobs = 0;
+
+// set host name to be logged by the executor
+process.env.HF_LOG_NODE_NAME = os.hostname();
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -50,6 +54,7 @@ async function redisCommand(ins, outs, context, cb) {
     if (input_dir) cmd += ' -v ' + input_dir + ':/input_dir ';
     if (work_dir) cmd += ' -v ' + work_dir + ':/work_dir ';
     if (output_dir) cmd += ' -v ' + output_dir + ':/output_dir ';
+    cmd += ' -e HF_LOG_NODE_NAME="' + os.hostname() + '"';
     cmd += context.container + ' hflow-job-execute';
   } else cmd = 'hflow-job-execute'
 
