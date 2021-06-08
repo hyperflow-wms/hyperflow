@@ -13,9 +13,10 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 ### Installation
 * Install Node.js (http://nodejs.org)
 * Install Redis (http://redis.io) 
-* Install HyperFlow: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/{version}.tar.gz` (where `{version}` is for example `v1.3.38`) 
-* For latest features, install from the master branch: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
-* Add `<install_root>/node_modules/.bin` to your path
+* Install HyperFlow: 
+  * From npm package: `npm install -g @hyperflow/hyperflow`
+  * From github repository:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/{version}.tar.gz`<br>(where `{version}` is for example `v1.5.0`) 
+  * From the master branch: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
 
 ### Running locally
 * Start the redis server: `redis-server`
@@ -40,7 +41,7 @@ docker run -a stdout -a stderr --rm --network container:redis \
        --entrypoint "/bin/sh" hyperflowwms/hyperflow -c "apk add docker && hflow run /wfdir"
 ```
 Where
-* `hyperflowwms/soykb-workflow-worker` is the name of the workflow worker container ([Soykb](https://github.com/hyperflow-wms/soykb-workflow) in this case)
+* `hyperflowwms/soykb-worker` is the name of the workflow worker container ([Soykb](https://github.com/hyperflow-wms/soykb-workflow) in this case)
 * current directory contains `workflow.json`
 * subdirectory `inputs` contains workflow input data 
 
@@ -51,12 +52,13 @@ Outputs:
 ### Running in a Kubernetes cluster
 See [HyperFlow Kubernetes deployment](https://github.com/hyperflow-wms/hyperflow-k8s-deployment) project for more information. 
 
-### Running in a distributed infrastructure using the RabbitMQ executor
+### Running in a distributed infrastructure using the RabbitMQ executor (not maintained)
 * Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
 * Add option `-e AMQP_URL=amqp://rabbitmq`
-* More information in the [hyperflow-amqp-executor](https://github.com/hyperflow-wms/hyperflow-amqp-executor) project (warning: currently not maintained and not tested with latest HyperFlow versions)
+* More information in the [hyperflow-amqp-executor](https://github.com/hyperflow-wms/hyperflow-amqp-executor) project
+* **Warning**: currently not maintained and not tested with latest HyperFlow versions
 
-### Local configuration files
+## Local configuration files
 You can provide workflow configuration through local configuration files:
 * `workflow.config.json` -- main configuration file 
 * `workflow.config.{name}.json` -- any number of secondary configuration files
@@ -83,7 +85,7 @@ The following will be passed in `context.appConfig`:
 }
 ```
 
-### HyperFlow server
+## HyperFlow server
 The HyperFlow engine can be started in a server mode using command: ```hflow start-server```
 
 If succesfully started, the server prints its URL:
