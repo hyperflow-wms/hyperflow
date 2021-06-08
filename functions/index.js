@@ -8,18 +8,13 @@ var cmd = require('./command.js'),
     k8sCommand = require('./kubernetes/k8sCommand.js').k8sCommand,
     bojK8sCommand = require('./kubernetes/bojK8sCommand.js').bojK8sCommand;
 
-function print(ins, outs, config, cb) {
-    //console.log("PRINT", JSON.stringify(ins));
-        ins.forEach(function(input) {
-                //console.log("sigId=", input.sigId + ":", input.data[0])
-		//console.log(JSON.stringify(input, null, 2));
-		if (input.data && input.data[0].value) {
-                    console.log(input.data[0].value);
-		} else {
-                    console.log(JSON.stringify(input, null, 2));
-                }
-        });
-        cb(null, outs);
+function print(ins, outs, context, cb) {
+    console.log("Running task", context.name, "(" + context.taskId + ")")
+    console.log(context.executor)
+    if (context.traceInfo) {
+        console.log("Trace info:", context.traceInfo)
+    }
+    cb(null, outs);
 }
 
 function print2(ins, outs, config, cb) {
