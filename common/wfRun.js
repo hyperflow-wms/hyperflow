@@ -72,9 +72,10 @@ function handle_writes(entries, cb) {
 ** TODO: support external IP address and configurable port number
 ** 
 */
-function hflowStartServer() {
+function hflowStartServer(opts) {
     var server = require('../server/hyperflow-server.js')(rcl, wflib);
-    let hostname = '127.0.0.1', port = process.env.PORT;
+    let hostname = opts['<hyperflow_server_host>'] || '127.0.0.1';
+    let port = opts['<hyperflow_server_port>'] || process.env.PORT;
     server.listen(port, hostname, () => { 
         console.log("HyperFlow server started at: http://%s:%d", server.address().address, server.address().port);
     });

@@ -1,6 +1,7 @@
-FROM node:12-alpine
+FROM hyperflowwms/hyperflow-autoscaler-plugin
 
-#ENV PATH $PATH:/node_modules/.bin
+ENV NODE_PATH=/usr/local/lib/node_modules
 
 COPY . /hyperflow
-RUN npm install -g /hyperflow 
+
+RUN npm install -g /hyperflow
