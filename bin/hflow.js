@@ -6,7 +6,7 @@ var doc = "\
 Usage:\n\
     hflow run <workflow_dir_or_file> [-s] [--submit=<hyperflow_server_url] [--persist] [--with-server] [--log-provenance] [--provenance-output=<provenance_file>] [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
     hflow recover <persistence-log> [-p <plugin_module_name> ...] [--var=<name=value> ...]\n\
-    hflow start-server [-p <plugin_module_name> ...]\n\
+    hflow start-server [--host <hyperflow_server_host>] [--port <hyperflow_server_port>] [-p <plugin_module_name> ...]\n\
     hflow send <wf_id> ( <signal_file> | -d <signal_data> ) [-p <plugin_module_name> ...]\n\
     hflow -h | --help | --version";
 
@@ -33,13 +33,13 @@ if (opts.run) {
     if (opts['--with-server']) {
         hflowStartServer();
     }
-    hflowRun(opts, function(err, engine, wfId, wfName) { });
+    hflowRun(opts, function(err, engine, wfId, wfName) { }, false);
 } else if (opts.send) {
     hflowSend(opts);
 } else if (opts['start-server']) {
-    hflowStartServer();
+    hflowStartServer(opts);
 } else if (opts.recover) {
-    hflowRun(opts, function(err, engine, wfId, wfName) { });
+    hflowRun(opts, function(err, engine, wfId, wfName) { }, false);
 } /*else if (opts.submit) {
     hflowSubmit(opts);
 }*/

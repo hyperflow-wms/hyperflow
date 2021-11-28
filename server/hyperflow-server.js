@@ -190,7 +190,7 @@ app.post('/apps', function (req, res) {
         hflowRun(opts, function(engineInstance, appId, wfName) {
             engine[appId] = engineInstance;
             res.status(201).send(null);
-        });
+        }, true);
         return;
     }
 });

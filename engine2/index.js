@@ -15,7 +15,8 @@
 var fs = require('fs'),
     fsm = require('./automata.js'),
     async = require('async'),
-    eventServerFactory = require('../eventlog');
+    eventServerFactory = require('../eventlog'),
+    removeBufferManager = require('../functions/kubernetes/k8sCommand').removeBufferManager;
 
 
 var ProcDataflowFSM = require('./ProcDataflowFSM.js');
@@ -39,6 +40,7 @@ fsm.registerFSM(ProcSplitterFSM);
 var Engine = function(config, wflib, wfId, cb) {
     this.wflib = wflib;
     this.config = config;
+    this.config.wfId = wfId;
     this.eventServer = eventServerFactory.createEventServer();
     this.wfId = wfId;
     this.tasks = [];      // array of task FSMs
@@ -51,6 +53,7 @@ var Engine = function(config, wflib, wfId, cb) {
     this.nTasksLeft = 0;  // how many tasks left (not finished)? 
     this.nWfOutsLeft = 0; // how many workflow outputs are still to be produced? 
     this.syncCb = null; // callback invoked when wf instance finished execution  (passed to runInstanceSync)
+    this.plugins = [];
 
     this.logProvenance = false;
 
@@ -151,6 +154,12 @@ Engine.prototype.taskFinished = function(taskId) {
 
 Engine.prototype.workflowFinished = function() {
     console.log("Workflow ["+this.wfId+"] finished. Exec trace:", this.trace+"." );
+    removeBufferManager(this.wfId);
+    this.plugins.forEach((plugin) => {
+        if (plugin.markWorkflowFinished) {
+            plugin.markWorkflowFinished(this.wfId);
+        }
+    });
     //onsole.log(this.syncCb);
     if (this.syncCb) {
         this.syncCb();

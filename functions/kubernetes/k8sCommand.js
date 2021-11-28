@@ -6,10 +6,10 @@ var RestartCounter = require('./restart_counter.js').RestartCounter;
 var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
 var fs = require('fs');
 
-let bufferManager = new BufferManager();
+let bufferManagers = {};
+let restartCounters = {}
 
 let backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 0;
-let restartCounter = new RestartCounter(backoffLimit);
 
 // Function k8sCommandGroup
 //
@@ -19,14 +19,16 @@ let restartCounter = new RestartCounter(backoffLimit);
 //   * outs
 //   * context
 //   * cb
-async function k8sCommandGroup(bufferItems) {
+async function k8sCommandGroup(wfId, bufferItems) {
 
   // No action needed when buffer is empty
   if (bufferItems.length == 0) {
     return;
   }
 
-  let startTime = Date.now();
+  let startTime = Date.now()
+  const bufferManager = bufferManagers[wfId];
+  const restartCounter = restartCounters[wfId];
   console.log("k8sCommandGroup started, time:", startTime);
 
   // Function for rebuffering items
@@ -165,10 +167,27 @@ async function k8sCommandGroup(bufferItems) {
   return;
 }
 
-bufferManager.setCallback((items) => k8sCommandGroup(items));
+function removeBufferManager(wfId) {
+  if (bufferManagers[wfId] !== undefined) {
+    delete bufferManagers[wfId];
+  }
+  if (restartCounters[wfId] !== undefined) {
+    delete restartCounters[wfId];
+  }
+}
 
 async function k8sCommand(ins, outs, context, cb) {
   /** Buffer Manager configuration. */
+  const wfId = context.appConfig.wfId;
+  let bufferManager = bufferManagers[wfId];
+  if (bufferManager === undefined) {
+    bufferManager = new BufferManager();
+    bufferManager.setCallback((items) => k8sCommandGroup(wfId, items));
+    bufferManagers[wfId] = bufferManager;
+  }
+  if (restartCounters[wfId] === undefined) {
+    restartCounters[wfId] = new RestartCounter(backoffLimit);
+  }
   buffersConf = context.appConfig.jobAgglomerations;
   let alreadyConfigured = bufferManager.isConfigured();
   if (alreadyConfigured == false && buffersConf != undefined) {
@@ -191,4 +210,5 @@ async function k8sCommand(ins, outs, context, cb) {
   return;
 }
 
+exports.removeBufferManager = removeBufferManager;
 exports.k8sCommand = k8sCommand;
