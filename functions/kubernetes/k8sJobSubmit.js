@@ -54,7 +54,8 @@ function createK8sJobMessage(job, taskId, context) {
 var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) => {
   let quotedTaskIds = taskIds.map(x => '"' + x + '"');
   var command = 'hflow-job-execute ' + context.redis_url + ' -a -- ' + quotedTaskIds.join(' ');
-  var containerName = job.image || process.env.HF_VAR_WORKER_CONTAINER;
+  var containerName = context.appConfig.containerImage || job.image || process.env.HF_VAR_WORKER_CONTAINER;
+  var workingDirPath = context.workdir;
   var volumePath = '/work_dir';
   var jobName = Math.random().toString(36).substring(7) + '-' +
                 job.name.replace(/_/g, '-') + "-" + context.procId + '-' + context.firingId;
@@ -62,8 +63,19 @@ var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) =>
   // remove chars not allowd in Pod names
   jobName = jobName.replace(/[^0-9a-z-]/gi, '').toLowerCase();
 
-  var cpuRequest = job.cpuRequest || process.env.HF_VAR_CPU_REQUEST || "0.5";
-  var memRequest = job.memRequest || process.env.HF_VAR_MEM_REQUEST || "50Mi";
+  const containerSpec = context.appConfig.containerSpec;
+  let cpuSpec;
+  let memorySpec;
+  if (containerSpec[job.name]) {
+    cpuSpec = containerSpec[job.name].cpu;
+    memorySpec = containerSpec[job.name].memory;
+  } else if (containerSpec.default) {
+    cpuSpec = containerSpec.default.cpu;
+    memorySpec = containerSpec.default.memory;
+  }
+
+  var cpuRequest = cpuSpec || job.cpuRequest || process.env.HF_VAR_CPU_REQUEST || "0.5";
+  var memRequest = memorySpec || job.memRequest || process.env.HF_VAR_MEM_REQUEST || "50Mi";
 
   // Restart policy -- enable if "HF_VAR_BACKOFF_LIMIT" (number of retries) is defined
   var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 0;
@@ -80,7 +92,7 @@ var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) =>
     restartPolicy: restartPolicy, backoffLimit: backoffLimit,
     experimentId: context.hfId + ":" + context.appId,
     workflowName: context.wfname, taskName: job.name,
-    appId: context.appId
+    appId: context.appId, workingDirPath: workingDirPath
   }
 
   // Add/override custom parameters for the job

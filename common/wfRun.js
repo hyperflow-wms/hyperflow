@@ -102,7 +102,7 @@ function hflowStartServer(opts) {
 ** - wfId: unique workflow identifier
 ** - wfName: workflow name (from workflow.json)
 */   
-function hflowRun(opts, runCb) {
+function hflowRun(opts, runCb, runAsServer) {
     var dbId = 0, 
         plugins = [],
         recoveryMode = false, 
@@ -167,6 +167,22 @@ function hflowRun(opts, runCb) {
         }
     });
 
+    if (wfConfig.containerSpec) {
+        const spec = wfConfig.containerSpec;
+        wfConfig.containerSpec = new Map(Array.from(spec).map(entity => {
+            const jobName = entity.jobName;
+            const cpu = entity.cpu;
+            const memory = entity.memory;
+            const data = {
+                "cpu": cpu,
+                "memory": memory
+            };
+            return [jobName, data];
+        }));
+    } else {
+        wfConfig.containerSpec = new Map();
+    }
+
     var runWf = function(wfId, wfName, wfJson, cb) {
         var config = wfConfig;
         config["emulate"] = "false";
@@ -185,9 +201,10 @@ function hflowRun(opts, runCb) {
             // engine.eventServer.on('trace.*', function(exec, args) {
             //   console.log('Event captured: ' + exec + ' ' + args + ' job done');
             // });
+            this.plugins = [...plugins]
 
             await Promise.all(
-                plugins.map(function(plugin) {
+                this.plugins.map(function(plugin) {
                     let config = {};
                     if (plugin.pgType == "scheduler") {
                         config.wfJson = wfJson;
@@ -197,8 +214,10 @@ function hflowRun(opts, runCb) {
                 }
             ));
 
-            engine.syncCb = function () {
-                process.exit();
+            if (!runAsServer) {
+                engine.syncCb = function () {
+                    process.exit();
+                }
             }
 
             if (opts['--log-provenance']) {
