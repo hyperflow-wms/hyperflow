@@ -38,7 +38,7 @@
     "q": "1.5.x",
     "redis": "3.1.x",
     "request": "2.x",
-    "requestretry": "1.x",
+    "requestretry": "7.x",
     "shell-quote": "1.6.1",
     "shortid": "^2.2.15",
     "twitter": "^1.7.1",
