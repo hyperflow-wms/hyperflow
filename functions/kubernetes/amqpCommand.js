@@ -4,8 +4,6 @@ const k8s = require('@kubernetes/client-node');
 var BufferManager = require('./buffer_manager.js').BufferManager;
 var RestartCounter = require('./restart_counter.js').RestartCounter;
 var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
-var amqpEnqueueJobs = require('./amqpConnector.js').enqueueJobs;
-var synchronizeJobs = require('./jobSynchronization').synchronizeJobs
 var fs = require('fs');
 
 let bufferManager = new BufferManager();
@@ -21,18 +19,6 @@ let restartCounter = new RestartCounter(backoffLimit);
 //   * outs
 //   * context
 //   * cb
-
-function getExecutorType(context) {
-  if ("workerpools" in context.appConfig) {
-    for (const taskType of context.appConfig.workerpools) {
-      if (taskType.name === context['name']) {
-        return "WORKER_POOL"
-      }
-    }
-  }
-  return "JOB"
-}
-
 async function k8sCommandGroup(bufferItems) {
 
   // No action needed when buffer is empty
@@ -126,12 +112,7 @@ async function k8sCommandGroup(bufferItems) {
 
   let jobExitCodes = [];
   try {
-    if (getExecutorType(context) === "WORKER_POOL") {
-      await amqpEnqueueJobs(jobArr, taskIdArr, contextArr, customParams)
-    } else {
-      await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, restartFn)
-    }
-    jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams);
+    jobExitCodes = await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, restartFn);
   } catch (err) {
     console.log("Error when submitting job:", err);
     throw err;
