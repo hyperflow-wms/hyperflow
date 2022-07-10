@@ -105,7 +105,7 @@ var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) =>
 //
 //
 // Returns: job exit code
-var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams, restartFn) => {
+var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams) => {
 
   // Load definition of the the worker job pod
   // File 'job-template.yaml' should be provided externally during deployment

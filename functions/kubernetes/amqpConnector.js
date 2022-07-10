@@ -9,7 +9,7 @@ async function initialize(queue_name) {
         conn = await amqplib.connect(`amqp://${process.env.RABBIT_HOSTNAME}`, "heartbeat=60");
     }
     let ch = await conn.createChannel()
-    await ch.assertQueue(queue_name, {durable: false, expires: 600000}); // TODO: implement dynamic queue creation & cleanup
+    await ch.assertQueue(queue_name, {durable: false, expires: 6000000}); // TODO: implement dynamic queue creation & cleanup
     channels[queue_name] = ch
 
 }

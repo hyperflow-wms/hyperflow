@@ -129,9 +129,9 @@ async function k8sCommandGroup(bufferItems) {
     if (getExecutorType(context) === "WORKER_POOL") {
       await amqpEnqueueJobs(jobArr, taskIdArr, contextArr, customParams)
     } else {
-      await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, restartFn)
+      await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams)
     }
-    jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams);
+    jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn);
   } catch (err) {
     console.log("Error when submitting job:", err);
     throw err;
