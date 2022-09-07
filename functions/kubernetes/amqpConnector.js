@@ -9,15 +9,28 @@ async function initialize(queue_name) {
         conn = await amqplib.connect(`amqp://${process.env.RABBIT_HOSTNAME}`, "heartbeat=60");
     }
     let ch = await conn.createChannel()
-    await ch.assertQueue(queue_name, {durable: false, expires: 6000000}); // TODO: implement dynamic queue creation & cleanup
+    await ch.assertQueue(queue_name, {durable: false, expires: 6000000});
     channels[queue_name] = ch
 
 }
 
+function getQueueName(context) {
+    if ("executionModels" in context.appConfig) {
+        for (const taskType of context.appConfig.executionModels) {
+            if (taskType.name === context['name']) {
+                if ("queue" in taskType) {
+                    return taskType.queue;
+                }
+            }
+        }
+    }
+    let namespace = process.env.HF_VAR_NAMESPACE || 'default'
+    return namespace + "." + context['name']
+}
+
 async function enqueueJobs(jobArr, taskIdArr, contextArr, customParams) {
     let context = contextArr[0];
-    let namespace = process.env.HF_VAR_NAMESPACE || 'default'
-    let queue_name = namespace + "." + context['name']
+    let queue_name = getQueueName(context)
     if (conn === null || !(queue_name in channels)) {
         await initialize(queue_name)
     }

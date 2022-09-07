@@ -23,8 +23,8 @@ let restartCounter = new RestartCounter(backoffLimit);
 //   * cb
 
 function getExecutorType(context) {
-  if ("workerpools" in context.appConfig) {
-    for (const taskType of context.appConfig.workerpools) {
+  if ("executionModels" in context.appConfig) {
+    for (const taskType of context.appConfig.executionModels) {
       if (taskType.name === context['name']) {
         return "WORKER_POOL"
       }
