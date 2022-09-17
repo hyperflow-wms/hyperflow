@@ -27,7 +27,7 @@ jobs:
           # Need tags for Makefile logic to work
           fetch-depth: 0
       - name: Build the Docker images
-        run: make images
+        run: make image
   deploy:
     needs: [ "build" ]
     runs-on: ubuntu-20.04
