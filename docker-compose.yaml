@@ -1,0 +1,36 @@
+# PLACE THIS FILE IN FOLDER WHERE YOU KEEP hyperflow AND hyperflow-job-executor REPOS
+
+version: "3"
+
+services:
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+    networks:
+      - my-network
+
+  hyperflow-job-executor:
+    image: job-executor:1.3.0
+    tty: true
+    volumes:
+      - ./logs-hf:/fbam-0.4.1/logs-hf
+    networks:
+      - my-network
+
+  hyperflow:
+    image:  hyperflowwms/hyperflow:v1.3-dev
+    tty: true
+    environment:
+      - REDIS_URL=redis://redis/
+      - HF_VAR_function=redisCommand
+    volumes:
+      - ./wfdir:/home/wfdir
+      - ./hyperflow/:/home/hyperflow/
+      - ./hyperflow-job-executor/:/home/hyperflow-job-executor/
+    networks:
+      - my-network
+
+networks:
+    my-network:
+      driver: bridge
