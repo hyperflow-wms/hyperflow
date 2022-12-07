@@ -9,7 +9,7 @@
     "config": {
       "executor": {
         "executable": "./job.js",
-        "args": ["Hello", "world"],
+        "args": ["Hello", "world", "number", "number2"],
         "stdout": "RemoteJobTest.stdout",
         "stderr": "RemoteJobTest.error"
       }
@@ -33,7 +33,8 @@
   } ],
   "signals": [ {
     "name": "number",
-    "data": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+    "data": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
+    "workflow_input": true
   }, {
     "name": "number2",
     "data": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
