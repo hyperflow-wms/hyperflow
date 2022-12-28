@@ -1,4 +1,4 @@
-TAG = v1.3-dev
+TAG = v1.4-dev
 PREFIX = hyperflowwms
 REPO_NAME = hyperflow
 #REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
