@@ -5,8 +5,6 @@ const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumenta
 const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-http");
 const { registerInstrumentations } = require('@opentelemetry/instrumentation')
 const { BasicTracerProvider} = require("@opentelemetry/tracing");
-const { ExpressInstrumentation } = require('@opentelemetry/instrumentation-express')
-const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http')
 
 module.exports = (serviceName) => {
 
@@ -26,7 +24,7 @@ module.exports = (serviceName) => {
   provider.register();
 
   registerInstrumentations({
-    instrumentations: [new ExpressInstrumentation(), new HttpInstrumentation(), getNodeAutoInstrumentations()],
+    instrumentations: [getNodeAutoInstrumentations()],
     tracerProvider: provider,
   });
 

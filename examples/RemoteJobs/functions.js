@@ -1,8 +1,7 @@
+const tracer = require("../../tracing.js")("hyperflow-service");
 var spawn = require('child_process').spawn;
 var log4js = require('log4js');
 var createJobMessage = require('../../common/jobMessage.js').createJobMessage;
-
-const tracer = require("../../tracing.js")("hyperflow-service");
 
 
 // Spawns a job "node handler.js" and waits for the notification of its
