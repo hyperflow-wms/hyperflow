@@ -48,8 +48,11 @@ async function submitRemoteJob(ins, outs, context, cb) {
       throw error;
     }
 
+    var trace_id = span.spanContext().traceId
+    var parent_id = span.spanContext().spanId
+
     // "submit" job (start the handler process)
-    var proc = spawn(cmd, ['../../../hyperflow-job-executor/jobexec.js', context.taskId, context.redis_url], {shell: true});
+    var proc = spawn(cmd, ['../../../hyperflow-job-executor/jobexec.js', context.taskId, context.redis_url, parent_id, trace_id], {shell: true});
 
     proc.stderr.on('data', function (data) {
       logger.debug(data.toString());
