@@ -1,5 +1,6 @@
 // Runs a job as a Pod (Kubernetes Job) in a Kubernetes cluster
 
+const tracer = require("../../tracing.js")("hyperflow-kubernetes");
 const k8s = require('@kubernetes/client-node');
 var BufferManager = require('./buffer_manager.js').BufferManager;
 var RestartCounter = require('./restart_counter.js').RestartCounter;
@@ -129,7 +130,11 @@ async function k8sCommandGroup(bufferItems) {
     if (getExecutorType(context) === "WORKER_POOL") {
       await amqpEnqueueJobs(jobArr, taskIdArr, contextArr, customParams)
     } else {
-      await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams)
+      tracer.startActiveSpan('k8sCommands', async span => {
+        var traceId = span.spanContext().traceId
+        var parentId = span.spanContext().spanId
+        await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, parentId, traceId)
+      });
     }
     jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn);
   } catch (err) {

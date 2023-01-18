@@ -1,6 +1,7 @@
 // bojK8sCommand.js
 // Runs bags-of-jobs on a Kubernetes cluster
 
+const tracer = require("../../tracing.js")("hyperflow-kubernetes");
 const k8s = require('@kubernetes/client-node');
 var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
 var fs = require('fs');
@@ -31,20 +32,24 @@ async function bojK8sCommand(ins, outs, context, cb) {
   let jobs = JSON.parse(fs.readFileSync(jobsFileName));
 
   // run job sets in parallel with concurrency limit
-  const PromisePool = require('@supercharge/promise-pool');
-  const { results, errors } = await PromisePool
-    .for(jobs)
-    .withConcurrency(5)
-    .process(async jobs => {
-      jobPromises = jobs.map(job => {
-        //let taskId = job.name + "-" + jsetIdx + "-" + jIdx;
-        let taskId = job.name;
-        let customParams = {};
-        return submitK8sJob(kubeconfig, job, taskId, context, customParams);
-      });
-      jobExitCodes = await Promise.all(jobPromises);
-      return jobExitCodes;
-    });
+  tracer.startActiveSpan('bojK8s', async span => {
+    const PromisePool = require('@supercharge/promise-pool');
+    const {results, errors} = await PromisePool
+        .for(jobs)
+        .withConcurrency(5)
+        .process(async jobs => {
+          jobPromises = jobs.map(job => {
+            //let taskId = job.name + "-" + jsetIdx + "-" + jIdx;
+            let taskId = job.name;
+            let customParams = {};
+            var traceId = span.spanContext().traceId
+            var parentId = span.spanContext().spanId
+            return submitK8sJob(kubeconfig, job, taskId, context, customParams, parentId, traceId);
+          });
+          jobExitCodes = await Promise.all(jobPromises);
+          return jobExitCodes;
+        });
+  });
 
   console.log(results, errors);
 
