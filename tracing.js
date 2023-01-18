@@ -25,7 +25,14 @@ module.exports = (serviceName) => {
   provider.register();
 
   registerInstrumentations({
-    instrumentations: [getNodeAutoInstrumentations()],
+    instrumentations: [
+      getNodeAutoInstrumentations({
+        '@opentelemetry/instrumentation-fs': { enabled: false },
+        '@opentelemetry/instrumentation-connect': {enabled: false},
+        '@opentelemetry/instrumentation-redis': {enable: true},
+        '@opentelemetry/instrumentation-redis-4': {enable: true}
+      }),
+    ],
     tracerProvider: provider,
   });
 
