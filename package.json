@@ -14,6 +14,7 @@
   "dependencies": {
     "@dagrejs/graphlib": "^2.1.4",
     "@kubernetes/client-node": "^0.12.2",
+    "@supercharge/promise-pool": "^1.2.0",
     "@opentelemetry/auto-instrumentations-node": "^0.36.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.34.0",
     "@opentelemetry/instrumentation": "^0.34.0",
@@ -22,7 +23,6 @@
     "@opentelemetry/semantic-conventions": "^1.8.0",
     "@opentelemetry/tracing": "^0.24.0",
     "@opentelemetry/sdk-trace-node": "^1.8.0",
-    "@supercharge/promise-pool": "^2.3.2",
     "adm-zip": "0.4.11",
     "amqplib": "0.5.2",
     "async": "0.2.x",
