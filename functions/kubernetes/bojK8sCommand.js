@@ -49,6 +49,7 @@ async function bojK8sCommand(ins, outs, context, cb) {
           jobExitCodes = await Promise.all(jobPromises);
           return jobExitCodes;
         });
+    span.end();
   });
 
   console.log(results, errors);
