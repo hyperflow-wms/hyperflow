@@ -54,6 +54,13 @@ async function submitRemoteJob(ins, outs, context, cb) {
     // "submit" job (start the handler process)
     var proc = spawn(cmd, ['../../../hyperflow-job-executor/jobexec.js', context.taskId, context.redis_url, parent_id, trace_id], {shell: true});
 
+    if (span.isRecording()) {
+        span.setAttributes({
+          'hfId': context.hfId, 'appId': context.appId, 'input_dir': input_dir,
+          'work_dir': work_dir, 'output_dir': output_dir
+        })
+      }
+
     proc.stderr.on('data', function (data) {
       logger.debug(data.toString());
       console.log(data.toString());

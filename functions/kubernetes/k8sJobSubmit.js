@@ -51,9 +51,9 @@ function createK8sJobMessage(job, taskId, context) {
 //
 // Returns:
 // - jobYaml: string with job YAML to create the k8s job
-var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) => {
+var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams, parentId, traceId) => {
   let quotedTaskIds = taskIds.map(x => '"' + x + '"');
-  var command = 'hflow-job-execute ' + context.redis_url + ' -a -- ' + quotedTaskIds.join(' ');
+  var command = 'hflow-job-execute ' + context.redis_url + ' ' + parentId + ' ' + traceId + ' -a -- ' + quotedTaskIds.join(' ');
   var containerName = job.image || process.env.HF_VAR_WORKER_CONTAINER;
   var volumePath = '/work_dir';
   var jobName = Math.random().toString(36).substring(7) + '-' +
@@ -105,7 +105,7 @@ var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams) =>
 //
 //
 // Returns: job exit code
-var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams) => {
+var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams, parentId, traceId) => {
 
   // Load definition of the the worker job pod
   // File 'job-template.yaml' should be provided externally during deployment
@@ -116,7 +116,7 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
   let context = contextArr[0]; 
 
   // CAUTION: When creating job YAML first job details (requests, container) are used.
-  var jobYaml = createK8sJobYaml(jobArr[0], taskIdArr, contextArr[0], jobYamlTemplate, customParams);
+  var jobYaml = createK8sJobYaml(jobArr[0], taskIdArr, contextArr[0], jobYamlTemplate, customParams, parentId, traceId);
   let jobMessages = [];
   for (var i=0; i<jobArr.length; i++) {
     let job = jobArr[i];

@@ -10,7 +10,7 @@ const { BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 module.exports = (serviceName) => {
 
   const exporter = new OTLPTraceExporter({
-    url: "http://collector-gateway:4318/v1/traces"
+    url: process.env.OPENTELEMETRY_URL+':4318/v1/traces'
   });
 
   const provider = new NodeTracerProvider({
