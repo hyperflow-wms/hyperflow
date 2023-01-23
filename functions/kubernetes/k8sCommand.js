@@ -134,6 +134,7 @@ async function k8sCommandGroup(bufferItems) {
         var traceId = span.spanContext().traceId
         var parentId = span.spanContext().spanId
         await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, parentId, traceId)
+        span.end();
       });
     }
     jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn);
