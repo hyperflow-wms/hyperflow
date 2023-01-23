@@ -31,6 +31,8 @@ async function bojK8sCommand(ins, outs, context, cb) {
   let jobsFileName = ins["jobSetsFile"].data[0];
   let jobs = JSON.parse(fs.readFileSync(jobsFileName));
 
+  let results, errors;
+
   // run job sets in parallel with concurrency limit
   tracer.startActiveSpan('bojK8s', async span => {
     const PromisePool = require('@supercharge/promise-pool');

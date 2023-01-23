@@ -126,22 +126,23 @@ async function k8sCommandGroup(bufferItems) {
   kubeconfig.loadFromDefault(); // loadFromString(JSON.stringify(kconfig))
 
   let jobExitCodes = [];
+  tracer.startActiveSpan('k8sCommands', async span => {
   try {
     if (getExecutorType(context) === "WORKER_POOL") {
       await amqpEnqueueJobs(jobArr, taskIdArr, contextArr, customParams)
     } else {
-      tracer.startActiveSpan('k8sCommands', async span => {
         var traceId = span.spanContext().traceId
         var parentId = span.spanContext().spanId
         await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, parentId, traceId)
-        span.end();
-      });
+
     }
     jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn);
   } catch (err) {
     console.log("Error when submitting job:", err);
     throw err;
   }
+  span.end();
+  });
 
   let endTime = Date.now();
   console.log("Ending k8sCommandGroup function, time:", endTime, "exit codes:", jobExitCodes);
