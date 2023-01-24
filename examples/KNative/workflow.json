@@ -1,0 +1,37 @@
+{
+  "name": "knative-example",
+  "processes": [
+    {
+      "name": "knative-example",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "kNativeCommand",
+      "config": {
+        "image": "tequilac/line-counter",
+        "namespace": "exns"
+      },
+      "ins": [
+        "dataUrl"
+      ],
+      "outs": [
+        "results"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "name": "dataUrl",
+      "data": [[
+        "http://raw.githubusercontent.com/elastic/examples/master/Common%20Data%20Formats/apache_logs/apache_logs"
+      ]]
+    }, {
+      "name": "results"
+    }
+  ],
+  "ins": [
+    "dataUrl"
+  ],
+  "outs": [
+    "results"
+  ]
+}
