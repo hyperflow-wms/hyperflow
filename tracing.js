@@ -10,7 +10,7 @@ const { BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
 module.exports = (serviceName) => {
 
   const exporter = new OTLPTraceExporter({
-    url: process.env.OPENTELEMETRY_URL+':4318/v1/traces'
+    url: process.env.HF_VAR_OPT_URL+':4318/v1/traces'
   });
 
   const provider = new NodeTracerProvider({
@@ -24,15 +24,18 @@ module.exports = (serviceName) => {
 
   provider.register();
 
+  const node_auto_instrumentations = [
+        getNodeAutoInstrumentations({
+          '@opentelemetry/instrumentation-fs': { enabled: false },
+          '@opentelemetry/instrumentation-connect': {enabled: false},
+          '@opentelemetry/instrumentation-redis': {enable: true},
+          '@opentelemetry/instrumentation-redis-4': {enable: true}
+        })
+      ];
+  const used_instrumentation = process.env.HF_VAR_ENABLE_TRACING  === "0" ? [] : node_auto_instrumentations;
+
   registerInstrumentations({
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-fs': { enabled: false },
-        '@opentelemetry/instrumentation-connect': {enabled: false},
-        '@opentelemetry/instrumentation-redis': {enable: true},
-        '@opentelemetry/instrumentation-redis-4': {enable: true}
-      }),
-    ],
+    instrumentations: used_instrumentation,
     tracerProvider: provider,
   });
 

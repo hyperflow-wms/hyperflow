@@ -53,7 +53,7 @@ function createK8sJobMessage(job, taskId, context) {
 // - jobYaml: string with job YAML to create the k8s job
 var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams, parentId, traceId) => {
   let quotedTaskIds = taskIds.map(x => '"' + x + '"');
-  var command = 'hflow-job-execute ' + context.redis_url + ' ' + parentId + ' ' + traceId + ' -a -- ' + quotedTaskIds.join(' ');
+  var command = 'hflow-job-execute ' + context.redis_url + ' -a -- ' + quotedTaskIds.join(' ');
   var containerName = job.image || process.env.HF_VAR_WORKER_CONTAINER;
   var volumePath = '/work_dir';
   var jobName = Math.random().toString(36).substring(7) + '-' +
@@ -81,7 +81,9 @@ var createK8sJobYaml = (job, taskIds, context, jobYamlTemplate, customParams, pa
     restartPolicy: restartPolicy, backoffLimit: backoffLimit,
     experimentId: context.hfId + ":" + context.appId,
     workflowName: context.wfname, taskName: job.name,
-    appId: context.appId, workingDirPath: workingDirPath
+    appId: context.appId, workingDirPath: workingDirPath,
+    enableTracing: process.env.HF_VAR_ENABLE_TRACING, optParentId: parentId,
+    optTraceId: traceId
   }
 
   // Add/override custom parameters for the job

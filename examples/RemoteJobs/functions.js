@@ -1,4 +1,4 @@
-const tracer = require("../../tracing.js")("hyperflow-service");
+const tracer = process.env.HF_VAR_ENABLE_TRACING === "1" ? require("../../tracing.js")("hyperflow-service") : undefined;
 var spawn = require('child_process').spawn;
 var log4js = require('log4js');
 var createJobMessage = require('../../common/jobMessage.js').createJobMessage;
@@ -13,23 +13,21 @@ async function submitRemoteJob(ins, outs, context, cb) {
   let fname = 'wftrace-' + context.hfId + '-' + context.appId + '.log';
 
   log4js.configure({
-      appenders: {hftrace: {type: 'file', filename: fname}},
-      categories: {default: {appenders: ['hftrace'], level: 'error'}}
-    });
+    appenders: {hftrace: {type: 'file', filename: fname}},
+    categories: {default: {appenders: ['hftrace'], level: 'error'}}
+  });
 
-    var logger = log4js.getLogger();
+  var logger = log4js.getLogger();
 
-    logger.level = 'debug';
-    console.log("Spawning process...");
+  logger.level = 'debug';
+  console.log("Spawning process...");
 
-  tracer.startActiveSpan('submitRemoteJob', span => {
-    //console.log(ins.map(i => i));
-
-  var input_dir = context.executor.input_dir,
+  function runJob(trace_id = undefined, parent_id = undefined, span = undefined) {
+    var input_dir = context.executor.input_dir,
       work_dir = context.executor.work_dir,
       output_dir = context.executor.output_dir;
 
-  var cmd;
+    var cmd;
 
     // if 'container' is present, run through Docker, mounting all directories if necessary
     if (context.container) {
@@ -48,18 +46,17 @@ async function submitRemoteJob(ins, outs, context, cb) {
       throw error;
     }
 
-    var trace_id = span.spanContext().traceId
-    var parent_id = span.spanContext().spanId
-
     // "submit" job (start the handler process)
-    var proc = spawn(cmd, ['../../../hyperflow-job-executor/jobexec.js', context.taskId, context.redis_url, parent_id, trace_id], {shell: true});
+    var proc = spawn(cmd, ['../../../hyperflow-job-executor/jobexec.js', context.taskId, context.redis_url],
+        {shell: true, env: {...process.env, HF_VAR_OT_PARENT_ID: parent_id, HF_VAR_OT_TRACE_ID: trace_id,
+            HF_VAR_ENABLE_TRACING: process.env.HF_VAR_ENABLE_TRACING}});
 
-    if (span.isRecording()) {
-        span.setAttributes({
-          'hfId': context.hfId, 'appId': context.appId, 'input_dir': input_dir,
-          'work_dir': work_dir, 'output_dir': output_dir
-        })
-      }
+    if (span !== undefined && span.isRecording()) {
+      span.setAttributes({
+        'hfId': context.hfId, 'appId': context.appId, 'input_dir': input_dir,
+        'work_dir': work_dir, 'output_dir': output_dir
+      })
+    }
 
     proc.stderr.on('data', function (data) {
       logger.debug(data.toString());
@@ -74,15 +71,25 @@ async function submitRemoteJob(ins, outs, context, cb) {
     proc.on('exit', function (code) {
       logger.debug('Process exited with code', code);
     });
+  }
 
-    span.end();
-  });
+  if (process.env.HF_VAR_ENABLE_TRACING === "1") {
+    tracer.startActiveSpan('submitRemoteJob', span => {
+      //console.log(ins.map(i => i));
+      var trace_id = span.spanContext().traceId
+      var parent_id = span.spanContext().spanId
+      runJob(trace_id, parent_id, span)
+      span.end();
+    });
+  } else {
+    runJob()
+  }
 
   // send message to the job (command to be executed)
   try {
     await context.sendMsgToJob(jobMessage, context.taskId);
     logger.info('[' + context.taskId + '] job message sent');
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     throw err;
   }
@@ -93,7 +100,7 @@ async function submitRemoteJob(ins, outs, context, cb) {
     logger.info('[' + context.taskId + '] job result received:', jobResult);
     console.log('Received job result:', jobResult);
     cb(null, outs);
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     throw err;
   }
