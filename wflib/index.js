@@ -23,6 +23,7 @@ var sendSignalTime = 0;
 
 var global_hfid = 0; // global UUID of this HF engine instance (used for logging)
 var globalInfo = {}; // object holding global information for a given HF engine instance
+var nActiveTasks = 0; // tracks the number of active tasks (function invoked to callback called)
 
 let jobConnectors = {}; // object holding remote jobs' connectors
 
@@ -1437,26 +1438,6 @@ async function sendSignalLua(wfId, sigValue, cb) {
     var sendSignalScriptTest = '\
         local ret \
         return ARGV[1]';
-        /*local sigIdx = ARGV[3] \
-        redis.call("HSET", KEYS[2], sigIdx, ARGV[2]) \
-        local sinks = redis.call("ZRANGE", KEYS[4], 0, -1) \
-        for k,procId in pairs(sinks) do \
-            local ret \
-            local isStickyKey = KEYS[5] .. ":task:" .. procId .. ":sticky" \
-            local sigQueueKey = KEYS[5] .. ":task:" .. procId .. ":ins:" .. ARGV[1] \
-            if redis.call("SISMEMBER", isStickyKey, ARGV[1]) == 1 then \
-                local len = redis.call("LLEN", sigQueueKey) \
-                if (len > 0) then \
-                    ret = redis.call("LSET", sigQueueKey, sigIdx) \
-                else \
-                    ret = redis.call("RPUSH", sigQueueKey, sigIdx) \
-                end \
-            else \
-                ret = redis.call("RPUSH", sigQueueKey, sigIdx) \
-            end \
-        end \
-        return sinks';*/
-
 
     var sendSignalScript = '\
         local ret \
@@ -1490,16 +1471,6 @@ async function sendSignalLua(wfId, sigValue, cb) {
         keys: [sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey], 
         arguments: [JSON.stringify(sigId), sig, JSON.stringify(sigIdx)]
     });
-    /*let res = await rcl.eval(sendSignalScriptTest, {
-        keys: [sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey], 
-        arguments: [JSON.stringify(sigId), sig, JSON.stringify(sigIdx)]
-    });*/
-    //time -= (new Date()).getTime();
-    //onsole.log("SENDING SIGNAL X", sigId, "TOOK", -time+"ms");
-    //sendSignalTime -= time;
-    /*var delay = 0;
-    if (toobusy()) { onsole.log("TOO BUSY !!!!!!!!!!!!!!!!!!!!!!!!!!"); delay = 40; }
-    setTimeout(function() { cb(err, res); }, delay);*/
 
     if (sigValue.remoteSinks) {
         let remoteSings = await rcl.sMembers(sigKey + ":remotesinks");
@@ -1743,7 +1714,7 @@ exports.init = function(redisClient) {
 
         console.log("hfid:", global_hfid);
     }
-
+    
     init_redis();
 
     return {
