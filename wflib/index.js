@@ -5,7 +5,6 @@
 var fs = require('fs'),
     redis = require('redis'),
     async = require('async'),
-    ZSchema = require('z-schema'),
     value = require('value'),
     request = require('request'),
     Q = require('q'),
@@ -1526,104 +1525,6 @@ async function sendSignalLua(wfId, sigValue, cb) {
     }
 }
 
-
-/*
-// Part of NEW API for continuous processes with FIFO queues
-// @sig format:
-// ... TODO
-function public_sendSignal(wfId, sig, cb) {
-    //onsole.log("sendSignal:", sig);
-    var sigId = sig._id;
-    delete sig._id;
-
-    var time = (new Date()).getTime();
-
-    var validateSignal = function(cb) {
-        // get signal information (metadata)
-        var sigKey = "wf:"+wfId+":data:"+sigId;
-        rcl.hgetall(sigKey, function(err, sigInfoStr) {
-            //onsole.log('VALIDATING', typeof sig, sig, "AGAINST", typeof sigInfoStr, sigInfoStr);
-            var sigInfo = sigInfoStr;
-            if (err) { return cb(err, false); }
-            if (!sigInfo.schema) { return cb(null, true); } // no schema to validate signal against
-            rcl.hget("wf:"+wfId+":schemas", sigInfo.schema, function(err, sigSchema) { // retrieve schema
-                if (err) { return cb(err, false); }
-                ZSchema.validate(sig, JSON.parse(sigSchema), function(err, report) {
-                    if (err) { return cb(err, false); }
-                    //onsole.log("REPORT");
-                    //onsole.log(sig);
-                    //onsole.log(sigSchema);
-                    //onsole.log(report);
-                    cb(null, true);
-                });
-            });
-        });
-    }
-
-    //////////////////////////////////////// SENDING THE SIGNAL: /////////////////////////////////////////
-    // create a new instance of this signal (at hash = "wf:{id}:sigs:{sigId}", field = sig instance id) //
-    // (hash is better than a list because of easier cleanup of old signals)                            //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    async.waterfall([
-        // 1. validate the signal
-        function(cb) {
-            validateSignal(function(err, isValid) {
-                cb(err);
-            });
-        },
-        // 2. get unique id for the signal instance
-        function(cb) {
-            rcl.incr("wf:"+wfId+":sigs:"+sigId+":nextId", function(err, sigIdx) {
-                err ? cb(err): cb(null, sigIdx);
-            });
-        },
-        // 3. save instance of the signal to redis
-        function(sigIdx, cb) {
-            var idx = sigIdx.toString();
-            var sigInstanceKey = "wf:"+wfId+":sigs:"+sigId;
-            rcl.hset(sigInstanceKey, idx, JSON.stringify(sig), function(err, rep) {
-                err ? cb(err): cb(null, idx);
-            });
-        },
-        // 4. put the signal in the queues of all its sinks
-        function(idx, cb) {
-            //var s = p0();
-            public_getDataSinks(wfId, sigId, false, function(err, sinks) {
-                //p1(s, "GET SINKS ("+sinks.length+")");
-                //var t = p0();
-                //onsole.log("sendSignal: ", sigId, sinks);
-                if (err) { return cb(err); }
-                // insert the signal (its index in the hash) in the queues of its sinks
-                //onsole.log("SINKS: ", sinks);
-                async.each(sinks, function iterator(procId, doneIter) {
-                    pushInput(wfId, procId, sigId, idx, function(err) {
-                        doneIter(err);
-                    });
-                    //var queueKey = "wf:"+wfId+":task:"+procId+":ins:"+sigId;
-                    //rcl.rpush(queueKey, idx, function(err, rep) {
-                    //   doneIter(err);
-                    //});
-                }, function doneAll(err) {
-                    //p1(t, "PUSH ALL SIGS");
-                    err ? cb(err): cb(null, sinks);
-                });
-            });
-        }],
-        // 5. all done
-        function(err, sinks) {
-            time -= (new Date()).getTime();
-            //onsole.log("SENDING SIGNAL Y", sigId, "TOOK", -time+"ms");
-            sendSignalTime -= time;
-            if (err) {
-                console.log(err.toString(), err.stack);
-            }
-            err ? cb(err): cb(null, sinks);
-        }
-    );
-}
-*/
 
 function getSigRemoteSinks(wfId, sigId, cb) {
     var rsKey = "wf:"+wfId+":data:"+sigId+":remotesinks";
