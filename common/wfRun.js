@@ -1,12 +1,20 @@
 #!/usr/bin/env node
 
-var redisURL = process.env.REDIS_URL ? {url: process.env.REDIS_URL} : undefined
+const redisURL = process.env.REDIS_URL;
 
 var fs = require('fs'),
     pathtool = require('path'),
     redis = require('redis'),
-    rcl = redisURL ? redis.createClient(redisURL): redis.createClient(),
-    wflib = require('../wflib').init(rcl),
+    rcl = redisURL ? redis.createClient({url: redisURL}): redis.createClient();
+
+rcl.on('error', err => console.log('Redis Client Error', err));
+async function wait_for_redis() {
+    await rcl.connect();
+    //wflib = await require('../wflib').init(rcl);
+}
+wait_for_redis();
+
+var wflib = require('../wflib').init(rcl),
     Engine = require('../engine2'),
     async = require('async'),
     readVars = require('../utils/readvars.js'),
@@ -249,14 +257,11 @@ function hflowRun(opts, runCb) {
         });
     }
 
-    var createWf = function(cb) {
-        rcl.select(dbId, function(err, rep) {
-            //rcl.flushdb(function(err, rep) { // flushing db here deletes the global 'hfid' entry (created earlier)
-            if (err) throw err;
-                wflib.createInstanceFromFile(wffile, '', { vars: wfVars }, function(err, id, wfJson) {
-                cb(err, id, wfJson.name, wfJson);
-            });
-            //});
+    var createWf = async function(cb) {
+        let x = await rcl.select(dbId);
+        //await rcl.FLUSDHB();  // flushing db here deletes the global 'hfid' entry (created earlier)
+        wflib.createInstanceFromFile(wffile, '', { vars: wfVars }, function (err, id, wfJson) {
+            cb(err, id, wfJson.name, wfJson);
         });
     }
 

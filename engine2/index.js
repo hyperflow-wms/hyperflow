@@ -174,16 +174,6 @@ Engine.prototype.emitSignals = function(sigs, cb) {
     var timeStamp; // time stamp to be added to each signal (relative to workflow start time)
     var engine = this;
 
-    var copySignal = function(sig) {
-        var copy = {};
-        if (null == sig || "object" != typeof sig) return sig;
-        for (var attr in sig) {
-            if (sig.hasOwnProperty(attr) && attr != "data") 
-                copy[attr] = sig[attr];
-        }
-        return copy;
-    }
-
     timeStamp = (new Date()).getTime() - engine.startTime; 
 
     // iterate over all signals to be sent
@@ -194,7 +184,8 @@ Engine.prototype.emitSignals = function(sigs, cb) {
         // no signals will be sent! It seems to work well with the semantics of 'count' signals, but should be tested
         if (sig.data) { // there is a 'data' array which may contain multiple instances of this signal
             for (var i in sig.data) {
-                var s = copySignal(sig);
+                //var s = Object.assign({}, sig);
+                var s = {...sig}; // copy object using spread operator
                 s.data = [sig.data[i]];
                 sigInstances.push(s);
             }

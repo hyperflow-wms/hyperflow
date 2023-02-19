@@ -4,7 +4,7 @@
         "name": "Sqr",
 	"type": "dataflow",
         "function": "sqr",
-        "parlevel": 1,
+        "parlevel": 6,
 	"ordering": "true",
         "ins": [ "number" ],
         "outs": [ "square" ]

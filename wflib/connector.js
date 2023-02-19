@@ -50,13 +50,9 @@ class RemoteJobConnector {
 
             let taskId = null;
             try {
-                taskId = await new Promise((resolve, reject) => {
-                    this.rcl.srandmember(this.completedNotificationQueueKey, function(err, reply) {
-                        err ? reject(err): resolve(reply);
-                    });
-                });
+                taskId = await this.rcl.sRandMember(this.completedNotificationQueueKey);
             } catch (error) {
-                console.error("[RemoteJobConnector] Unable to fetch new complated jobs", error);
+                console.error("[RemoteJobConnector] Unable to fetch new completed jobs", error);
             }
 
             if (taskId == null) {
@@ -68,15 +64,12 @@ class RemoteJobConnector {
 
             let taskResult = null;
             try {
-                taskResult = await new Promise((resolve, reject) => {
-                    this.rcl.spop(taskId, function(err, reply) {
-                        /* Wrap results into array to preserve
-                         * compatibility with blpop format. */
-                        let replyArr = [null, reply];
-                        err ? reject(err): resolve(replyArr);
-                    });
-                });
+                let reply = await this.rcl.sPop(taskId);
+                /* Wrap results into array to preserve
+                * compatibility with blpop format. */
+                taskResult = [null, reply];
             } catch (error) {
+                console.error(error);
                 console.error("[RemoteJobConnector] Unable to get result of job", taskId);
                 continue;
             }
@@ -89,11 +82,7 @@ class RemoteJobConnector {
             delete this.jobPromiseResolves[taskId];
 
             try {
-                await new Promise((resolve, reject) => {
-                    this.rcl.srem(this.completedNotificationQueueKey, taskId, function(err, reply) {
-                        err ? reject(err): resolve(reply);
-                    });
-                });
+                let reply = await this.rcl.sRem(this.completedNotificationQueueKey, taskId);
             } catch (error) {
                 console.error("[RemoteJobConnector] Unable to delete job from completed queue", error);
             }
