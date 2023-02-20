@@ -598,18 +598,21 @@ function pushInput(wfId, procId, sigId, sigIdx, cb) {
     });
 }
 
+
+let popScriptLoaded = false;
+let popScriptSha;
 async function popInput(wfId, procId, sigId, cb) {
     //onsole.log("POP INPUT", wfId, procId, sigId);
-    var sigQueueKey = "wf:" + wfId + ":task:" + procId + ":ins:" + sigId;
-    var sigInstanceKey = "wf:" + wfId + ":sigs:" + sigId;
-    var isStickyKey = "wf:" + wfId + ":task:" + procId + ":sticky";
+    let sigQueueKey = "wf:" + wfId + ":task:" + procId + ":ins:" + sigId;
+    let sigInstanceKey = "wf:" + wfId + ":sigs:" + sigId;
+    let isStickyKey = "wf:" + wfId + ":task:" + procId + ":sticky";
 
     // LUA Script
     // KEYS[1] = sigQueueKey
     // KEYS[2] = sigInstanceKey
     // KEYS[3] = isStickyKey
     // ARGV[1] = sigId
-    var popScript = '\
+    const popScript = '\
             local sigval \
             local idx \
             if redis.call("SISMEMBER", KEYS[3], ARGV[1]) == 1 then \
@@ -621,8 +624,12 @@ async function popInput(wfId, procId, sigId, cb) {
             end \
             return {sigval,idx}';
 
-    let scriptSha = await rcl.scriptLoad(popScript);
-    let res = await rcl.evalSha(scriptSha, {
+    if (!popScriptLoaded) {
+        popScriptSha = await rcl.scriptLoad(popScript);
+        popScriptLoaded = true;
+    }
+
+    let res = await rcl.evalSha(popScriptSha, {
         keys: [sigQueueKey, sigInstanceKey, isStickyKey],
         arguments: [JSON.stringify(sigId)]
     });
@@ -1432,6 +1439,8 @@ async function getInitialSignals(wfId, cb) {
     cb(null, sigSpec);
 }
 
+let sendSignalScriptSha;
+let sendSIgnalScriptLoaded = false;
 async function sendSignalLua(wfId, sigValue, cb) {
     var sigId = sigValue._id; // ARGV[1]
     var sigKey = "wf:" + wfId + ":data:" + sigId; // KEYS[1]
@@ -1446,11 +1455,8 @@ async function sendSignalLua(wfId, sigValue, cb) {
     //onsole.log(sig);
 
     //var time = (new Date()).getTime(); // for profiling
-    var sendSignalScriptTest = '\
-        local ret \
-        return ARGV[1]';
 
-    var sendSignalScript = '\
+    const sendSignalScript = '\
         local ret \
         local sigIdx = ARGV[3] \
         redis.call("HSET", KEYS[2], sigIdx, ARGV[2]) \
@@ -1477,8 +1483,11 @@ async function sendSignalLua(wfId, sigValue, cb) {
     sigValue.sigIdx = +sigIdx;
     sig = JSON.stringify(sigValue);
     //let res = await rcl.eval([sendSignalScript, 5, sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey, sigId, sig, sigIdx]);
-    let script = await rcl.scriptLoad(sendSignalScript);
-    let res = await rcl.evalSha(script, {
+    if (!sendSIgnalScriptLoaded) {
+        sendSignalScriptSha = await rcl.scriptLoad(sendSignalScript);
+        sendSIgnalScriptLoaded = true;
+    }
+    let res = await rcl.evalSha(sendSignalScriptSha, {
         keys: [sigKey, sigInstanceKey, sigNextIdKey, sigSinksKey, wfKey],
         arguments: [JSON.stringify(sigId), sig, JSON.stringify(sigIdx)]
     });
