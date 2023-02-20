@@ -42,13 +42,15 @@ function command(ins, outs, context, cb) {
 
 function command_print(ins, outs, context, cb) {
     console.log("Executing", context.appId, context.procId, context.firingId);
+    console.error("Active tasks:", context.nactivetasks());
     var exec = context.executor.executable,
         args = context.executor.args.join(' ');
 
+    let time = Math.floor(Math.random() * 4 + 1)
     setTimeout(function() {
         console.log(exec, args);
         cb(null, outs);
-    }, 1);
+    }, time);
 }
 
 function command_notifyevents(ins, outs, context, cb) {

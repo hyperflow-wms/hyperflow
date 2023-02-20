@@ -9,7 +9,6 @@ var fs = require('fs'),
     request = require('request'),
     Q = require('q'),
     pathTool = require('path'),
-    //toobusy = require('toobusy'),
     shortid = require('shortid'),
     Mustache = require('mustache'),
     RemoteJobConnector = require('./connector'),
@@ -17,8 +16,8 @@ var fs = require('fs'),
 
 
 // for profiling
-var fetchInputsTime = 0;
-var sendSignalTime = 0;
+//var fetchInputsTime = 0;
+//var sendSignalTime = 0;
 
 
 var global_hfid = 0; // global UUID of this HF engine instance (used for logging)
@@ -1344,22 +1343,27 @@ async function public_invokeProcFunction(wfId, procId, firingId, insIds_, insVal
         // respectively, mark that or check if the task has been completed.
         // Useful e.g. in Kubernetes which sometimes restarts a succesfully 
         // completed job for uknown reason.
-        var markTaskCompleted = async function (taskIdentifier) {
+        const markTaskCompleted = async function (taskIdentifier) {
             const completedTasksSetKey = "wf:" + wfId + ":completedTasks";
             const taskId = taskIdentifier || conf.taskId;
             let reply = await rcl.sAdd(completedTasksSetKey, taskId);
             return reply;
         }
 
-        var checkTaskCompletion = async function (taskIdentifier) {
+        const checkTaskCompletion = async function (taskIdentifier) {
             const completedTasksSetKey = "wf:" + wfId + ":completedTasks";
             const taskId = taskIdentifier || conf.taskId;
             let hasCompleted = await rcl.sIsMember(completedTasksSetKey, taskId);
             return hasCompleted;
         }
 
+        const getActiveTasksCount = function() {
+            return nActiveTasks;
+        }
+
         conf.markTaskCompleted = markTaskCompleted;
         conf.checkTaskCompletion = checkTaskCompletion;
+        conf.nactivetasks = getActiveTasksCount;
 
         // This function is passed to the Process' Function (through 'context')
         // and can be used to pass a job message (via Redis) to a job executor 
@@ -1381,7 +1385,11 @@ async function public_invokeProcFunction(wfId, procId, firingId, insIds_, insVal
 
 
         if (recovered) { conf.recovered = true; }
-        f(ins, outs, conf, function (err, outs, options) {
+
+        // increase the number of active tasks in Redis 
+        await rcl.incr("hflow:"+global_hfid+":nactivetasks");
+        //nActiveTasks++;
+        f(ins, outs, conf, async function (err, outs, options) {
             //if (outs) { onsole.log("VALUE="+outs[0].value); } // DEBUG
             if (recovered) {
                 if (!options) {
@@ -1390,6 +1398,9 @@ async function public_invokeProcFunction(wfId, procId, firingId, insIds_, insVal
                     options.recovered = true;
                 }
             }
+            // increase the number of active tasks in Redis 
+            await rcl.decr("hflow:" + global_hfid + ":nactivetasks");
+            //nActiveTasks--;
             cb(null, ins, outs, options);
         });
     });
@@ -1716,6 +1727,17 @@ exports.init = function(redisClient) {
     }
     
     init_redis();
+
+    // update the number of active tasks every 5s
+    async function updateNActiveTasks() {
+        let ret = await rcl.get("hflow:"+global_hfid+":nactivetasks");
+        if (ret) {
+            console.log("Updating n tasks to", ret);
+            nActiveTasks = ret;
+        }
+        setTimeout(updateNActiveTasks, 5000);
+    }
+    updateNActiveTasks();
 
     return {
         createInstance: public_createInstance,
