@@ -263,7 +263,6 @@ async function public_createInstance(wfJson, baseUrl, cb) {
             }
         }
 
-        var dataKey;
         // add information about workflow data and control signals
         for (var i = 0; i < sigs.length; ++i) {
             addSigInfo(i + 1);
@@ -1493,7 +1492,7 @@ async function sendSignalLua(wfId, sigValue, cb) {
     });
 
     if (sigValue.remoteSinks) {
-        let remoteSings = await rcl.sMembers(sigKey + ":remotesinks");
+        let remoteSinks = await rcl.sMembers(sigKey + ":remotesinks");
         delete sigValue.remoteSinks;
         async.each(remoteSinks, function (sinkUri, doneIterCb) {
             request.post({
