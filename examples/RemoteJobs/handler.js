@@ -1,4 +1,5 @@
 // Executor of 'jobs' using the Redis task status notification mechanism
+process.env.HF_VAR_ENABLE_TRACING  === "1"  && require("../../tracing.js")("hyperflow-service");
 const redis = require('redis');
 const { spawn } = require('child_process');
 
