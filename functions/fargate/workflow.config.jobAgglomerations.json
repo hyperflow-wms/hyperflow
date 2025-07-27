@@ -1,0 +1,7 @@
+[
+  {
+    "matchTask": ["executable"],
+    "size": "number",
+    "timeoutMs": "number"
+  }
+]

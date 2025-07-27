@@ -1,0 +1,17 @@
+[
+  {
+    "matchTask": ["mProject"],
+    "size": 5,
+    "timeoutMs": 3000
+  },
+  {
+    "matchTask": ["mDiffFit"],
+    "size": 10,
+    "timeoutMs": 3000
+  },
+  {
+    "matchTask": ["mBackground"],
+    "size": 5,
+    "timeoutMs": 3000
+  }
+]
