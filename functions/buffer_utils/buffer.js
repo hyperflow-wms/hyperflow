@@ -3,7 +3,7 @@
  */
 class BufferCountWithTimeout {
   constructor(count, idleTimeoutMs, cb) {
-    this.elements = [];
+    this.elements = []
     this.triggerCount = count;
     this.idleTimeoutMs = idleTimeoutMs;
     this.cb = cb;
@@ -13,9 +13,7 @@ class BufferCountWithTimeout {
   addItem(item) {
     this.elements.push(item);
     if (this.elements.length >= this.triggerCount) {
-      let ids = this.elements.map((item) => item.context.taskId);
-      console.log("Running callback [reached count] - ", ids);
-
+      console.log("Running callback [reached count]");
       let elementsCopy = this.elements;
       this.elements = [];
       this.cb(elementsCopy);
@@ -28,8 +26,7 @@ class BufferCountWithTimeout {
       clearInterval(this.timeoutId);
     }
     this.timeoutId = setTimeout(() => {
-      let ids = this.elements.map((item) => item.context.taskId);
-      console.log("Running callback [reached timeout] - ", ids);
+      console.log("Running callback [reached timeout]");
       let elementsCopy = this.elements;
       this.timeoutId = null;
       this.elements = [];
@@ -45,7 +42,7 @@ class BufferCountWithTimeout {
 async function testBuffer() {
   let fn = (items) => {
     console.log("Got from buffer:", items);
-  };
+  }
   let test = new BufferCountWithTimeout(3, 1000, fn);
   test.addItem(1);
   test.addItem(2);
@@ -53,7 +50,7 @@ async function testBuffer() {
   test.addItem(4);
   test.addItem(5);
 
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, 2000));
 
   test.addItem(6);
   test.addItem(7);
