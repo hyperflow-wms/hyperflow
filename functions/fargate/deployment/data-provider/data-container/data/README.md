@@ -1,0 +1,1 @@
+Place workflow input files in this directory if using docker image and data sync task to populate input data to efs.
