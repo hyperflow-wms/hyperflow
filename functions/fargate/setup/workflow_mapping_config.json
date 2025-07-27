@@ -1,0 +1,25 @@
+{
+    "dataProvider": {
+        "cpu": 1024,
+        "memory": 4096,
+        "image": "data_provider_ecr_url"
+    },
+    "dataContainer": {
+        "image": "data_container_ecr_url"
+    },
+    "default": {
+        "cpu": 1024,
+        "memory": 4096,
+        "image": "worker_ecr_url"
+    },
+    "mProject": {
+        "cpu": 2048,
+        "memory": 8192,
+        "image": "mProject_worker_ecr_url"
+    },
+    "mDiffFit": {
+        "cpu": 512,
+        "memory": 2048,
+        "image": "mDiffFit_worker_ecr_url"
+    }
+}
