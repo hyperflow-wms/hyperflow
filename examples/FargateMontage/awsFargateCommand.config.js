@@ -10,34 +10,34 @@ exports.options = {
 
 exports.tasks_mapping = {
   default:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
   mProject:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
   mDiffFit:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:2",
   mConcatFit:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
   mBgModel:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
   mBackground:
     "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
   mImgtbl:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
-  mAdd: "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
+  mAdd: "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
   mShrink:
-    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
+    "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:1",
   mJPEG: "arn:aws:ecs:us-east-1:619561298126:task-definition/montage-worker:3",
 };
 
 exports.vcpu_mapping = {
   default: 1024,
   mProject: 1024,
-  mDiffFit: 1024,
+  mDiffFit: 512,
   mConcatFit: 1024,
   mBgModel: 1024,
-  mBackground: 1024,
+  mBackground: 2048,
   mImgtbl: 1024,
   mAdd: 1024,
   mShrink: 1024,
-  mJPEG: 1024,
+  mJPEG: 2048,
 };
