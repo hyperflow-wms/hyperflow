@@ -1,13 +1,11 @@
 FROM node:16-alpine
-RUN apk add python3 libpcap libpcap-dev util-linux
-COPY software/libnethogs.so.0.8.5-63-g68033bf /usr/local/lib
-COPY software/nethogs-wrapper.py /usr/local/bin 
-RUN chmod +x /usr/local/bin/nethogs-wrapper.py
+
+ARG hf_job_executor_version
+ENV HYPERFLOW_AWS_FARGATE_EXECUTOR_VERSION=$hf_job_executor_version
 
 WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install
-RUN npm install -g log4js
+
+RUN npm install -g hyperflow-awsfargate-executor@${HYPERFLOW_AWS_FARGATE_EXECUTOR_VERSION} log4js
 COPY . .
 
-CMD [ "npm", "start" ]
+CMD [ "hflow-job-execute" ]

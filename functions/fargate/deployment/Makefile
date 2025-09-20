@@ -2,12 +2,13 @@ PREFIX = ECR_REPO_ARN # e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com
 WORKER_REPO_NAME = hyperflow-worker
 PROVIDER_REPO_NAME = hyperflow-data-provider
 CONTAINER_REPO_NAME = hyperflow-data-container
+HF_FARGATE_JOB_EXECUTOR_VERSION = 0.1.0
 
 all: push
 
 
 worker_image:
-	cd worker && docker build -t $(WORKER_REPO_NAME) . --platform linux/amd64
+	cd worker && docker build --build-arg hf_job_executor_version=$(HF_FARGATE_JOB_EXECUTOR_VERSION) -t $(WORKER_REPO_NAME) . --platform linux/amd64
 	docker tag $(WORKER_REPO_NAME):latest $(PREFIX)/$(WORKER_REPO_NAME):latest
 
 worker_push: worker_image
