@@ -6,6 +6,10 @@ var log4js = require('log4js');
 var createJobMessage = require('../common/jobMessage.js').createJobMessage;
 var os = require('os');
 
+// Used to run worker containers as local user (should be set in the Hyperflow container)
+const uid = process.env.USER_ID;
+const gid = process.env.USER_GID;
+
 // limit of parallel jobs
 const MAX_PARALLELISM = process.env.HF_VAR_REDIS_CMD_MAX_PARALLELISM || 10;
 // how long to sleep in the case max parallelism is achieved
@@ -50,13 +54,19 @@ async function redisCommand(ins, outs, context, cb) {
   // if 'container' is present, run through Docker, mounting all directories if necessary
   if (!work_dir) { work_dir=process.cwd; }
   if (context.container) {
-    cmd = 'docker run --network container:redis --name ' + context.name + "_" + context.taskId.replace(/:/g, '_');
+    cmd = 'docker run --network hyperflow-net --name ' + context.name + "_" + context.taskId.replace(/:/g, '_');
     if (input_dir) cmd += ' -v ' + input_dir + ':/input_dir ';
     if (work_dir) cmd += ' -v ' + work_dir + ':/work_dir ';
     if (output_dir) cmd += ' -v ' + output_dir + ':/output_dir ';
-    cmd += ' -e HF_LOG_NODE_NAME="' + os.hostname() + '"';
+    if (uid && gid) {
+      cmd += ` --user ${uid}:${gid}`;
+    } else {
+      console.warn("⚠️  HOST_UID/HOST_GID not set — running job container as default user");
+    }
+    cmd += ' -e HF_LOG_NODE_NAME="' + os.hostname() + '" ';
     cmd += context.container + ' hflow-job-execute';
   } else cmd = 'hflow-job-execute'
+
 
   try {
     // if hyperflow also runs in container, chdir doesn't make sense
