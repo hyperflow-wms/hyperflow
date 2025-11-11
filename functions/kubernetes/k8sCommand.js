@@ -1,5 +1,6 @@
 // Runs a job as a Pod (Kubernetes Job) in a Kubernetes cluster
 
+const tracer = process.env.HF_VAR_ENABLE_TRACING  === "1" ? require("../../tracing.js")("hyperflow-kubernetes") : undefined;
 const k8s = require('@kubernetes/client-node');
 var BufferManager = require('./buffer_manager.js').BufferManager;
 var RestartCounter = require('./restart_counter.js').RestartCounter;
@@ -125,17 +126,38 @@ async function k8sCommandGroup(bufferItems) {
   kubeconfig.loadFromDefault(); // loadFromString(JSON.stringify(kconfig))
 
   let jobExitCodes = [];
-  try {
+
+  const executeJobs = async (span) => {
     if (getExecutorType(context) === "WORKER_POOL") {
       await amqpEnqueueJobs(jobArr, taskIdArr, contextArr, customParams)
     } else {
-      await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams)
+      var traceId = span && span.spanContext().traceId
+      var parentId = span && span.spanContext().spanId
+      await submitK8sJob(kubeconfig, jobArr, taskIdArr, contextArr, customParams, parentId, traceId)
     }
     jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn);
-  } catch (err) {
-    console.log("Error when submitting job:", err);
-    throw err;
   }
+
+  if (process.env.HF_VAR_ENABLE_TRACING  === "1" && tracer){
+    tracer.startActiveSpan('k8sCommands', async span => {
+      try {
+        await executeJobs();
+      } catch (err) {
+        console.log("Error when submitting job:", err);
+        throw err;
+      } finally {
+        span.end();
+      }
+    });
+  } else {
+    try {
+      await executeJobs();
+    } catch (err) {
+        console.log("Error when submitting job:", err);
+        throw err;
+    }
+  }
+
 
   let endTime = Date.now();
   console.log("Ending k8sCommandGroup function, time:", endTime, "exit codes:", jobExitCodes);

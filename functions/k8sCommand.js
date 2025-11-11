@@ -4,7 +4,7 @@ const k8s = require('@kubernetes/client-node');
 const yaml = require('js-yaml');
 var fs = require('fs');
 
-async function k8sCommand(ins, outs, context, cb) {
+async function k8sCommand(ins, outs, context, cb, parentId, traceId) {
 
   let handlerStart = Date.now();
   console.log("[DEBUG] K8sInvoke called.");
@@ -29,7 +29,7 @@ async function k8sCommand(ins, outs, context, cb) {
 
   const k8sApi = kc.makeApiClient(k8s.BatchV1Api);
   try {
-    var command = 'hflow-job-execute ' + context.taskId + ' ' + context.redis_url;
+    var command = 'hflow-job-execute ' + context.taskId + ' ' + context.redis_url + ' ' + parentId + ' ' + traceId;
     var containerName = process.env.HF_VAR_WORKER_CONTAINER;
     var volumePath = '/work_dir';
     var jobName = Math.random().toString(36).substring(7) + '-' + context.name.replace(/_/g, '-') + "-" + context.procId;
