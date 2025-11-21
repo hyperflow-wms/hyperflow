@@ -1,6 +1,8 @@
-FROM node:12-alpine
+FROM node:18-alpine
 
 #ENV PATH $PATH:/node_modules/.bin
 
 COPY . /hyperflow
-RUN npm install -g /hyperflow 
+WORKDIR /hyperflow
+RUN npm install
+RUN npm install -g .
