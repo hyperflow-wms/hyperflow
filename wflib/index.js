@@ -1343,7 +1343,12 @@ async function public_invokeProcFunction(wfId, procId, firingId, insIds_, insVal
         }
 
         conf.jobResult = getJobResult;
-        conf.redis_url = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+        // Get actual connected Redis server address (IP:port) to pass to job executors
+        // This ensures DNS resolution happens in the engine, not in job pods (which may
+        // use older Redis clients or have different DNS configurations)
+        const host = rcl.socket?.remoteAddress || rcl.options?.socket?.host || '127.0.0.1';
+        const port = rcl.socket?.remotePort || rcl.options?.socket?.port || 6379;
+        conf.redis_url = `redis://${host}:${port}`;
 
         // The next two functions may be used by the job function/executor to, 
         // respectively, mark that or check if the task has been completed.
