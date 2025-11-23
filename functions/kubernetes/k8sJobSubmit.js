@@ -2,9 +2,14 @@ const k8s = require('@kubernetes/client-node');
 var fs = require('fs');
 const yaml = require('js-yaml');
 const createJobMessage = require('../../common/jobMessage').createJobMessage;
+const { K8sAdmissionController } = require('./k8sAdmissionController.js');
 
 // k8sJobSubmit.js
 // Common functions for job submission to Kubernetes clusters
+
+// Global admission controller instance (initialized on first use)
+let admissionController = null;
+let admissionControllerInitPromise = null; // Track initialization promise to avoid race conditions
 
 // Function createK8sJobMessage - creates the job message
 //
@@ -141,44 +146,83 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
 
   const k8sApi = kubeconfig.makeApiClient(k8s.BatchV1Api);
 
-  // Create the job via the Kubernetes API. We implement a simple retry logic
-  // in case the API is overloaded and returns HTTP 429 (Too many requests).
-  var createJob = function(attempt) {
-    try {
-      k8sApi.createNamespacedJob(namespace, jobYaml).then(
-        (response) => {
-        },
-        (err) => {
-          try {
-            var statusCode = err.response.statusCode;
-          } catch(e) {
-            // We didn't get a response, probably connection error
-            throw(err);
-          }
-          switch(statusCode) {
-            // if we get 409 or 429 ==> wait and retry
-            case 409: // 'Conflict' -- "Operation cannot be fulfilled on reourcequotas"; bug in k8s?
-            case 429: // 'Too many requests' -- API overloaded
-              // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
-              let delay = Number(err.response.headers['retry-after'] || 1)*1000;
-              console.log("Create k8s job", taskIdArr, "HTTP error " + statusCode + " (attempt " + attempt +
-                           "), retrying after " + delay + "ms." );
-              setTimeout(() => createJob(attempt+1), delay);
-              break;
-            default:
-              console.error("Err");
-              console.error(err);
-              console.error(job);
-              let taskEnd = new Date().toISOString();
-              console.log("Task ended with error, time=", taskEnd);
-          }
-        }
-      );
-    } catch (e) {
-      console.error(e);
+  // Check if admission controller is enabled (check at runtime, not module load time)
+  const admissionControllerEnabled = process.env.HF_VAR_ADMISSION_CONTROLLER === '1';
+
+  // Initialize admission controller if enabled and not already initializing/initialized
+  if (admissionControllerEnabled) {
+    if (!admissionControllerInitPromise) {
+      // First caller: start initialization
+      console.log("Enabling k8s admission controller...");
+      admissionControllerInitPromise = (async () => {
+        admissionController = new K8sAdmissionController(kubeconfig, namespace);
+        await admissionController.initialize();
+        console.log("k8s admission controller initialized successfully");
+      })();
     }
+    // Wait for initialization to complete (whether we started it or someone else did)
+    await admissionControllerInitPromise;
   }
-  createJob(1);
+
+  // Create the job via the Kubernetes API
+  // If admission controller is enabled, acquire permit first (rate limiting),
+  // then fire-and-forget the Pod creation. This preserves parallelism with
+  // message sending while still protecting the scheduler.
+  if (admissionControllerEnabled && admissionController) {
+    // NEW BEHAVIOR: Acquire permit (waits for rate limiting), then fire-and-forget
+    await admissionController.acquirePermit();
+
+    // Fire-and-forget Pod creation (happens in parallel with message sending below)
+    k8sApi.createNamespacedJob(namespace, jobYaml).then(
+      (response) => {
+        // Success (fire-and-forget, no further action needed)
+      },
+      (err) => {
+        // On error, record it for adaptive tuning (but don't block)
+        admissionController.recordError();
+        console.error("Pod creation error after permit acquired:", err.message || err);
+      }
+    );
+  } else {
+    // ORIGINAL BEHAVIOR: Fire-and-forget with simple retry (does NOT wait)
+    var createJob = function(attempt) {
+      try {
+        k8sApi.createNamespacedJob(namespace, jobYaml).then(
+          (response) => {
+            // Success (fire-and-forget, no further action)
+          },
+          (err) => {
+            try {
+              var statusCode = err.response.statusCode;
+            } catch(e) {
+              // We didn't get a response, probably connection error
+              throw(err);
+            }
+            switch(statusCode) {
+              // if we get 409 or 429 ==> wait and retry
+              case 409: // 'Conflict' -- "Operation cannot be fulfilled on resourcequotas"; bug in k8s?
+              case 429: // 'Too many requests' -- API overloaded
+                // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
+                let delay = Number(err.response.headers['retry-after'] || 1)*1000;
+                console.log("Create k8s job", taskIdArr, "HTTP error " + statusCode + " (attempt " + attempt +
+                             "), retrying after " + delay + "ms." );
+                setTimeout(() => createJob(attempt+1), delay);
+                break;
+              default:
+                console.error("Err");
+                console.error(err);
+                console.error("Job YAML:", jobYaml);
+                let taskEnd = new Date().toISOString();
+                console.log("Task ended with error, time=", taskEnd);
+            }
+          }
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    createJob(1); // Fire-and-forget: returns immediately, does NOT wait
+  }
 
   let sendJobMessagesPromises = [];
   for (var i=0; i<jobMessages.length; i++) {
