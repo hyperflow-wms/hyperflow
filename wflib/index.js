@@ -185,14 +185,14 @@ async function public_createInstance(wfJson, baseUrl, cb) {
         var baseUri = baseUrl + '/apps/' + wfId;
         var wfKey = "wf:" + wfId;
 
-        await rcl.hSet(wfKey, "uri", baseUri); // obsolete, not used for anything now
-
         jobConnectors[wfId] = new RemoteJobConnector(rcl, wfId, 3000);
         jobConnectors[wfId].run();
 
         var multi = rcl.multi(); // FIXME: change this to async.parallel
 
-        var addSigInfo = async function (sigId) {
+        multi.hSet(wfKey, "uri", baseUri); // obsolete, not used for anything now
+
+        var addSigInfo = function (sigId) {
             var score = -1;
             var sigObj = sigs[sigId - 1];
             //sigObj.status = "not_ready"; // FIXME: remove (deprecated)
@@ -217,7 +217,7 @@ async function public_createInstance(wfJson, baseUrl, cb) {
 
             if (sigObj.data) { // signal info also contains its instance(s) (initial signals to the workflow)
                 // add signal instance(s) to a special hash
-                await rcl.hSet(wfKey + ":initialsigs", sigId, JSON.stringify(sigObj));
+                multi.hSet(wfKey + ":initialsigs", sigId, JSON.stringify(sigObj));
                 delete sigObj.data; // don't store instances in signal info
             }
 
@@ -238,19 +238,6 @@ async function public_createInstance(wfJson, baseUrl, cb) {
             // 0: data signal/not ready, 1: data signal/ready, 2: control signal
             // FIXME: score deprecated
             multi.zAdd(wfKey + ":data", { score: score, value: JSON.stringify(sigId) });
-        }
-
-        // add workflow processes
-        var procKey;
-        for (var i = 0; i < procs.length; ++i) {
-            var procId = i + 1, uri;
-            if (procs[i].host) { // FIXME: host deprecated (replaced by remote sinks)
-                uri = procs[i].host + '/apps/' + wfId;
-            } else {
-                uri = baseUri;
-            }
-            procKey = wfKey + ":task:" + procId;
-            await processProc(procs[i], wfname, uri, wfKey, procKey, procId, function () { });
         }
 
         // add signal schemas
@@ -285,7 +272,22 @@ async function public_createInstance(wfJson, baseUrl, cb) {
                 wfJson.functions[i].module, function (err, rep) { });
         }
 
-        await multi.exec();
+        // add workflow processes in parallel (don't await, let them race with main multi.exec)
+        var procKey;
+        const procPromises = [];
+        for (var i = 0; i < procs.length; ++i) {
+            var procId = i + 1, uri;
+            if (procs[i].host) { // FIXME: host deprecated (replaced by remote sinks)
+                uri = procs[i].host + '/apps/' + wfId;
+            } else {
+                uri = baseUri;
+            }
+            procKey = wfKey + ":task:" + procId;
+            procPromises.push(processProc(procs[i], wfname, uri, wfKey, procKey, procId, function () { }));
+        }
+
+        // Execute main pipeline and task processing in parallel
+        await Promise.all([multi.exec(), ...procPromises]);
         console.log('Done processing workflow JSON.');
         cb(null);
     }
@@ -908,139 +910,149 @@ function public_setDataState(wfId, spec, cb) {
 //                   e.g.: { '1': { ins: { next: '2' }, outs: { next: '2', done: '4' } } }
 // - fullInfo[i]   = all additional attributes of i-th task (e.g. firingInterval etc.)
 async function public_getWfMap(wfId, cb) {
-    var asyncTasks = [];
-    var wfKey = "wf:" + wfId;
+    const wfKey = "wf:" + wfId;
 
-    let nProcs = await rcl.zCard(wfKey + ":tasks");
-    let nSigs = await rcl.zCard(wfKey + ":data");
+    // Fetch workflow size metadata in parallel
+    const [nProcs, nSigs] = await Promise.all([
+        rcl.zCard(wfKey + ":tasks"),
+        rcl.zCard(wfKey + ":data")
+    ]);
 
-    var types = {}, ins = [], outs = [], sources = [], sinks = [], cPortsInfo = {}, fullInfo = [];
-    for (i = 1; i <= nProcs; ++i) {
-        let procId = i;
-        let procKey = wfKey + ":task:" + procId;
-        let taskInfo = await rcl.hGetAll(procKey);
-        fullInfo[procId] = taskInfo;
+    const ins = [];
+    const outs = [];
+    const sources = [];
+    const sinks = [];
+    const cPortsInfo = {};
+    const fullInfo = [];
 
-        // add additional info to fullInfo
+    // Process all tasks in parallel
+    const taskPromises = Array.from({ length: nProcs }, (_, idx) => {
+        const procId = idx + 1;
+        const procKey = wfKey + ":task:" + procId;
 
-        if (taskInfo.sticky) {
-            var stickyKey = procKey + ":sticky";
-            rcl.smembers(stickyKey, function (err, stickySigs) {
-                if (!stickySigs) stickySigs = [];
+        // Fetch all task-related data in parallel for this task
+        return Promise.all([
+            rcl.hGetAll(procKey),                                           // taskInfo
+            rcl.sMembers(procKey + ":sticky"),                              // sticky signals
+            rcl.sMembers(procKey + ":cinset"),                              // input control signals
+            rcl.sMembers(procKey + ":coutset"),                             // output control signals
+            rcl.hGetAll(procKey + ":incounts"),                             // input counts
+            rcl.hGetAll(procKey + ":outcounts"),                            // output counts
+            rcl.sendCommand(['ZRANGEBYSCORE', procKey + ":ins", '0', '+inf']),    // inputs
+            rcl.sendCommand(['ZRANGEBYSCORE', procKey + ":outs", '0', '+inf']),   // outputs
+            rcl.hGetAll(procKey + ":cins"),                                 // control inputs
+            rcl.hGetAll(procKey + ":couts")                                 // control outputs
+        ]).then(([taskInfo, stickySigs, cins, couts, incounts, outcounts, procIns, procOuts, csigs, csigouts]) => {
+            // Process task info
+            fullInfo[procId] = taskInfo;
+
+            // Process sticky signals
+            if (taskInfo.sticky && stickySigs) {
                 fullInfo[procId].stickySigs = {};
-                stickySigs.forEach(function (s) {
+                stickySigs.forEach(s => {
                     fullInfo[procId].stickySigs[+s] = true;
                 });
-                cb(err);
+            }
+
+            // Process input control signals
+            if (!cins) cins = [];
+            fullInfo[procId].cinset = {};
+            cins.forEach(c => {
+                fullInfo[procId].cinset[+c] = true;
             });
-        }
 
-        // input control signals
-        let cins = await rcl.sMembers(procKey + ":cinset");
-        //onsole.log("CINS", cins);
-        if (!cins) cins = [];
-        fullInfo[procId].cinset = {};
-        cins.forEach(function (c) {
-            fullInfo[procId].cinset[+c] = true;
-        });
-
-        // output control signals
-        let couts = await rcl.sMembers(procKey + ":coutset");
-        if (!couts) couts = [];
-        //onsole.log("COUTS", couts);
-        fullInfo[procId].coutset = {};
-        couts.forEach(function (c) {
-            fullInfo[procId].coutset[+c] = true;
-        });
-
-        let incounts = await rcl.hGetAll(procKey + ":incounts");
-        if (incounts && incounts.rev) {
-            incounts.rev = JSON.parse(incounts.rev);
-        } else { incounts = null; }
-        fullInfo[procId].incounts = incounts;
-
-        let outcounts = await rcl.hGetAll(procKey + ":outcounts");
-        if (outcounts == null || Object.keys(outcounts).length == 0) { outcounts = null; }
-        fullInfo[procId].outcounts = outcounts;
-        //onsole.log("INCOUNTS=", JSON.stringify(incounts, null, 2), " OUTCOUNTS=", JSON.stringify(outcounts, null, 2));
-
-        let procIns = await rcl.sendCommand(['ZRANGEBYSCORE', procKey + ":ins", '0', '+inf'])
-            .catch(err => { console.log(err); throw (err) });
-        ins[procId] = procIns;
-
-        let procOuts = await rcl.sendCommand(['ZRANGEBYSCORE', procKey + ":outs", '0', '+inf']);
-        outs[procId] = procOuts;
-
-        let csigs = await rcl.hGetAll(procKey + ":cins");
-        if (csigs == null || Object.keys(csigs).length == 0) { csigs = null; }
-        if (csigs != null) {
-            var tmp = {};
-            for (var s in csigs) {
-                if (tmp[csigs[s]]) {
-                    tmp[csigs[s]].push(s);
-                } else {
-                    tmp[csigs[s]] = [s];
-                }
-            }
-            for (var i in tmp) {
-                if (tmp[i].length == 1) {
-                    tmp[i] = tmp[i][0];
-                }
-            }
-            if (!(procId in cPortsInfo)) {
-                cPortsInfo[procId] = {};
-            }
-            cPortsInfo[procId].ins = tmp;
-            //onsole.log("C PORTS INFO=", JSON.stringify(cPortsInfo));
-        }
-
-        let csigouts = await rcl.hGetAll(procKey + ":couts");
-        //onsole.log("Proc COUTS WFLIB", ret);
-        if (csigouts != null && Object.keys(csigouts).length != 0) {
-            if (!(procId in cPortsInfo)) {
-                cPortsInfo[procId] = {};
-            }
-            cPortsInfo[procId].outs = csigouts;
-        }
-    }
-
-    for (i = 1; i <= nSigs; ++i) {
-        let sigId = i;
-        let dataKey = wfKey + ":data:" + sigId;
-        // info about all signal sources
-        let srcs = await rcl.sendCommand(['ZRANGE', dataKey + ":sources", '0', '-1', 'WITHSCORES']);
-        sources[sigId] = srcs;
-        //onsole.log(sigId+";"+ret);
-        //sources[sigId].unshift(null);
-
-        // info about signal sinks
-        /*asyncTasks.push(function(callback) {
-            rcl.zrange(dataKey+":sinks", 0, -1, function(err, ret) {
-                if (err || ret == -1) { throw(new Error("Redis error")); }
-                sinks[sigId] = ret;
-                //sinks[sigId].unshift(null);
-                callback(null, ret);
+            // Process output control signals
+            if (!couts) couts = [];
+            fullInfo[procId].coutset = {};
+            couts.forEach(c => {
+                fullInfo[procId].coutset[+c] = true;
             });
-        });*/
-    }
-    // Create info about task types (all remaining tasks have the default type "task")
-    // TODO: pull the list of types dynamically from redis
-    for (let type of ["foreach", "splitter", "csplitter", "choice", "cchoice", "dataflow", "join"]) {
-        let cnt = await rcl.sMembers(wfKey + ":tasktype:" + type);
-        if (cnt) {
-            types[type] = cnt;
-        }
-    }
 
-    /*console.log("WF MAP:");
-    console.log("types", JSON.stringify(types, null, 2));
-    console.log("ins", JSON.stringify(ins, null, 2));
-    console.log("outs", JSON.stringify(outs, null, 2));
-    console.log("sources", JSON.stringify(sources, null, 2));
-    console.log("sinks", JSON.stringify(sinks, null, 2));
-    console.log("cPortsInfo", JSON.stringify(cPortsInfo, null, 2));
-    console.log("fullInfo", JSON.stringify(fullInfo, null, 2));*/
-    cb(null, nProcs, nSigs, ins, outs, sources, sinks, types, cPortsInfo, fullInfo);
+            // Process input counts
+            if (incounts && incounts.rev) {
+                incounts.rev = JSON.parse(incounts.rev);
+            } else {
+                incounts = null;
+            }
+            fullInfo[procId].incounts = incounts;
+
+            // Process output counts
+            if (outcounts == null || Object.keys(outcounts).length == 0) {
+                outcounts = null;
+            }
+            fullInfo[procId].outcounts = outcounts;
+
+            // Store inputs and outputs
+            ins[procId] = procIns;
+            outs[procId] = procOuts;
+
+            // Process control input signals mapping
+            if (csigs != null && Object.keys(csigs).length > 0) {
+                const tmp = {};
+                for (const s in csigs) {
+                    if (tmp[csigs[s]]) {
+                        tmp[csigs[s]].push(s);
+                    } else {
+                        tmp[csigs[s]] = [s];
+                    }
+                }
+                for (const i in tmp) {
+                    if (tmp[i].length == 1) {
+                        tmp[i] = tmp[i][0];
+                    }
+                }
+                if (!(procId in cPortsInfo)) {
+                    cPortsInfo[procId] = {};
+                }
+                cPortsInfo[procId].ins = tmp;
+            }
+
+            // Process control output signals
+            if (csigouts != null && Object.keys(csigouts).length != 0) {
+                if (!(procId in cPortsInfo)) {
+                    cPortsInfo[procId] = {};
+                }
+                cPortsInfo[procId].outs = csigouts;
+            }
+        });
+    });
+
+    // Process all signals in parallel
+    const signalPromises = Array.from({ length: nSigs }, (_, idx) => {
+        const sigId = idx + 1;
+        const dataKey = wfKey + ":data:" + sigId;
+
+        return rcl.sendCommand(['ZRANGE', dataKey + ":sources", '0', '-1', 'WITHSCORES'])
+            .then(srcs => {
+                sources[sigId] = srcs;
+            });
+    });
+
+    // Fetch all task types in parallel
+    const typeList = ["foreach", "splitter", "csplitter", "choice", "cchoice", "dataflow", "join"];
+    const typePromises = typeList.map(type =>
+        rcl.sMembers(wfKey + ":tasktype:" + type)
+            .then(cnt => [type, cnt])
+    );
+
+    // Wait for all operations to complete
+    await Promise.all([
+        Promise.all(taskPromises),
+        Promise.all(signalPromises),
+        Promise.all(typePromises).then(results => {
+            const types = {};
+            results.forEach(([type, cnt]) => {
+                if (cnt && cnt.length > 0) {
+                    types[type] = cnt;
+                }
+            });
+            return types;
+        })
+    ]).then(([_, __, types]) => {
+        cb(null, nProcs, nSigs, ins, outs, sources, sinks, types, cPortsInfo, fullInfo);
+    }).catch(err => {
+        cb(err);
+    });
 }
 
 
@@ -1194,7 +1206,7 @@ async function public_invokeProcFunction(wfId, procId, firingId, insIds_, insVal
     let procInfo = await public_getTaskInfo(wfId, procId);
     //console.log("PRoc info", procInfo)
 
-    var prepareFuncOutputs = function (callback) {
+    var prepareFuncOutputs = async function (callback) {
         // if in recovery mode, use recovery data --> pass outputs that were produced
         // during the previous run. The function will decide if re-execution is needed.
         if (appConfig.recovery) {
@@ -1207,40 +1219,26 @@ async function public_invokeProcFunction(wfId, procId, firingId, insIds_, insVal
             }
         }
 
-        var asyncTasks = [], outsTmp = [];
+        // retrieve task outputs given in 'outsIds' in parallel
+        const outputPromises = outsIds.map((outId) => {
+            let dataKey = "wf:" + wfId + ":data:" + outId;
+            return rcl.hGetAll(dataKey);
+        });
 
-        // retrieve task outputs given in 'outsIds'
-        for (i = 0; i < outsIds.length; ++i) {
-            (function (idx) {
-                asyncTasks.push(async function (callback) {
-                    let dataKey = "wf:" + wfId + ":data:" + outsIds[idx];
-                    let dataInfo = await rcl.hGetAll(dataKey);
-                    outsTmp[+idx] = dataInfo;
-                    callback(null, dataInfo);
-                })
-            })(i);
-        }
-
-        /*function Arg() {} // make 'outs' an Array-like object
-        Arg.prototype = Object.create(Array.prototype);
-        var outs = new Arg;*/
-
-        async.parallel(asyncTasks, function done(err, result) {
-            if (err) return cb(err);
+        try {
+            const outsTmp = await Promise.all(outputPromises);
 
             // convert 'outsTmp' array to array-like object 'outs'
             var outs = convertSigs2ObjArray(outsTmp);
             //onsole.log("OUTS", outs);
 
-            /*for (var i=0; i<outsTmp.length; i++) {
-                outs.push(outsTmp[i]);
-                outs[outsTmp[i].name] = outs[i];
-            }*/
             callback(outs, false);
-        });
+        } catch (err) {
+            return cb(err);
+        }
     }
 
-    prepareFuncOutputs(async function (outs, recovered) {
+    await prepareFuncOutputs(async function (outs, recovered) {
         if (emulate) {
             return setTimeout(function () {
                 cb(null, ins, outs);
