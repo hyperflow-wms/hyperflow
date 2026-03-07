@@ -85,17 +85,22 @@ class K8sAdmissionController {
     this.lastGate2LogTime = 0;
     this.gateLogThrottleMs = 5000; // Log gate blocks at most once per 5 seconds
 
-    // Token bucket state
-    this.tokens = 0;
+    // Token bucket state (start full to allow immediate burst on startup)
+    this.tokens = this.config.burst;
     this.lastRefill = Date.now() / 1000;
     this.fillRate = this.config.initialFillRate;
 
     // Per-submitter backoff state
     this.backoffMs = this.config.backoffInitialMs;
 
+    // Cleanup counter for periodic podPhases garbage collection
+    this._cleanupCounter = 0;
+
     // Watch-related state
     this.watch = null;
     this.watchAbortController = null;
+    this.resourceVersion = null;       // Track LIST/WATCH resourceVersion for continuity
+    this.reconnectBackoffMs = 1000;    // Reconnect backoff (grows on repeated failures)
     this.initialized = false;
     this.adaptInterval = null;
   }
@@ -128,6 +133,9 @@ class K8sAdmissionController {
         this.selector // labelSelector
       );
 
+      // Capture resourceVersion for watch continuity
+      this.resourceVersion = listResponse.body.metadata.resourceVersion;
+
       // Count initial pending Pods
       for (const pod of listResponse.body.items) {
         const phase = pod.status?.phase;
@@ -139,7 +147,7 @@ class K8sAdmissionController {
         }
       }
 
-      this.log(`Initial state: ${this.state.pendingCount} pending Pods (${listResponse.body.items.length} total)`);
+      this.log(`Initial state: ${this.state.pendingCount} pending Pods (${listResponse.body.items.length} total, resourceVersion=${this.resourceVersion})`);
 
       // Start watch
       await this._startWatch();
@@ -169,8 +177,11 @@ class K8sAdmissionController {
 
     const path = `/api/v1/namespaces/${this.namespace}/pods`;
     const queryParams = { labelSelector: this.selector };
+    if (this.resourceVersion) {
+      queryParams.resourceVersion = this.resourceVersion;
+    }
 
-    this.log(`Starting watch on ${path}?labelSelector=${this.selector}`);
+    this.log(`Starting watch on ${path}?labelSelector=${this.selector}&resourceVersion=${this.resourceVersion || 'none'}`);
 
     try {
       await this.watch.watch(
@@ -213,20 +224,16 @@ class K8sAdmissionController {
         if (previousPhase !== currentPhase) {
           this.log(`Pod ${podName} transition: ${previousPhase} -> ${currentPhase}`);
 
-          // Track Pending -> Running transitions for throughput measurement
           if (previousPhase === 'Pending' && currentPhase === 'Running') {
+            // Track Pending -> Running transitions for throughput measurement
             this.state.pendingCount = Math.max(0, this.state.pendingCount - 1);
             this.state.runningTransitions++;
             this.log(`Pod ${podName} started running, pending: ${this.state.pendingCount}, transitions: ${this.state.runningTransitions}`);
-          }
-
-          // Handle other transitions away from Pending (e.g., Failed, Unknown)
-          if (previousPhase === 'Pending' && currentPhase !== 'Pending') {
+          } else if (previousPhase === 'Pending' && currentPhase !== 'Pending') {
+            // Other transitions away from Pending (e.g., Failed, Unknown)
             this.state.pendingCount = Math.max(0, this.state.pendingCount - 1);
-          }
-
-          // Handle transitions into Pending (rare but possible)
-          if (previousPhase !== 'Pending' && currentPhase === 'Pending') {
+          } else if (previousPhase !== 'Pending' && currentPhase === 'Pending') {
+            // Transitions into Pending (rare but possible)
             this.state.pendingCount++;
           }
 
@@ -253,7 +260,7 @@ class K8sAdmissionController {
   }
 
   /**
-   * Handle watch errors and reconnect
+   * Handle watch errors: re-LIST to re-seed state, then restart watch
    */
   _handleWatchError(err) {
     if (err) {
@@ -262,15 +269,55 @@ class K8sAdmissionController {
       this.log('Watch stream ended normally');
     }
 
-    // Reconnect after 1 second
-    this.log('Reconnecting watch in 1 second...');
-    setTimeout(() => {
-      this._startWatch().catch(err => {
-        console.error('[AdmissionController] Watch reconnection failed:', err.message);
-        // Will retry again via the error handler
-        this._handleWatchError(err);
-      });
-    }, 1000);
+    const delay = this.reconnectBackoffMs;
+    this.log(`Reconnecting in ${delay}ms (re-LIST + watch)...`);
+
+    setTimeout(async () => {
+      try {
+        await this._reconnect();
+        // Reset backoff on successful reconnect
+        this.reconnectBackoffMs = 1000;
+      } catch (reconnectErr) {
+        console.error('[AdmissionController] Reconnection failed:', reconnectErr.message);
+        // Exponential backoff up to 30 seconds
+        this.reconnectBackoffMs = Math.min(this.reconnectBackoffMs * 2, 30000);
+        this._handleWatchError(reconnectErr);
+      }
+    }, delay);
+  }
+
+  /**
+   * Re-LIST to rebuild accurate state, then start a new watch
+   */
+  async _reconnect() {
+    const coreApi = this.kubeconfig.makeApiClient(k8s.CoreV1Api);
+
+    const listResponse = await coreApi.listNamespacedPod(
+      this.namespace,
+      undefined, // pretty
+      undefined, // allowWatchBookmarks
+      undefined, // continue
+      undefined, // fieldSelector
+      this.selector // labelSelector
+    );
+
+    // Reset state from fresh LIST
+    this.state.podPhases.clear();
+    this.state.pendingCount = 0;
+    this.resourceVersion = listResponse.body.metadata.resourceVersion;
+
+    for (const pod of listResponse.body.items) {
+      const phase = pod.status?.phase;
+      const podName = pod.metadata.name;
+      this.state.podPhases.set(podName, phase);
+      if (phase === 'Pending') {
+        this.state.pendingCount++;
+      }
+    }
+
+    this.log(`Reconnect re-LIST: ${this.state.pendingCount} pending Pods (${listResponse.body.items.length} total, resourceVersion=${this.resourceVersion})`);
+
+    await this._startWatch();
   }
 
   /**
@@ -312,7 +359,7 @@ class K8sAdmissionController {
     const errorPenalty = Math.max(0.5, 1 - 2 * this.state.createErrorEWMA);
 
     // Keep fillRate within reasonable bounds
-    const configuredRate = parseFloat(process.env.HF_VAR_ADMISSION_FILL_RATE) || this.fillRate;
+    const configuredRate = parseFloat(process.env.HF_VAR_ADMISSION_FILL_RATE) || this.config.initialFillRate;
     this.fillRate = Math.max(1.0, Math.min(configuredRate * 2, targetRate * errorPenalty));
 
     // Adapt pendingMax with hysteresis to prevent under-utilization during temporary slowdowns
@@ -339,7 +386,23 @@ class K8sAdmissionController {
       // Otherwise: keep current pendingMax (ignore temporary dip)
     }
 
-    this.log(`Adapt: rate=${currentRate.toFixed(2)} pods/s, EWMA=${this.state.runningRateEWMA.toFixed(2)}, fillRate=${this.fillRate.toFixed(2)}, pendingMax=${this.config.pendingMax}, errors=${this.state.createErrorEWMA.toFixed(3)}`);
+    this.log(`Adapt: rate=${currentRate.toFixed(2)} pods/s, EWMA=${this.state.runningRateEWMA.toFixed(2)}, fillRate=${this.fillRate.toFixed(2)}, pendingMax=${this.config.pendingMax}, errors=${this.state.createErrorEWMA.toFixed(3)}, tracked=${this.state.podPhases.size}`);
+
+    // Periodic cleanup of terminated pods from podPhases map (every 5 minutes)
+    this._cleanupCounter++;
+    if (this._cleanupCounter >= 300) {
+      this._cleanupCounter = 0;
+      let cleaned = 0;
+      for (const [name, phase] of this.state.podPhases) {
+        if (phase === 'Succeeded' || phase === 'Failed') {
+          this.state.podPhases.delete(name);
+          cleaned++;
+        }
+      }
+      if (cleaned > 0) {
+        this.log(`Cleaned ${cleaned} terminated pods from tracking map (remaining: ${this.state.podPhases.size})`);
+      }
+    }
   }
 
   /**
@@ -381,9 +444,6 @@ class K8sAdmissionController {
       // Both gates passed, consume token and return permit
       this.tokens -= 1;
 
-      // Optimistically increment pending count (watch will correct if needed)
-      this.state.pendingCount++;
-
       this.log(`Permit acquired (pending: ${this.state.pendingCount}, tokens: ${this.tokens.toFixed(2)})`);
       return; // Permit granted
     }
@@ -391,12 +451,11 @@ class K8sAdmissionController {
 
   /**
    * Release a permit (call if Pod creation failed and you want to return the token)
-   * This is optional - primarily for error handling in fire-and-forget scenarios
+   * Only returns the token; pendingCount is managed solely by the watch.
    */
   releasePermit() {
     this.tokens = Math.min(this.config.burst, this.tokens + 1);
-    this.state.pendingCount = Math.max(0, this.state.pendingCount - 1);
-    this.log(`Permit released (pending: ${this.state.pendingCount}, tokens: ${this.tokens.toFixed(2)})`);
+    this.log(`Permit released (tokens: ${this.tokens.toFixed(2)})`);
   }
 
   /**
