@@ -155,9 +155,16 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
       // First caller: start initialization
       console.log("Enabling k8s admission controller...");
       admissionControllerInitPromise = (async () => {
-        admissionController = new K8sAdmissionController(kubeconfig, namespace);
-        await admissionController.initialize();
-        console.log("k8s admission controller initialized successfully");
+        try {
+          admissionController = new K8sAdmissionController(kubeconfig, namespace);
+          await admissionController.initialize();
+          console.log("k8s admission controller initialized successfully");
+        } catch (err) {
+          // Clear state so next call can retry initialization
+          admissionController = null;
+          admissionControllerInitPromise = null;
+          throw err;
+        }
       })();
     }
     // Wait for initialization to complete (whether we started it or someone else did)
@@ -169,20 +176,33 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
   // then fire-and-forget the Pod creation. This preserves parallelism with
   // message sending while still protecting the scheduler.
   if (admissionControllerEnabled && admissionController) {
-    // NEW BEHAVIOR: Acquire permit (waits for rate limiting), then fire-and-forget
+    // Acquire permit (waits for rate limiting), then fire-and-forget with retry
     await admissionController.acquirePermit();
 
-    // Fire-and-forget Pod creation (happens in parallel with message sending below)
-    k8sApi.createNamespacedJob(namespace, jobYaml).then(
-      (response) => {
-        // Success (fire-and-forget, no further action needed)
-      },
-      (err) => {
-        // On error, record it for adaptive tuning (but don't block)
-        admissionController.recordError();
-        console.error("Pod creation error after permit acquired:", err.message || err);
-      }
-    );
+    // Fire-and-forget Pod creation with retry for transient errors
+    var createJobWithRetry = function(attempt) {
+      k8sApi.createNamespacedJob(namespace, jobYaml).then(
+        (response) => {
+          // Success (fire-and-forget, no further action needed)
+        },
+        (err) => {
+          admissionController.recordError();
+          var statusCode = err.response ? err.response.statusCode : undefined;
+          var isRetryable = statusCode === 409 || statusCode === 429 || (statusCode && statusCode >= 500);
+
+          if (isRetryable && attempt < 5) {
+            var delay = Number((err.response && err.response.headers && err.response.headers['retry-after']) || 1) * 1000;
+            console.error("Pod creation error (" + statusCode + "), retry #" + attempt + " after " + delay + "ms:", err.message || err);
+            setTimeout(function() { createJobWithRetry(attempt + 1); }, delay);
+          } else {
+            // Non-retryable or max retries exceeded: return the token
+            admissionController.releasePermit();
+            console.error("Pod creation failed permanently:", err.message || err);
+          }
+        }
+      );
+    };
+    createJobWithRetry(1);
   } else {
     // ORIGINAL BEHAVIOR: Fire-and-forget with simple retry (does NOT wait)
     var createJob = function(attempt) {

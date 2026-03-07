@@ -106,7 +106,7 @@ END
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HF_VAR_ADMISSION_CONTROLLER` | `1` | Set to `0` to disable |
+| `HF_VAR_ADMISSION_CONTROLLER` | `0` (disabled) | Set to `1` to enable |
 | `HF_VAR_ADMISSION_PENDING_MAX` | `200` | Max pending Pods |
 | `HF_VAR_ADMISSION_FILL_RATE` | `1` | Token fill rate (tokens/sec) |
 | `HF_VAR_ADMISSION_BURST` | `20` | Max token bucket size |
@@ -115,11 +115,9 @@ END
 
 ## Usage
 
-The admission controller is **automatically enabled** when using the standard HyperFlow k8s executor. No code changes required.
-
-To disable:
+The admission controller is **disabled by default**. To enable it:
 ```bash
-export HF_VAR_ADMISSION_CONTROLLER=0
+export HF_VAR_ADMISSION_CONTROLLER=1
 ```
 
 ## Tuning Examples
