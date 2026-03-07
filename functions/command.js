@@ -42,7 +42,7 @@ function command(ins, outs, context, cb) {
 
 function command_print(ins, outs, context, cb) {
     console.log("Executing", context.appId, context.procId, context.firingId);
-    console.error("Active tasks:", context.nactivetasks());
+    //console.error("Active tasks:", context.nactivetasks());
     var exec = context.executor.executable,
         args = context.executor.args.join(' ');
 
