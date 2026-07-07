@@ -60,7 +60,7 @@ async function enqueueJobs(jobArr, taskIdArr, contextArr, customParams) {
         await initialize(queue_name);
         let ch = channels[queue_name];
 
-        console.log(`jobArr: ${JSON.stringify(jobArr)}, taskIdArr: ${JSON.stringify(taskIdArr)}, contextArr: ${JSON.stringify(contextArr)}, customParams: ${JSON.stringify(customParams)}`);
+        // console.log(`jobArr: ${JSON.stringify(jobArr)}, taskIdArr: ${JSON.stringify(taskIdArr)}, contextArr: ${JSON.stringify(contextArr)}, customParams: ${JSON.stringify(customParams)}`);
         let tasks = [];
 
         for (let i = 0; i < jobArr.length; i++) {

@@ -1432,7 +1432,7 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                     const taskId = taskIdentifier || conf.taskId;
                     let wfId = taskId.split(':')[1];
                     let connector = jobConnectors[wfId];
-                    return connector.waitForTask(taskId);
+                    return connector.waitForTask(taskId, conf.name);
                 }
 
                 conf.jobResult = getJobResult;

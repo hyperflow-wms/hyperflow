@@ -6,6 +6,7 @@ var RestartCounter = require('./restart_counter.js').RestartCounter;
 var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
 var amqpEnqueueJobs = require('./amqpConnector.js').enqueueJobs;
 var synchronizeJobs = require('./jobSynchronization').synchronizeJobs
+var taskLabel = require('../../common/taskLabel').taskLabel;
 var fs = require('fs');
 
 let bufferManager = new BufferManager();
@@ -41,7 +42,8 @@ async function k8sCommandGroup(bufferItems) {
   }
 
   let startTime = Date.now();
-  console.log("k8sCommandGroup started, time:", startTime);
+  let startLabels = bufferItems.map((item) => taskLabel(item.context.taskId, item.context.name));
+  console.log(`k8sCommandGroup started: [${startLabels.join(', ')}], time:`, startTime);
 
   // Function for rebuffering items
   let restartFn = (bufferIndex) => {
@@ -138,7 +140,8 @@ async function k8sCommandGroup(bufferItems) {
   }
 
   let endTime = Date.now();
-  console.log("Ending k8sCommandGroup function, time:", endTime, "exit codes:", jobExitCodes);
+  let endLabels = taskIdArr.map((taskId, i) => `${taskLabel(taskId, contextArr[i].name)}=${jobExitCodes[i]}`);
+  console.log(`Ending k8sCommandGroup: [${endLabels.join(', ')}], time:`, endTime);
 
   // Stop the entire workflow if a job fails (controlled by an environment variable)
   for (var i=0; i<jobExitCodes.length; i++) {

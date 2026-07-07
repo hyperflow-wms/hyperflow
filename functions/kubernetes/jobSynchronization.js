@@ -1,3 +1,4 @@
+const taskLabel = require('../../common/taskLabel').taskLabel;
 
 async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn) {
 
@@ -7,7 +8,7 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
     var backoffLimit = process.env.HF_VAR_BACKOFF_LIMIT || 0;
     var restartPolicy = backoffLimit > 0 ? "OnFailure" : "Never";
     var restartCount = 0;
-    var awaitJob = async (taskId) => {
+    var awaitJob = async (taskId, name) => {
         try {
             var jobResult = await context.jobResult(0, taskId); // timeout=0 means indefinite
         } catch (err) {
@@ -15,7 +16,7 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
             throw err;
         }
         let taskEnd = new Date().toISOString();
-        console.log('Job ended with result:', jobResult, 'time:', taskEnd);
+        console.log('Job', taskLabel(taskId, name), 'ended with result:', jobResult, 'time:', taskEnd);
          // job exit code
         return parseInt(jobResult[1]);
     }
@@ -23,7 +24,7 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
     var awaitJobs = async (taskIdArr) => {
         let awaitPromises = []
         for (var i = 0; i < taskIdArr.length; i++) {
-            awaitPromises.push(awaitJob(taskIdArr[i]));
+            awaitPromises.push(awaitJob(taskIdArr[i], contextArr[i].name));
         }
         return Promise.all(awaitPromises);
     }
@@ -32,8 +33,9 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
     for (let i = 0; i < jobExitCodes.length; i++) {
         let jobExitCode = jobExitCodes[i];
         let taskId = taskIdArr[i];
+        let name = contextArr[i].name;
         if (jobExitCode !== 0) {
-            console.log("Job", taskId, "failed");
+            console.log("Job", taskLabel(taskId, name), "failed");
             restartFn(i);
             // NOTE: job message is preserved, so we don't have to send it again.
         }
