@@ -11,6 +11,7 @@ class RemoteJobConnector {
      */
     constructor(redisClient, wfId, checkInterval) {
         this.jobPromiseResolves = {};
+        this.handledTasks = new Set(); // tasks whose completion was already delivered
         this.rcl = redisClient;
         this.running = false;
         this.completedNotificationQueueKey = "wf:" + wfId + ":tasksPendingCompletionHandling";
@@ -64,6 +65,33 @@ class RemoteJobConnector {
                 continue;
             }
 
+            if (this.jobPromiseResolves[taskId] === undefined) {
+                if (this.handledTasks.has(taskId)) {
+                    // Duplicate notification for an already handled task (e.g.
+                    // executor retry or message redelivery): remove it, otherwise
+                    // it stays in the notification set forever.
+                    console.error("[RemoteJobConnector] Task", taskId,
+                        "already handled, removing duplicate notification");
+                    try {
+                        await new Promise((resolve, reject) => {
+                            this.rcl.srem(this.completedNotificationQueueKey, taskId, function(err, reply) {
+                                err ? reject(err): resolve(reply);
+                            });
+                        });
+                    } catch (error) {
+                        console.error("[RemoteJobConnector] Unable to delete job from completed queue", error);
+                    }
+                } else {
+                    // The notification may have arrived before waitForTask()
+                    // registered the observer. Keep it (and the task result)
+                    // intact for a later iteration, but back off instead of
+                    // busy-polling redis.
+                    console.error("[RemoteJobConnector] Observer for task", taskId, "not found");
+                    await new Promise((resolve) => setTimeout(resolve, this.checkInterval));
+                }
+                continue;
+            }
+
             console.log("[RemoteJobConnector] Got completed job:", taskId);
 
             let taskResult = null;
@@ -81,12 +109,9 @@ class RemoteJobConnector {
                 continue;
             }
 
-            if (this.jobPromiseResolves[taskId] === undefined) {
-                console.error("[RemoteJobConnector] Observer for task", taskId, "not found");
-                continue;
-            }
             let promiseResolve = this.jobPromiseResolves[taskId];
             delete this.jobPromiseResolves[taskId];
+            this.handledTasks.add(taskId);
 
             try {
                 await new Promise((resolve, reject) => {
