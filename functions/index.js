@@ -6,6 +6,7 @@ var cmd = require('./command.js'),
     commandLocalMock = require('./commandLocalMock.js'),
     redisCommand = require('./redisCommand.js').redisCommand,
     k8sCommand = require('./kubernetes/k8sCommand.js').k8sCommand,
+    kNativeCommand = require('./knative/kNativeCommand').kNativeCommand,
     bojK8sCommand = require('./kubernetes/bojK8sCommand.js').bojK8sCommand;
 
 function print(ins, outs, context, cb) {
@@ -190,4 +191,5 @@ exports.genCollection = genCollection;
 exports.commandLocalMock = commandLocalMock.commandLocalMock;
 exports.redisCommand = redisCommand;
 exports.k8sCommand = k8sCommand;
+exports.kNativeCommand = kNativeCommand;
 exports.bojK8sCommand = bojK8sCommand;
