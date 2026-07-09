@@ -1,0 +1,22 @@
+{
+  "name": "fargate-setup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "Gabriel Kaźmierczak",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.592.0",
+    "@aws-sdk/client-ecs": "^3.592.0",
+    "@aws-sdk/client-efs": "^3.592.0",
+    "@aws-sdk/client-lambda": "^3.592.0",
+    "@aws-sdk/client-s3": "^3.592.0",
+    "prettier": "^3.3.1",
+    "yargs": "^17.7.2"
+  }
+}

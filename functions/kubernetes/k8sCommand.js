@@ -1,7 +1,7 @@
 // Runs a job as a Pod (Kubernetes Job) in a Kubernetes cluster
 
 const k8s = require('@kubernetes/client-node');
-var BufferManager = require('./buffer_manager.js').BufferManager;
+var BufferManager = require('../buffer_utils/buffer_manager.js').BufferManager;
 var RestartCounter = require('./restart_counter.js').RestartCounter;
 var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
 var amqpEnqueueJobs = require('./amqpConnector.js').enqueueJobs;

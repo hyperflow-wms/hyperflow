@@ -1,7 +1,7 @@
 var cmd = require('./command.js'),
     amqpCmd = require('./amqpCommand.js'),
     RESTCmd = require('./RESTServiceCommand.js'),
-    fargateCmd = require('./awsFargateCommand.js'),
+    fargateCmd = require('./fargate/awsFargateCommand.js'),
     lambdaCmd = require('./awsLambdaCommand.js'),
     commandLocalMock = require('./commandLocalMock.js'),
     redisCommand = require('./redisCommand.js').redisCommand,

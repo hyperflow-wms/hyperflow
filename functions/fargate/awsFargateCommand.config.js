@@ -4,11 +4,16 @@ exports.subnet_2 = "string";
 exports.metrics = true || false;
 
 exports.options = {
-    "bucket": "string",
-    "prefix": "string"
+  bucket: "string",
+  prefix: "string",
 };
 
 // task_executable_name : task_definition_name
 exports.tasks_mapping = {
-    "default": "string"
+  default: "string",
+};
+
+exports.vcpu_mapping = {
+  // task_executable : vcpu_value
+  default: 1024,
 };
