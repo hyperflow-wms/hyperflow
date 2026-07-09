@@ -50,7 +50,10 @@ exports.init = function(redisClient) {
     if (redisClient) {
       rcl = redisClient;
       if (global_hfid == 0) {
-        global_hfid = shortid.generate();
+        // Regenerate while the id starts with '-': the hfId leads every taskId,
+        // which is passed as a CLI arg to the executor (redisCommand path), and
+        // its docopt parser treats a '-'-leading arg as an unknown option.
+        do { global_hfid = shortid.generate(); } while (global_hfid[0] === '-');
 
         // this object holds global information about this HF engine instance
         // written to redis as a hash map with key "hflow:<uuid>"
