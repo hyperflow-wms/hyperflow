@@ -22,6 +22,11 @@ var createJobMessage = function(ins, outs, context, customTaskId) {
     jobMessageJSON.name = context.name; // domain-specific name of the task
     jobMessageJSON.stdoutAppend = context.executor.stdoutAppend; // if present, redirect stdout in append mode
     jobMessageJSON.stderrAppend = context.executor.stderrAppend; // if present, redirect stderr in append mode
+    if (context.completionTransport !== undefined) {
+        // advertises the completion-notification transport ("stream" | "set")
+        // so executors can negotiate; omitted (legacy "set" behavior) when unset
+        jobMessageJSON.completionTransport = context.completionTransport;
+    }
 
     return jobMessageJSON;
 }

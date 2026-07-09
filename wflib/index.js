@@ -14,6 +14,7 @@ var fs = require('fs'),
     shortid = require('shortid'),
     Mustache = require('mustache'),
     RemoteJobConnector = require('./connector'),
+    StreamRemoteJobConnector = require('./connector').StreamRemoteJobConnector,
     rcl;
 
 
@@ -25,7 +26,12 @@ var sendSignalTime = 0;
 var global_hfid = 0; // global UUID of this HF engine instance (used for logging)
 var globalInfo = {}; // object holding global information for a given HF engine instance
 
-let jobConnectors = {}; // object holding remote jobs' connectors
+let jobConnectors = {}; // object holding remote jobs' connectors (legacy "set" transport, per wfId)
+
+// Completion-notification transport, read once at process start.
+// "stream" | "set" (default "set" - behavior byte-identical to legacy today).
+const completionTransport = (process.env.HF_VAR_COMPLETION_TRANSPORT === 'stream') ? 'stream' : 'set';
+let streamJobConnector = null; // lazily-created, single process-wide connector ("stream" transport only)
 
 function p0() {
     return (new Date()).getTime();
@@ -212,8 +218,17 @@ exports.init = function(redisClient) {
                     "status", "waiting",
                     function(err, ret) { });
 
-            jobConnectors[wfId] = new RemoteJobConnector(rcl, wfId, 3000);
-            jobConnectors[wfId].run();
+            if (completionTransport === 'stream') {
+                // One connector for the whole engine process, created lazily on
+                // first use (all workflows this process runs share it).
+                if (!streamJobConnector) {
+                    streamJobConnector = new StreamRemoteJobConnector(rcl.duplicate(), global_hfid);
+                    streamJobConnector.run();
+                }
+            } else {
+                jobConnectors[wfId] = new RemoteJobConnector(rcl, wfId, 3000);
+                jobConnectors[wfId].run();
+            }
 
            var multi = rcl.multi(); // FIXME: change this to async.parallel
 
@@ -1421,6 +1436,11 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 conf.firingId = firingId;
                 // 'task' denotes a process firing/activation
                 conf.taskId = conf.hfId + ":" + conf.appId + ":" + conf.procId + ":" + conf.firingId;
+                if (completionTransport === 'stream') {
+                    // Advertised to the executor via the job message so it can
+                    // negotiate the transport (common/jobMessage.js).
+                    conf.completionTransport = 'stream';
+                }
                 conf.wfname = procInfo.wfname;
 
                 // This function is passed to the Process' Function (through 'context')
@@ -1430,6 +1450,9 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 // optionally it can be set by the caller via parameter 'taskIdentifier'
                 var getJobResult = async function(timeout, taskIdentifier) {
                     const taskId = taskIdentifier || conf.taskId;
+                    if (completionTransport === 'stream') {
+                        return streamJobConnector.waitForTask(taskId, conf.name);
+                    }
                     let wfId = taskId.split(':')[1];
                     let connector = jobConnectors[wfId];
                     return connector.waitForTask(taskId, conf.name);
