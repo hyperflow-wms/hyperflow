@@ -15,6 +15,7 @@ var fs = require('fs'),
     Mustache = require('mustache'),
     RemoteJobConnector = require('./connector'),
     StreamRemoteJobConnector = require('./connector').StreamRemoteJobConnector,
+    clog = require('../common/consoleLogger'),
     rcl;
 
 
@@ -64,7 +65,7 @@ exports.init = function(redisClient) {
       }
     }
 
-    console.log("hfid:", global_hfid);
+    clog.info("hfid:", global_hfid);
     /*rcl.on("error", function (err) {
       console.log("redis error: " + err);
       });*/
@@ -88,7 +89,7 @@ exports.init = function(redisClient) {
             var wfJson = JSON.parse(renderedWf);
             public_createInstance(wfJson, baseUrl, function(err, wfId) {
                 finish = (new Date()).getTime();
-                console.log("createInstance time: "+(finish-start)+"ms");
+                clog.debug("createInstance time: "+(finish-start)+"ms");
                 err ? cb(err): cb(null, wfId, wfJson);
             });
         });
@@ -331,7 +332,7 @@ exports.init = function(redisClient) {
             }
 
             multi.exec(function(err, replies) {
-                console.log('Done processing workflow JSON.');
+                clog.debug('Done processing workflow JSON.');
                 cb(err);
             });
         }
@@ -1906,7 +1907,7 @@ function getTasks1(wfId, from, to, dataNum, cb) {
             cb(err);
         } else {
             finish = (new Date()).getTime();
-            console.log("getTasks exec time: "+(finish-start)+"ms");
+            clog.debug("getTasks exec time: "+(finish-start)+"ms");
 
             // replace ids of data elements with their attributes
             for (var i=0; i<tasks.length; ++i) {

@@ -10,15 +10,16 @@ var fs = require('fs'),
     Engine = require('../engine2'),
     async = require('async'),
     readVars = require('../utils/readvars.js'),
-    glob = require('glob');
+    glob = require('glob'),
+    clog = require('./consoleLogger');
 
 function load_plugin(plugins, plugin_name) {
     try {
         var Plugin = require(plugin_name);
         plugins.push(new Plugin());
     } catch (err) {
-        console.log("Plugin module:", plugin_name, "not found!");
-        console.log(err);
+        clog.error("Plugin module:", plugin_name, "not found!");
+        clog.error(err);
         process.exit(1);
     }
 }
@@ -26,7 +27,7 @@ function load_plugin(plugins, plugin_name) {
 function append_file(filename, contents, cb) {
     fs.appendFile(filename, contents, function (err) {
         if (err) {
-            console.log("Error appending to file! " + err);
+            clog.error("Error appending to file! " + err);
             cb(err);
         }
         cb();
@@ -119,7 +120,7 @@ function hflowRun(opts, runCb) {
 
     if (opts.recover) {
         [ recoveryData, opts ] = readRecoveryData(opts['<persistence-log>']);
-        console.log(recoveryData, opts);
+        clog.debug(recoveryData, opts);
         recoveryMode = true;
     }
 
@@ -148,7 +149,7 @@ function hflowRun(opts, runCb) {
             let rawdata = fs.readFileSync(wfConfigFilePath);
             wfConfig = JSON.parse(rawdata);
         } catch(e) {
-            console.log("Error reading/parsing workflow config file:", e);
+            clog.error("Error reading/parsing workflow config file:", e);
         }
     }
     // 2. Look for secondary config files -- workflow.config.{name}.json
@@ -162,7 +163,7 @@ function hflowRun(opts, runCb) {
             let name = match[1];
             wfConfig[name] = secondaryConfig;
         } catch (e) {
-            console.log("Error reading/parsing workflow config file ", file, e);
+            clog.error("Error reading/parsing workflow config file ", file, e);
         }
     });
 
@@ -209,7 +210,7 @@ function hflowRun(opts, runCb) {
                 engine.eventServer.on('prov', function() {
                     cargo.push( { "filename": provenance_output, "args": JSON.stringify(arguments)}, function(err) {
                         if (err) {
-                            console.log("cargo errror! " + err);
+                            clog.error("cargo errror! " + err);
                         }
                     });
                 });
@@ -220,12 +221,12 @@ function hflowRun(opts, runCb) {
                 // FIXME: generate unique persist-log file name
                 var date = new Date().toISOString().replace(new RegExp('[T:.]', 'g'), '-').replace('Z', '');
                 var logFileName = (wfName ? wfName: 'wf').concat('.' + date + ".log");
-                console.log("Persistence log:", logFileName);
+                clog.info("Persistence log:", logFileName);
                 var persistlog=pathtool.join(wfDirFull, logFileName);
                 engine.eventServer.on('persist', function() {
                     cargo.push( { "filename": persistlog, "args": JSON.stringify(arguments) }, function(err) {
                         if (err) {
-                            console.log("cargo errror! " + err);
+                            clog.error("cargo errror! " + err);
                         }
                     });
                 });
@@ -235,7 +236,7 @@ function hflowRun(opts, runCb) {
             engine.eventServer.emit('persist', ["info", wfDirFull, JSON.stringify(opts)]);
 
             engine.runInstance(function(err) {
-                console.log("Wf id="+wfId);
+                clog.info("Wf id="+wfId);
                 if (opts['-s']) {
                     // Flag -s is present: send all input signals to the workflow -> start execution
                     wflib.getWfIns(wfId, false, function(err, wfIns) {

@@ -15,7 +15,8 @@
 var fs = require('fs'),
     fsm = require('./automata.js'),
     async = require('async'),
-    eventServerFactory = require('../eventlog');
+    eventServerFactory = require('../eventlog'),
+    clog = require('../common/consoleLogger');
 
 
 var ProcDataflowFSM = require('./ProcDataflowFSM.js');
@@ -150,7 +151,8 @@ Engine.prototype.taskFinished = function(taskId) {
 }
 
 Engine.prototype.workflowFinished = function() {
-    console.log("Workflow ["+this.wfId+"] finished. Exec trace:", this.trace+"." );
+    clog.info(clog.color.ok("Workflow ["+this.wfId+"] finished."));
+    clog.debug("Exec trace:", this.trace+".");
     //onsole.log(this.syncCb);
     if (this.syncCb) {
         this.syncCb();

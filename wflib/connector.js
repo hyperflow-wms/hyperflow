@@ -1,4 +1,5 @@
 const taskLabel = require('../common/taskLabel').taskLabel;
+const clog = require('../common/consoleLogger');
 
 /**
  * Class for getting notifications about tasks' results.
@@ -36,11 +37,11 @@ class RemoteJobConnector {
      */
     waitForTask(taskId, name) {
         if (this.jobPromiseResolves[taskId] !== undefined) {
-            console.error("[RemoteJobConnector] Task", this.describeTask(taskId), "is already observed");
+            clog.warn("[RemoteJobConnector] Task", this.describeTask(taskId), "is already observed");
             return;
         }
         if (name) this.taskNames[taskId] = name;
-        console.log("[RemoteJobConnector] Waiting for task", this.describeTask(taskId));
+        clog.debug("[RemoteJobConnector] Waiting for task", this.describeTask(taskId));
         let promise = new Promise((resolve, reject) => {
             this.jobPromiseResolves[taskId] = resolve;
         });
@@ -57,7 +58,7 @@ class RemoteJobConnector {
         this.running = true;
         while (true) {
             if (this.running == false) {
-                console.log("[RemoteJobConnector] Stopping");
+                clog.debug("[RemoteJobConnector] Stopping");
                 break;
             }
 
@@ -69,7 +70,7 @@ class RemoteJobConnector {
                     });
                 });
             } catch (error) {
-                console.error("[RemoteJobConnector] Unable to fetch new complated jobs", error);
+                clog.error("[RemoteJobConnector] Unable to fetch new complated jobs", error);
             }
 
             if (taskId == null) {
@@ -82,7 +83,7 @@ class RemoteJobConnector {
                     // Duplicate notification for an already handled task (e.g.
                     // executor retry or message redelivery): remove it, otherwise
                     // it stays in the notification set forever.
-                    console.error("[RemoteJobConnector] Task", this.describeTask(taskId),
+                    clog.warn("[RemoteJobConnector] Task", this.describeTask(taskId),
                         "already handled, removing duplicate notification");
                     try {
                         await new Promise((resolve, reject) => {
@@ -98,13 +99,13 @@ class RemoteJobConnector {
                     // registered the observer. Keep it (and the task result)
                     // intact for a later iteration, but back off instead of
                     // busy-polling redis.
-                    console.error("[RemoteJobConnector] Observer for task", this.describeTask(taskId), "not found");
+                    clog.debug("[RemoteJobConnector] Observer for task", this.describeTask(taskId), "not found");
                     await new Promise((resolve) => setTimeout(resolve, this.checkInterval));
                 }
                 continue;
             }
 
-            console.log("[RemoteJobConnector] Got completed job:", this.describeTask(taskId));
+            clog.debug("[RemoteJobConnector] Got completed job:", this.describeTask(taskId));
 
             let taskResult = null;
             try {
@@ -117,7 +118,7 @@ class RemoteJobConnector {
                     });
                 });
             } catch (error) {
-                console.error("[RemoteJobConnector] Unable to get result of job", taskId);
+                clog.error("[RemoteJobConnector] Unable to get result of job", taskId);
                 continue;
             }
 
@@ -135,7 +136,7 @@ class RemoteJobConnector {
                 console.error("[RemoteJobConnector] Unable to delete job from completed queue", error);
             }
 
-            console.log("[RemoteJobConnector] Resolving promise for task", this.describeTask(taskId), "| result =", taskResult);
+            clog.debug("[RemoteJobConnector] Resolving promise for task", this.describeTask(taskId), "| result =", taskResult);
             delete this.taskNames[taskId];
             promiseResolve(taskResult);
         }
@@ -147,7 +148,7 @@ class RemoteJobConnector {
      * Stops connector.
      */
     async stop() {
-        console.log("[RemoteJobConnector] Requesting stop");
+        clog.debug("[RemoteJobConnector] Requesting stop");
         this.running = false;
         return;
     }
@@ -234,7 +235,7 @@ class StreamRemoteJobConnector {
      */
     waitForTask(taskId, name) {
         if (this.jobPromiseResolves[taskId] !== undefined) {
-            console.error("[StreamRemoteJobConnector] Task", this.describeTask(taskId), "is already observed");
+            clog.warn("[StreamRemoteJobConnector] Task", this.describeTask(taskId), "is already observed");
             return;
         }
         if (name) this.taskNames[taskId] = name;
@@ -245,13 +246,13 @@ class StreamRemoteJobConnector {
             const code = this.earlyEvents[taskId];
             delete this.earlyEvents[taskId];
             this.handledTasks.add(taskId);
-            console.log("[StreamRemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
+            clog.debug("[StreamRemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
                 "| result =", [null, code], "(early arrival)");
             delete this.taskNames[taskId];
             return Promise.resolve([null, code]);
         }
 
-        console.log("[StreamRemoteJobConnector] Waiting for task", this.describeTask(taskId));
+        clog.debug("[StreamRemoteJobConnector] Waiting for task", this.describeTask(taskId));
         let promise = new Promise((resolve, reject) => {
             this.jobPromiseResolves[taskId] = resolve;
         });
@@ -315,18 +316,18 @@ class StreamRemoteJobConnector {
             let promiseResolve = this.jobPromiseResolves[taskId];
             delete this.jobPromiseResolves[taskId];
             this.handledTasks.add(taskId);
-            console.log("[StreamRemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
+            clog.debug("[StreamRemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
                 "| result =", [null, code]);
             delete this.taskNames[taskId];
             promiseResolve([null, code]);
         } else if (this.handledTasks.has(taskId)) {
-            console.error("[StreamRemoteJobConnector] Task", this.describeTask(taskId),
+            clog.warn("[StreamRemoteJobConnector] Task", this.describeTask(taskId),
                 "already handled, dropping duplicate notification");
         } else if (this.earlyEvents[taskId] !== undefined) {
-            console.error("[StreamRemoteJobConnector] Duplicate early notification for task",
+            clog.warn("[StreamRemoteJobConnector] Duplicate early notification for task",
                 this.describeTask(taskId), "before observer registered, keeping first result");
         } else {
-            console.log("[StreamRemoteJobConnector] Early notification for task", this.describeTask(taskId),
+            clog.debug("[StreamRemoteJobConnector] Early notification for task", this.describeTask(taskId),
                 "- observer not yet registered, stashing");
             this.earlyEvents[taskId] = code;
         }
@@ -344,14 +345,14 @@ class StreamRemoteJobConnector {
             try {
                 reply = await this._readGroup('0', false);
             } catch (error) {
-                console.error("[StreamRemoteJobConnector] PEL drain failed, retrying", error);
+                clog.error("[StreamRemoteJobConnector] PEL drain failed, retrying", error);
                 await sleep(500);
                 continue;
             }
             const entries = parseStreamReply(reply, this.streamKey);
             if (entries.length === 0) break;
 
-            console.log("[StreamRemoteJobConnector] Redelivering", entries.length,
+            clog.debug("[StreamRemoteJobConnector] Redelivering", entries.length,
                 "unacknowledged entr" + (entries.length === 1 ? "y" : "ies"), "from PEL");
             for (const entry of entries) {
                 this._handleEntry(entry.taskId, entry.code);
@@ -359,7 +360,7 @@ class StreamRemoteJobConnector {
             try {
                 await this._ack(entries.map((e) => e.id));
             } catch (error) {
-                console.error("[StreamRemoteJobConnector] XACK failed during PEL drain", error);
+                clog.error("[StreamRemoteJobConnector] XACK failed during PEL drain", error);
             }
         }
     }
@@ -374,7 +375,7 @@ class StreamRemoteJobConnector {
         try {
             await this._createGroup();
         } catch (error) {
-            console.error("[StreamRemoteJobConnector] Unable to create consumer group", this.group,
+            clog.error("[StreamRemoteJobConnector] Unable to create consumer group", this.group,
                 "on", this.streamKey, error);
         }
 
@@ -385,7 +386,7 @@ class StreamRemoteJobConnector {
             try {
                 reply = await this._readGroup('>', true);
             } catch (error) {
-                console.error("[StreamRemoteJobConnector] XREADGROUP failed, retrying", error);
+                clog.error("[StreamRemoteJobConnector] XREADGROUP failed, retrying", error);
                 await sleep(500);
                 continue;
             }
@@ -400,11 +401,11 @@ class StreamRemoteJobConnector {
             try {
                 await this._ack(entries.map((e) => e.id));
             } catch (error) {
-                console.error("[StreamRemoteJobConnector] XACK failed", error);
+                clog.error("[StreamRemoteJobConnector] XACK failed", error);
             }
         }
 
-        console.log("[StreamRemoteJobConnector] Stopping");
+        clog.debug("[StreamRemoteJobConnector] Stopping");
         return;
     }
 
@@ -414,7 +415,7 @@ class StreamRemoteJobConnector {
      * semantics as the legacy connector's finite checkInterval sleep).
      */
     async stop() {
-        console.log("[StreamRemoteJobConnector] Requesting stop");
+        clog.debug("[StreamRemoteJobConnector] Requesting stop");
         this.running = false;
         return;
     }

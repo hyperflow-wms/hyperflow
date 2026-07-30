@@ -1,18 +1,27 @@
 var cmd = require('./command.js'),
     amqpCmd = require('./amqpCommand.js'),
     RESTCmd = require('./RESTServiceCommand.js'),
-    fargateCmd = require('./awsFargateCommand.js'),
-    lambdaCmd = require('./awsLambdaCommand.js'),
     commandLocalMock = require('./commandLocalMock.js'),
     redisCommand = require('./redisCommand.js').redisCommand,
     k8sCommand = require('./kubernetes/k8sCommand.js').k8sCommand,
-    bojK8sCommand = require('./kubernetes/bojK8sCommand.js').bojK8sCommand;
+    bojK8sCommand = require('./kubernetes/bojK8sCommand.js').bojK8sCommand,
+    clog = require('../common/consoleLogger');
+
+// The AWS executor functions pull in aws-sdk, which is large and prints a
+// deprecation notice when loaded, so load it on first use instead of at startup
+function awsFargateCommand(ins, outs, config, cb) {
+    return require('./awsFargateCommand.js').awsFargateCommand(ins, outs, config, cb);
+}
+
+function awsLambdaCommand(ins, outs, config, cb) {
+    return require('./awsLambdaCommand.js').awsLambdaCommand(ins, outs, config, cb);
+}
 
 function print(ins, outs, context, cb) {
-    console.log("Running task", context.name, "(" + context.taskId + ")")
-    console.log(context.executor)
+    clog.info("Running task", context.name, "(" + context.taskId + ")")
+    clog.debug(context.executor)
     if (context.traceInfo) {
-        console.log("Trace info:", context.traceInfo)
+        clog.debug("Trace info:", context.traceInfo)
     }
     cb(null, outs);
 }
@@ -175,8 +184,8 @@ exports.length = length;
 exports.command = cmd.command;
 exports.amqpCommand = amqpCmd.amqpCommand;
 exports.RESTServiceCommand = RESTCmd.RESTServiceCommand;
-exports.awsFargateCommand = fargateCmd.awsFargateCommand;
-exports.awsLambdaCommand = lambdaCmd.awsLambdaCommand;
+exports.awsFargateCommand = awsFargateCommand;
+exports.awsLambdaCommand = awsLambdaCommand;
 exports.exit = exit;
 exports.command_print = cmd.command_print;
 exports.command_notifyevents = cmd.command_notifyevents;

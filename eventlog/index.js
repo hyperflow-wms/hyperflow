@@ -1,4 +1,5 @@
 var EventEmitter2 = require('eventemitter2').EventEmitter2
+var clog = require('../common/consoleLogger')
 
 var EventServer = function () {
     this.server = new EventEmitter2({
@@ -34,10 +35,12 @@ function createEventServer() {
     };
 
 // Here's how to subscribe to events:
-    eventLog.on('trace.*', function (data) {
-        // "this.event" contains the full event name
-        console.log("EVENT:", this.event, JSON.stringify(arguments, null, 2));
-    });
+    if (clog.isDebug) {
+        eventLog.on('trace.*', function (data) {
+            // "this.event" contains the full event name
+            clog.debug("EVENT:", this.event, JSON.stringify(arguments, null, 2));
+        });
+    }
     return eventLog;
 }
 

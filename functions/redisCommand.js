@@ -5,6 +5,7 @@ var spawn = require('child_process').spawn;
 var log4js = require('log4js');
 var createJobMessage = require('../common/jobMessage.js').createJobMessage;
 var os = require('os');
+var clog = require('../common/consoleLogger');
 
 // Used to run worker containers as local user (should be set in the Hyperflow container)
 const uid = process.env.USER_ID;
@@ -17,6 +18,9 @@ const WAIT_TIME_MS = process.env.HF_VAR_REDIS_CMD_WAIT_TIME_MS || 2000;
 
 // number of jobs currently running
 var numParallelJobs = 0;
+
+// warn about missing UID/GID mapping once per engine process, not per task
+var warnedNoUidGid = false;
 
 // set host name to be logged by the executor
 process.env.HF_LOG_NODE_NAME = os.hostname();
@@ -60,10 +64,23 @@ async function redisCommand(ins, outs, context, cb) {
     if (output_dir) cmd += ' -v ' + output_dir + ':/output_dir ';
     if (uid && gid) {
       cmd += ` --user ${uid}:${gid}`;
-    } else {
-      console.warn("⚠️  HOST_UID/HOST_GID not set — running job container as default user");
+    } else if (!warnedNoUidGid) {
+      warnedNoUidGid = true;
+      clog.warn("HOST_UID/HOST_GID not set - running job containers as default user");
     }
     cmd += ' -e HF_LOG_NODE_NAME="' + os.hostname() + '" ';
+    cmd += ' -e HF_VAR_CONSOLE_LOG_LEVEL="' + (process.env.HF_VAR_CONSOLE_LOG_LEVEL || 'info') + '" ';
+    // file-log level for the executor's per-task trace, when set
+    if (process.env.HF_VAR_LOG_LEVEL) {
+      cmd += ' -e HF_VAR_LOG_LEVEL="' + process.env.HF_VAR_LOG_LEVEL + '" ';
+    }
+    // color preference, so worker output matches the engine's. Never pass both:
+    // node warns that it is ignoring one of them.
+    if (process.env.NO_COLOR) {
+      cmd += ' -e NO_COLOR="' + process.env.NO_COLOR + '" ';
+    } else if (process.env.FORCE_COLOR) {
+      cmd += ' -e FORCE_COLOR="' + process.env.FORCE_COLOR + '" ';
+    }
     cmd += context.container + ' hflow-job-execute';
   } else cmd = 'hflow-job-execute'
 
@@ -77,25 +94,29 @@ async function redisCommand(ins, outs, context, cb) {
 
   // Wait in the case max parallelism is achieved
   while (numParallelJobs == MAX_PARALLELISM) {
-    console.log("Max parallelism acheived, sleeping", WAIT_TIME_MS + "ms...")
+    clog.debug("Max parallelism achieved, sleeping", WAIT_TIME_MS + "ms...")
     await sleep(WAIT_TIME_MS);
   }
 
   numParallelJobs++;
-  console.log("Jobs currently running:", numParallelJobs);
-  console.log("Spawning:", cmd, '--', context.taskId, context.redis_url);
+  const startTime = Date.now();
+  const c = clog.color;
+  clog.info(c.dim('[hf] task'), c.started('started:'), c.task(context.name),
+            c.dim('(' + context.taskId + ')'),
+            c.dim('[' + numParallelJobs + ' running]'));
+  clog.debug("Spawning:", cmd, '--', context.taskId, context.redis_url);
 
   // "submit" job (start the handler process)
   var proc = spawn(cmd, [context.taskId, context.redis_url], {shell: true});
 
   proc.stderr.on('data', function(data) {
     logger.debug(data.toString());
-    console.error(data.toString());
+    clog.warn(c.warn('[worker ' + context.name + ']'), data.toString().trimEnd());
   });
 
   proc.stdout.on('data', function(data) {
     logger.debug(data.toString());
-    console.log(data.toString());
+    clog.debug(data.toString().trimEnd());
   });
 
   proc.on('exit', function(code) {
@@ -107,7 +128,7 @@ async function redisCommand(ins, outs, context, cb) {
     await context.sendMsgToJob(jobMessage);
     logger.info('[' + context.taskId + '] job message sent');
   } catch(err) {
-    console.error(err);
+    clog.error(err);
     throw err;
   }
 
@@ -115,11 +136,18 @@ async function redisCommand(ins, outs, context, cb) {
   try {
     var jobResult = await context.jobResult(0);
     logger.info('[' + context.taskId + '] job result received:', jobResult);
-    console.log('Received job result:', jobResult);
     numParallelJobs--;
+    const failed = String(jobResult[1]) !== '0';
+    clog.info(c.dim('[hf] task'),
+              failed ? c.failed('failed:') : c.finished('finished:'),
+              c.task(context.name), c.dim('(' + context.taskId + ')'),
+              failed ? c.failed('exit=' + jobResult[1]) : c.dim('exit=0'),
+              c.time('time=' + ((Date.now() - startTime) / 1000).toFixed(1) + 's'),
+              c.dim('[' + numParallelJobs + ' running]'));
+    clog.debug('Received job result:', jobResult);
     cb(null, outs);
   } catch(err) {
-    console.error(err);
+    clog.error(err);
     throw err;
   }
 }
