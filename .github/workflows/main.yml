@@ -1,4 +1,7 @@
-# This is a basic workflow to help you get started with Actions
+# Builds the engine image on every change and publishes it when a release is
+# created. Publishing happens here and nowhere else: a local `make push` tags
+# the image from whatever `git describe` returns on that machine, which has
+# already put a mis-tagged image on Docker Hub.
 
 name: CI
 
@@ -16,31 +19,45 @@ on:
   workflow_dispatch:
     inputs: {}
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallelname: ci
-
 jobs:
-  build:
+  test:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # No install step: tests/connector.js reaches only wflib/connector.js and
+      # common/{taskLabel,consoleLogger}.js, none of which require a dependency.
+      # tests/functions.js is deliberately not run: it asserts synchronously on
+      # an asynchronous notification and has failed since before this workflow.
+      - name: Connector regression tests
+        run: node tests/connector.js
+
+  build:
+    needs: [ test ]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
         with:
           # Need tags for Makefile logic to work
           fetch-depth: 0
       - name: Build the Docker images
         run: make image
+
   deploy:
-    needs: [ "build" ]
+    needs: [ build ]
     runs-on: ubuntu-22.04
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           # Need tags for Makefile logic to work
           fetch-depth: 0
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and Push Docker Images
         run: make push
