@@ -1,3 +1,5 @@
+const clog = require('../../common/consoleLogger');
+
 /**
  * Class used for buffering jobs - kind of agglomeration.
  */
@@ -13,7 +15,7 @@ class BufferCountWithTimeout {
   addItem(item) {
     this.elements.push(item);
     if (this.elements.length >= this.triggerCount) {
-      console.log("Running callback [reached count]");
+      clog.debug("Running callback [reached count]");
       let elementsCopy = this.elements;
       this.elements = [];
       this.cb(elementsCopy);
@@ -26,7 +28,7 @@ class BufferCountWithTimeout {
       clearInterval(this.timeoutId);
     }
     this.timeoutId = setTimeout(() => {
-      console.log("Running callback [reached timeout]");
+      clog.debug("Running callback [reached timeout]");
       let elementsCopy = this.elements;
       this.timeoutId = null;
       this.elements = [];
@@ -41,7 +43,7 @@ class BufferCountWithTimeout {
  */
 async function testBuffer() {
   let fn = (items) => {
-    console.log("Got from buffer:", items);
+    clog.debug("Got from buffer:", items);
   }
   let test = new BufferCountWithTimeout(3, 1000, fn);
   test.addItem(1);

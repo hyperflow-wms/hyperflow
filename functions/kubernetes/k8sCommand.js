@@ -7,6 +7,7 @@ var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
 var amqpEnqueueJobs = require('./amqpConnector.js').enqueueJobs;
 var synchronizeJobs = require('./jobSynchronization').synchronizeJobs
 var taskLabel = require('../../common/taskLabel').taskLabel;
+var clog = require('../../common/consoleLogger');
 var fs = require('fs');
 
 let bufferManager = new BufferManager();
@@ -43,7 +44,12 @@ async function k8sCommandGroup(bufferItems) {
 
   let startTime = Date.now();
   let startLabels = bufferItems.map((item) => taskLabel(item.context.taskId, item.context.name));
-  console.log(`k8sCommandGroup started: [${startLabels.join(', ')}], time:`, startTime);
+  const c = clog.color;
+  bufferItems.forEach((item) => {
+    clog.info(c.dim('[hf] task'), c.started('started:'), c.task(item.context.name),
+              c.dim('(' + item.context.taskId + ')'));
+  });
+  clog.debug(`k8sCommandGroup started: [${startLabels.join(', ')}], time:`, startTime);
 
   // Function for rebuffering items
   let restartFn = (bufferIndex) => {
@@ -54,7 +60,7 @@ async function k8sCommandGroup(bufferItems) {
     } catch(error) { }
     if (restartCounter.isRestartPossible(taskId)) {
       let restartVal = restartCounter.increase(taskId);
-      console.log("Readding task", taskId, "to buffer (restartCount:", restartVal + ") ...");
+      clog.warn("Readding task", taskId, "to buffer (restartCount:", restartVal + ") ...");
       let itemName = bufferItem.context.name;
       bufferManager.addItem(itemName, bufferItem, partition);
     }
@@ -135,13 +141,13 @@ async function k8sCommandGroup(bufferItems) {
     }
     jobExitCodes = await synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn);
   } catch (err) {
-    console.log("Error when submitting job:", err);
+    clog.error("Error when submitting job:", err);
     throw err;
   }
 
   let endTime = Date.now();
   let endLabels = taskIdArr.map((taskId, i) => `${taskLabel(taskId, contextArr[i].name)}=${jobExitCodes[i]}`);
-  console.log(`Ending k8sCommandGroup: [${endLabels.join(', ')}], time:`, endTime);
+  clog.debug(`Ending k8sCommandGroup: [${endLabels.join(', ')}], time:`, endTime);
 
   // Stop the entire workflow if a job fails (controlled by an environment variable)
   for (var i=0; i<jobExitCodes.length; i++) {
@@ -149,8 +155,8 @@ async function k8sCommandGroup(bufferItems) {
     if (jobExitCode != 0 && process.env.HF_VAR_STOP_WORKFLOW_WHEN_JOB_FAILED=="1") {
       let taskId = taskIdArr[i];
       let job = jobArr[i];
-      console.log('Error: job', taskId, 'exited with error code', jobExitCode, ', stopping workflow.');
-      console.log('Error details: job.name: ' + job.name + ', job.args: ' + job.args.join(' '));
+      clog.error('Error: job', taskId, 'exited with error code', jobExitCode, ', stopping workflow.');
+      clog.error('Error details: job.name: ' + job.name + ', job.args: ' + job.args.join(' '));
       process.exit(1);
     }
   }
@@ -170,7 +176,7 @@ async function k8sCommandGroup(bufferItems) {
   try {
     await Promise.all(markPromises);
   } catch {
-    console.error("Marking jobs", taskIdArr, "as completed failed.")
+    clog.error("Marking jobs", taskIdArr, "as completed failed.")
   }
 
   for (var i=0; i<cbArr.length; i++) {

@@ -1,4 +1,5 @@
 
+const clog = require('../../common/consoleLogger');
 const amqplib = require('amqplib'),
     createJobMessage = require('../../common/jobMessage').createJobMessage;
 
@@ -10,7 +11,7 @@ let channelPromises = {};
 async function getConnection() {
     if (conn) return conn;
     if (!connPromise) {
-        console.log("[AMQP] Creating new connection...");
+        clog.debug("[AMQP] Creating new connection...");
         connPromise = amqplib.connect(`amqp://${process.env.RABBIT_HOSTNAME}`, "heartbeat=60");
     }
     conn = await connPromise;
@@ -25,7 +26,7 @@ async function initialize(queue_name) {
     if (!channelPromises[queue_name]) {
         channelPromises[queue_name] = (async () => {
             try {
-                console.log(`[AMQP] Creating channel for queue ${queue_name}`);
+                clog.debug(`[AMQP] Creating channel for queue ${queue_name}`);
                 const ch = await connection.createChannel();
                 await ch.assertQueue(queue_name, { durable: false, expires: 6000000 });
                 channels[queue_name] = ch;
@@ -73,7 +74,7 @@ async function enqueueJobs(jobArr, taskIdArr, contextArr, customParams) {
 
         ch.sendToQueue(queue_name, Buffer.from(JSON.stringify({ 'tasks': tasks })));
     } catch (error) {
-        console.log(error);
+        clog.error(error);
     }
 }
 

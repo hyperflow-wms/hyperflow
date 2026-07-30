@@ -1,6 +1,7 @@
 const k8s = require('@kubernetes/client-node');
 var fs = require('fs');
 const yaml = require('js-yaml');
+const clog = require('../../common/consoleLogger');
 const createJobMessage = require('../../common/jobMessage').createJobMessage;
 const { K8sAdmissionController } = require('./k8sAdmissionController.js');
 
@@ -134,15 +135,15 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
 
   // Test mode -- just print, do not actually create jobs
   if (process.env.HF_VAR_K8S_TEST=="1") {
-    console.log("Job yaml", JSON.stringify(jobYaml, null, 4));
-    console.log("Job message", JSON.stringify(jobMessages, null, 2));
+    clog.info("Job yaml", JSON.stringify(jobYaml, null, 4));
+    clog.info("Job message", JSON.stringify(jobMessages, null, 2));
     return taskIdArr.map(x => 0);
   }
 
   var namespace = customParams.k8sNamespace || process.env.HF_VAR_NAMESPACE || 'default';
 
   let taskStart = new Date().toISOString();
-  console.log("Starting tasks", taskIdArr, 'time=' + taskStart);
+  clog.debug("Starting tasks", taskIdArr, 'time=' + taskStart);
 
   const k8sApi = kubeconfig.makeApiClient(k8s.BatchV1Api);
 
@@ -153,12 +154,12 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
   if (admissionControllerEnabled) {
     if (!admissionControllerInitPromise) {
       // First caller: start initialization
-      console.log("Enabling k8s admission controller...");
+      clog.debug("Enabling k8s admission controller...");
       admissionControllerInitPromise = (async () => {
         try {
           admissionController = new K8sAdmissionController(kubeconfig, namespace);
           await admissionController.initialize();
-          console.log("k8s admission controller initialized successfully");
+          clog.debug("k8s admission controller initialized successfully");
         } catch (err) {
           // Clear state so next call can retry initialization
           admissionController = null;
@@ -192,12 +193,12 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
 
           if (isRetryable && attempt < 5) {
             var delay = Number((err.response && err.response.headers && err.response.headers['retry-after']) || 1) * 1000;
-            console.error("Pod creation error (" + statusCode + "), retry #" + attempt + " after " + delay + "ms:", err.message || err);
+            clog.warn("Pod creation error (" + statusCode + "), retry #" + attempt + " after " + delay + "ms:", err.message || err);
             setTimeout(function() { createJobWithRetry(attempt + 1); }, delay);
           } else {
             // Non-retryable or max retries exceeded: return the token
             admissionController.releasePermit();
-            console.error("Pod creation failed permanently:", err.message || err);
+            clog.error("Pod creation failed permanently:", err.message || err);
           }
         }
       );
@@ -224,21 +225,20 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
               case 429: // 'Too many requests' -- API overloaded
                 // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
                 let delay = Number(err.response.headers['retry-after'] || 1)*1000;
-                console.log("Create k8s job", taskIdArr, "HTTP error " + statusCode + " (attempt " + attempt +
+                clog.warn("Create k8s job", taskIdArr, "HTTP error " + statusCode + " (attempt " + attempt +
                              "), retrying after " + delay + "ms." );
                 setTimeout(() => createJob(attempt+1), delay);
                 break;
               default:
-                console.error("Err");
-                console.error(err);
-                console.error("Job YAML:", jobYaml);
+                clog.error("Job creation failed:", err);
+                clog.debug("Job YAML:", jobYaml);
                 let taskEnd = new Date().toISOString();
-                console.log("Task ended with error, time=", taskEnd);
+                clog.error("Task ended with error, time=", taskEnd);
             }
           }
         );
       } catch (e) {
-        console.error(e);
+        clog.error(e);
       }
     };
     createJob(1); // Fire-and-forget: returns immediately, does NOT wait
@@ -251,10 +251,10 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
     sendJobMessagesPromises.push(context.sendMsgToJob(JSON.stringify(jobMessage), taskId));
   }
   try {
-    console.log("Sending job messages to", taskIdArr);
+    clog.debug("Sending job messages to", taskIdArr);
     await Promise.all(sendJobMessagesPromises);
   } catch (err) {
-    console.error(err);
+    clog.error(err);
     throw err;
   }
 

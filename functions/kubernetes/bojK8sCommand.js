@@ -1,13 +1,14 @@
 // bojK8sCommand.js
 // Runs bags-of-jobs on a Kubernetes cluster
 
+const clog = require('../../common/consoleLogger');
 const k8s = require('@kubernetes/client-node');
 var submitK8sJob = require('./k8sJobSubmit.js').submitK8sJob;
 var fs = require('fs');
 
 async function bojK8sCommand(ins, outs, context, cb) {
   let functionStart = Date.now();
-  console.log("[DEBUG] bojK8sInvoke called, time:", functionStart);
+  clog.debug("bojK8sInvoke called, time:", functionStart);
   // let cluster = await getCluster();
   // const token = await getGCPToken();
 
@@ -46,7 +47,7 @@ async function bojK8sCommand(ins, outs, context, cb) {
       return jobExitCodes;
     });
 
-  console.log(results, errors);
+  clog.debug(results, errors);
 
   /*
   jobs.forEach((jobSet, jsetIdx) => {
@@ -55,16 +56,16 @@ async function bojK8sCommand(ins, outs, context, cb) {
       let customParams = {};
       let code = await submitK8sJob(job, taskId, context, customParams);
       if (code == 0) {
-        console.log('Job ' + taskId + ' succeeded!');
+        clog.debug('Job ' + taskId + ' succeeded!');
       } else {
-        console.log('Job ' + taskId + ' failed! (Exit code:', code + ')');
+        clog.warn('Job ' + taskId + ' failed! (Exit code:', code + ')');
       }
     });
   });
   */
 
   let functionEnd = Date.now();
-  console.log("[DEBUG] bojK8sInvoke exiting, time:", functionEnd);
+  clog.debug("bojK8sInvoke exiting, time:", functionEnd);
   cb(null, outs);
 }
 

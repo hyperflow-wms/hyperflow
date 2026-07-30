@@ -1,3 +1,4 @@
+const clog = require('../../common/consoleLogger');
 var Buffer = require('./buffer.js').BufferCountWithTimeout;
 
 /**
@@ -34,7 +35,7 @@ class BufferManager {
       let taskNameWithPartition = taskName + (partition ? "#" + partition : "");
       //console.log("taskNameWithPartition:", taskNameWithPartition);
       if (this.taskBufferMap[taskNameWithPartition] != undefined) {
-        console.log("WARNING: task", taskNameWithPartition, "is already matched in another buffer, ignoring");
+        clog.warn("task", taskNameWithPartition, "is already matched in another buffer, ignoring");
       } else {
         this.taskBufferMap[taskNameWithPartition] = buffIndex;
       }
@@ -97,7 +98,7 @@ class BufferManager {
 
 async function testBufferManager() {
   let cb = (items) => {
-    console.log("Got from buffer:", items);
+    clog.debug("Got from buffer:", items);
   }
   buffersConf = [
     {

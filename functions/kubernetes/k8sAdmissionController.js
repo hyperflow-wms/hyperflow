@@ -15,6 +15,7 @@
  *   });
  */
 
+const clog = require('../../common/consoleLogger');
 const k8s = require('@kubernetes/client-node');
 
 class K8sAdmissionController {
@@ -113,7 +114,7 @@ class K8sAdmissionController {
    */
   async initialize() {
     if (this.initialized) {
-      console.log('[AdmissionController] Already initialized');
+      clog.debug('[AdmissionController] Already initialized');
       return;
     }
 
@@ -163,7 +164,7 @@ class K8sAdmissionController {
       this.initialized = true;
       this.log('Admission controller initialized successfully');
     } catch (err) {
-      console.error('[AdmissionController] Initialization failed:', err.message);
+      clog.error('[AdmissionController] Initialization failed:', err.message);
       throw err;
     }
   }
@@ -192,7 +193,7 @@ class K8sAdmissionController {
         this.watchAbortController.signal
       );
     } catch (err) {
-      console.error('[AdmissionController] Watch failed to start:', err.message);
+      clog.error('[AdmissionController] Watch failed to start:', err.message);
       throw err;
     }
   }
@@ -264,7 +265,7 @@ class K8sAdmissionController {
    */
   _handleWatchError(err) {
     if (err) {
-      console.error('[AdmissionController] Watch error:', err.message);
+      clog.warn('[AdmissionController] Watch error:', err.message);
     } else {
       this.log('Watch stream ended normally');
     }
@@ -278,7 +279,7 @@ class K8sAdmissionController {
         // Reset backoff on successful reconnect
         this.reconnectBackoffMs = 1000;
       } catch (reconnectErr) {
-        console.error('[AdmissionController] Reconnection failed:', reconnectErr.message);
+        clog.error('[AdmissionController] Reconnection failed:', reconnectErr.message);
         // Exponential backoff up to 30 seconds
         this.reconnectBackoffMs = Math.min(this.reconnectBackoffMs * 2, 30000);
         this._handleWatchError(reconnectErr);
@@ -506,14 +507,14 @@ class K8sAdmissionController {
         if (isRetryable) {
           // Exponential backoff with jitter
           const delay = this._jitter(this.backoffMs, this.backoffMs * 2);
-          console.error(`[AdmissionController] Pod creation failed (${statusCode}), retrying after ${delay}ms:`, err.message);
+          clog.warn(`[AdmissionController] Pod creation failed (${statusCode}), retrying after ${delay}ms:`, err.message);
 
           this.backoffMs = Math.min(this.backoffMs * 2, this.config.backoffMaxMs);
           await this._sleep(delay);
           continue; // Retry (will acquire new permit)
         } else {
           // Non-retryable error, propagate
-          console.error('[AdmissionController] Pod creation failed with non-retryable error:', err.message);
+          clog.error('[AdmissionController] Pod creation failed with non-retryable error:', err.message);
           throw err;
         }
       }
@@ -566,7 +567,7 @@ class K8sAdmissionController {
 
   log(message) {
     if (this.config.debug) {
-      console.log(`[AdmissionController] ${message}`);
+      clog.debug(`[AdmissionController] ${message}`);
     }
   }
 }

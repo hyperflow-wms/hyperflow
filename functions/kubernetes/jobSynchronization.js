@@ -1,4 +1,5 @@
 const taskLabel = require('../../common/taskLabel').taskLabel;
+const clog = require('../../common/consoleLogger');
 
 async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, restartFn) {
 
@@ -9,16 +10,24 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
     var restartPolicy = backoffLimit > 0 ? "OnFailure" : "Never";
     var restartCount = 0;
     var awaitJob = async (taskId, name) => {
+        const c = clog.color;
+        let waitStart = Date.now();
         try {
             var jobResult = await context.jobResult(0, taskId); // timeout=0 means indefinite
         } catch (err) {
-            console.error(err);
+            clog.error(err);
             throw err;
         }
         let taskEnd = new Date().toISOString();
-        console.log('Job', taskLabel(taskId, name), 'ended with result:', jobResult, 'time:', taskEnd);
-         // job exit code
-        return parseInt(jobResult[1]);
+        let code = parseInt(jobResult[1]);
+        let failed = code !== 0;
+        clog.info(c.dim('[hf] task'),
+                  failed ? c.failed('failed:') : c.finished('finished:'),
+                  c.task(name), c.dim('(' + taskId + ')'),
+                  failed ? c.failed('exit=' + code) : c.dim('exit=0'),
+                  c.time('time=' + ((Date.now() - waitStart) / 1000).toFixed(1) + 's'));
+        clog.debug('Job', taskLabel(taskId, name), 'ended with result:', jobResult, 'time:', taskEnd);
+        return code;
     }
 
     var awaitJobs = async (taskIdArr) => {
@@ -35,7 +44,7 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
         let taskId = taskIdArr[i];
         let name = contextArr[i].name;
         if (jobExitCode !== 0) {
-            console.log("Job", taskLabel(taskId, name), "failed");
+            clog.debug("Job", taskLabel(taskId, name), "failed");
             restartFn(i);
             // NOTE: job message is preserved, so we don't have to send it again.
         }
