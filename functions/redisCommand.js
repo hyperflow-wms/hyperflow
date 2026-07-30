@@ -99,7 +99,9 @@ async function redisCommand(ins, outs, context, cb) {
   }
 
   numParallelJobs++;
-  const startTime = Date.now();
+  // monotonic: the wall clock can step backwards and make short jobs report a
+  // negative duration
+  const startTime = performance.now();
   const c = clog.color;
   clog.info(c.dim('[hf] task'), c.started('started:'), c.task(context.name),
             c.dim('(' + context.taskId + ')'),
@@ -142,7 +144,7 @@ async function redisCommand(ins, outs, context, cb) {
               failed ? c.failed('failed:') : c.finished('finished:'),
               c.task(context.name), c.dim('(' + context.taskId + ')'),
               failed ? c.failed('exit=' + jobResult[1]) : c.dim('exit=0'),
-              c.time('time=' + ((Date.now() - startTime) / 1000).toFixed(1) + 's'),
+              c.time('time=' + ((performance.now() - startTime) / 1000).toFixed(1) + 's'),
               c.dim('[' + numParallelJobs + ' running]'));
     clog.debug('Received job result:', jobResult);
     cb(null, outs);

@@ -11,7 +11,9 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
     var restartCount = 0;
     var awaitJob = async (taskId, name) => {
         const c = clog.color;
-        let waitStart = Date.now();
+        // monotonic: the wall clock can step backwards and make short jobs
+        // report a negative duration
+        let waitStart = performance.now();
         try {
             var jobResult = await context.jobResult(0, taskId); // timeout=0 means indefinite
         } catch (err) {
@@ -25,7 +27,7 @@ async function synchronizeJobs(jobArr, taskIdArr, contextArr, customParams, rest
                   failed ? c.failed('failed:') : c.finished('finished:'),
                   c.task(name), c.dim('(' + taskId + ')'),
                   failed ? c.failed('exit=' + code) : c.dim('exit=0'),
-                  c.time('time=' + ((Date.now() - waitStart) / 1000).toFixed(1) + 's'));
+                  c.time('time=' + ((performance.now() - waitStart) / 1000).toFixed(1) + 's'));
         clog.debug('Job', taskLabel(taskId, name), 'ended with result:', jobResult, 'time:', taskEnd);
         return code;
     }
