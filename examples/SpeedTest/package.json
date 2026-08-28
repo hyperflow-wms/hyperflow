@@ -1,0 +1,14 @@
+{
+  "name": "aws-posixfs-executor-test",
+  "version": "1.0.0",
+  "main": "handler.js",
+  "scripts": {
+    "start": "node handler.js"
+  },
+  "dependencies": {
+    "@stroncium/procfs": "^1.0.0",
+    "async": "^2.6.4",
+    "log4js": "^6.4.0",
+    "redis": "^3.1.1"
+  }
+}

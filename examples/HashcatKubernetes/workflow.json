@@ -1,0 +1,177 @@
+{
+  "name": "PasswordAudit",
+  "processes": [
+    {
+      "name": "GenerateHashes",
+      "type": "dataflow",
+      "function": "{{function}}",
+      "firingLimit": 1,
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./generate.js"
+          ]
+        }
+      },
+      "ins": [],
+      "outs": [
+        "hashes"
+      ]
+    },
+    {
+      "name": "FilterHashes",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "{{function}}",
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./filter.js"
+          ]
+        }
+      },
+      "ins": [
+        "hashes"
+      ],
+      "outs": [
+        "filteredHashes"
+      ]
+    },
+    {
+      "name": "RunHashcatMD5",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "{{function}}",
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./hashcat.js",
+            "md5"
+          ]
+        }
+      },
+      "ins": [
+        "filteredHashes"
+      ],
+      "outs": [
+        "crackedMD5"
+      ]
+    },
+    {
+      "name": "RunHashcatSHA1",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "{{function}}",
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./hashcat.js",
+            "sha1"
+          ]
+        }
+      },
+      "ins": [
+        "filteredHashes"
+      ],
+      "outs": [
+        "crackedSHA1"
+      ]
+    },
+    {
+      "name": "RunHashcatSHA256",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "{{function}}",
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./hashcat.js",
+            "sha256"
+          ]
+        }
+      },
+      "ins": [
+        "filteredHashes"
+      ],
+      "outs": [
+        "crackedSHA256"
+      ]
+    },
+    {
+      "name": "RunHashcatSHA512",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "{{function}}",
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./hashcat.js",
+            "sha512"
+          ]
+        }
+      },
+      "ins": [
+        "filteredHashes"
+      ],
+      "outs": [
+        "crackedSHA512"
+      ]
+    },
+    {
+      "name": "SummarizeResults",
+      "type": "dataflow",
+      "firingLimit": 1,
+      "function": "{{function}}",
+      "config": {
+        "executor": {
+          "executable": "node",
+          "args": [
+            "./summarize.js"
+          ]
+        }
+      },
+      "ins": [
+        "crackedMD5",
+        "crackedSHA1",
+        "crackedSHA256",
+        "crackedSHA512"
+      ],
+      "outs": [
+        "summary"
+      ]
+    }
+  ],
+  "signals": [
+    {
+      "name": "hashes"
+    },
+    {
+      "name": "filteredHashes"
+    },
+    {
+      "name": "crackedMD5"
+    },
+    {
+      "name": "crackedSHA1"
+    },
+    {
+      "name": "crackedSHA256"
+    },
+    {
+      "name": "crackedSHA512"
+    },
+    {
+      "name": "summary"
+    }
+  ],
+  "ins": [],
+  "outs": [
+    "summary"
+  ]
+}
