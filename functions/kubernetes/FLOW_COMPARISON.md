@@ -1,16 +1,25 @@
-# Flow Comparison: Original vs. Admission Controller
+# Flow Comparison: Default Path vs. Admission Controller
 
-## Original Flow (Fire-and-Forget)
+## Default Flow (Fire-and-Forget)
 
 ```
 submitK8sJob() called
 │
-├─> createJob(1) ──────────> K8s API (createNamespacedJob)
+├─> startJobCreation() ────> K8s API (createNamespacedJob)
 │   (fire-and-forget)              │
-│   returns immediately             │
-│                                    │ (happens in background)
-│                                    ├─> Success (Pod created)
-│                                    └─> Error 429/409 → setTimeout → retry
+│   returns immediately             │ (happens in background)
+│                                    ├─> Success, or 409 AlreadyExists
+│                                    │   for this Job's name after an
+│                                    │   earlier attempt with an unclear
+│                                    │   result (no HTTP status, 500,
+│                                    │   503 or 504) → done
+│                                    ├─> 5xx, 429, other 409, connection
+│                                    │   error → backoff → retry
+│                                    └─> other 4xx, including
+│                                        AlreadyExists with no earlier
+│                                        unclear attempt, or retries
+│                                        used up
+│                                        → the tasks fail (exit code 1)
 │
 └─> sendJobMessages() ────> Redis (lpush messages)
     await Promise.all()         │
@@ -20,16 +29,23 @@ submitK8sJob() called
 
 **Timeline:**
 ```
-T+0ms:   createJob(1) starts     (background)
+T+0ms:   startJobCreation() starts (background)
 T+0ms:   sendJobMessages() starts (foreground, awaited)
 T+50ms:  Messages sent to Redis  ✓
 T+100ms: submitK8sJob() returns  ✓
-T+150ms: Pod created in K8s      (background, no tracking)
+T+150ms: Pod created in K8s      (background; retried on transient errors)
 ```
 
 **Characteristics:**
 - Pod creation and message sending happen **in parallel**
 - Function returns as soon as messages are sent
+- Transient API errors are retried up to `HF_VAR_JOB_CREATE_RETRIES` times
+  (default 10). The delay before retry n is drawn between half and all of
+  min(2^(n-1) s, 30 s), and is at least the `Retry-After` delay, up to 30 s
+  (`k8sJobCreate.js`)
+- A Job that cannot be created fails its tasks: their `jobResult` waits end
+  with exit code 1, and `HF_VAR_STOP_WORKFLOW_WHEN_JOB_FAILED` and
+  `HF_VAR_BACKOFF_LIMIT` apply as for a job that exits non-zero
 - No rate limiting → can flood K8s API
 - ⚠️ Can overwhelm scheduler with thousands of Pods
 
@@ -221,7 +237,7 @@ setInterval(() => {
 
 ## Summary
 
-| Aspect | Original | With Admission Controller |
+| Aspect | Default | With Admission Controller |
 |--------|----------|---------------------------|
 | **Execution Model** | Fire-and-forget | Fire-and-forget (after permit) |
 | **Parallelism** | Full | Full (after permit acquired) |
