@@ -28,11 +28,15 @@ jobs:
         with:
           node-version: '20'
       # No install step: tests/connector.js reaches only wflib/connector.js and
-      # common/{taskLabel,consoleLogger}.js, none of which require a dependency.
+      # common/{taskLabel,consoleLogger}.js, and tests/k8sJobSubmit.js adds only
+      # functions/kubernetes/{k8sJobCreate,jobSynchronization}.js; none of them
+      # require a dependency.
       # tests/functions.js is deliberately not run: it asserts synchronously on
       # an asynchronous notification and has failed since before this workflow.
       - name: Connector regression tests
         run: node tests/connector.js
+      - name: Kubernetes Job creation tests
+        run: node tests/k8sJobSubmit.js
 
   build:
     needs: [ test ]

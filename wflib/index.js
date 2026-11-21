@@ -1463,6 +1463,22 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 }
 
                 conf.jobResult = getJobResult;
+
+                // Ends the 'jobResult' wait for a task with the given exit code,
+                // as if the task's executor had reported it, for a task the engine
+                // itself knows has failed (e.g. its Kubernetes Job could not be
+                // created). Works whether or not the wait has started.
+                var resolveJobResult = function(code, taskIdentifier) {
+                    const taskId = taskIdentifier || conf.taskId;
+                    if (completionTransport === 'stream') {
+                        return streamJobConnector.resolveTask(taskId, code);
+                    }
+                    let wfId = taskId.split(':')[1];
+                    let connector = jobConnectors[wfId];
+                    return connector.resolveTask(taskId, code);
+                }
+
+                conf.resolveJobResult = resolveJobResult;
                 conf.redis_url = "redis://" + rcl.address;
 
                 // The next two functions may be used by the job function/executor to, 

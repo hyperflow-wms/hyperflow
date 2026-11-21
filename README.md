@@ -52,6 +52,17 @@ Outputs:
 ### Running in a Kubernetes cluster
 See [HyperFlow Kubernetes deployment](https://github.com/hyperflow-wms/hyperflow-k8s-deployment) project for more information. 
 
+#### Job creation and failed tasks
+With the `k8sCommand` function and `HF_VAR_ADMISSION_CONTROLLER` unset, the engine creates a Kubernetes Job for each task, or for each group of tasks, and sends the job messages to Redis while the Job is being created. When the Kubernetes API server answers the create request with a transient error, the engine retries it. Transient errors are HTTP 5xx, 429, 409 other than `AlreadyExists` (such as a conflicting update of the namespace's resource quota), and connection errors and timeouts. The delay before retry *n* is drawn at random between half and all of min(2<sup>n-1</sup> s, 30 s). If the response carries a `Retry-After` header, the delay is at least that long, but never more than 30 s. A 409 `AlreadyExists` for the Job's own name means that an earlier attempt created the Job but its response was lost, so it counts as success. Other client errors, such as 400, 403, 404 or 422, are not retried.
+
+`HF_VAR_JOB_CREATE_RETRIES` sets the number of retries after the first attempt; 0 disables retries. With the default of 10 retries, the engine waits 1.5 to 3 minutes in total between attempts, or up to 5 minutes when the API server sends long `Retry-After` delays.
+
+If the Job cannot be created, because the error is not retried or the retries run out, each of its tasks fails with exit code 1, as if its job had exited with that code. The engine then handles the task like any failed job:
+
+* with `HF_VAR_STOP_WORKFLOW_WHEN_JOB_FAILED=1`, the engine exits with status 1, which stops the workflow; this takes precedence over `HF_VAR_BACKOFF_LIMIT`;
+* with `HF_VAR_BACKOFF_LIMIT=N` (N > 0), the engine submits the task again, with a new Job, up to N times;
+* with neither, the task stays failed and never completes, so the workflow does not finish.
+
 ### Running in a distributed infrastructure using the RabbitMQ executor (not maintained)
 * Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
 * Add option `-e AMQP_URL=amqp://rabbitmq`
