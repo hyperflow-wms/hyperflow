@@ -16,6 +16,7 @@ var fs = require('fs'),
     RemoteJobConnector = require('./connector'),
     StreamRemoteJobConnector = require('./connector').StreamRemoteJobConnector,
     startCompletionLoop = require('./connector').startCompletionLoop,
+    addJobResultFunctions = require('./jobResult').addJobResultFunctions,
     clog = require('../common/consoleLogger'),
     rcl;
 
@@ -34,6 +35,15 @@ let jobConnectors = {}; // object holding remote jobs' connectors (legacy "set" 
 // "stream" | "set" (default "set" - behavior byte-identical to legacy today).
 const completionTransport = (process.env.HF_VAR_COMPLETION_TRANSPORT === 'stream') ? 'stream' : 'set';
 let streamJobConnector = null; // lazily-created, single process-wide connector ("stream" transport only)
+
+// The connectors as the task context functions of wflib/jobResult.js reach
+// them. The getters read the variables above at each call, because the
+// stream connector is created on first use.
+const engineConnectors = {
+    transport: completionTransport,
+    streamConnector: () => streamJobConnector,
+    setConnector: (wfId) => jobConnectors[wfId],
+};
 
 function p0() {
     return (new Date()).getTime();
@@ -1448,38 +1458,11 @@ function public_invokeProcFunction(wfId, procId, firingId, insIds_, insValues, o
                 }
                 conf.wfname = procInfo.wfname;
 
-                // This function is passed to the Process' Function (through 'context')
-                // and can be used to wait for task completion. It reads a key from redis
-                // that should be set by the task's executor.
-                // 'taskId' to be waited for is read from the process context, but
-                // optionally it can be set by the caller via parameter 'taskIdentifier'
-                var getJobResult = async function(timeout, taskIdentifier) {
-                    const taskId = taskIdentifier || conf.taskId;
-                    if (completionTransport === 'stream') {
-                        return streamJobConnector.waitForTask(taskId, conf.name);
-                    }
-                    let wfId = taskId.split(':')[1];
-                    let connector = jobConnectors[wfId];
-                    return connector.waitForTask(taskId, conf.name);
-                }
-
-                conf.jobResult = getJobResult;
-
-                // Ends the 'jobResult' wait for a task with the given exit code,
-                // as if the task's executor had reported it, for a task the engine
-                // itself knows has failed (e.g. its Kubernetes Job could not be
-                // created). Works whether or not the wait has started.
-                var resolveJobResult = function(code, taskIdentifier) {
-                    const taskId = taskIdentifier || conf.taskId;
-                    if (completionTransport === 'stream') {
-                        return streamJobConnector.resolveTask(taskId, code);
-                    }
-                    let wfId = taskId.split(':')[1];
-                    let connector = jobConnectors[wfId];
-                    return connector.resolveTask(taskId, code);
-                }
-
-                conf.resolveJobResult = resolveJobResult;
+                // 'conf.jobResult' waits for the completion of the task (or of
+                // the task named by the caller), and 'conf.resolveJobResult'
+                // ends that wait with an exit code set by the engine, e.g. when
+                // the task's Kubernetes Job could not be created.
+                addJobResultFunctions(conf, engineConnectors);
                 conf.redis_url = "redis://" + rcl.address;
 
                 // The next two functions may be used by the job function/executor to, 

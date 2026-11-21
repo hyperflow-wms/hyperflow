@@ -10,15 +10,31 @@
  *  - when the Job cannot be created, the tasks' waits end with a failure
  *    exit code through the connector (wflib/connector.js resolveTask), for
  *    both completion transports, whether or not the wait has started, and a
- *    restart of the task can wait for the same task id again.
+ *    restart of the task can wait for the same task id again;
+ *  - submitK8sJob returns once the job messages are sent, while the Job's
+ *    creation goes on in the background, and the outcome of the creation
+ *    reaches the tasks' waits when the tasks run as k8sCommandGroup runs
+ *    them: submitK8sJob, then synchronizeJobs (jobSynchronization.js).
  *
- * Self-contained: a fake Kubernetes API client and a fake redis client, no
- * live services and no npm dependencies. Retry delays are recorded by an
- * injected sleep function instead of waited for.
+ * The task contexts get 'jobResult' and 'resolveJobResult' from
+ * wflib/jobResult.js, as in wflib/index.js. Behind them are the real
+ * connector classes of wflib/connector.js, set up for each completion
+ * transport the way wflib/index.js sets them up.
+ *
+ * Self-contained: a fake Kubernetes API client, a fake redis client, and
+ * stubs for the two npm packages k8sJobSubmit.js requires; no live services
+ * and no installed dependencies. Retry delays are recorded by an injected
+ * sleep function, or held until the test releases them, instead of waited
+ * for.
  * Run with:  node tests/k8sJobSubmit.js
  */
 const assert = require('assert');
+const Module = require('module');
+const path = require('path');
 const util = require('util');
+
+// Saved before holdRetryTimers() replaces it; the test's own timers use it.
+const realSetTimeout = global.setTimeout;
 
 const unhandledRejections = [];
 process.on('unhandledRejection', (reason) => { unhandledRejections.push(reason); });
@@ -27,6 +43,43 @@ const jobCreate = require('../functions/kubernetes/k8sJobCreate.js');
 const synchronizeJobs = require('../functions/kubernetes/jobSynchronization.js').synchronizeJobs;
 const RemoteJobConnector = require('../wflib/connector.js');
 const StreamRemoteJobConnector = RemoteJobConnector.StreamRemoteJobConnector;
+const addJobResultFunctions = require('../wflib/jobResult.js').addJobResultFunctions;
+
+// k8sJobSubmit.js requires '@kubernetes/client-node' and 'js-yaml' when it
+// loads, and the k8sAdmissionController.js it loads requires
+// '@kubernetes/client-node'; the tests run without installed packages.
+// While k8sJobSubmit.js loads, exactly these requires from exactly these
+// files get stubs, so a package required by any other file still fails.
+// BatchV1Api only names the API that fakeKubeconfig() hands out, and
+// 'js-yaml' parses the job template fixture, which is JSON and so valid YAML.
+const BatchV1Api = function BatchV1Api() {};
+const npmStubs = {
+    '@kubernetes/client-node': { BatchV1Api: BatchV1Api },
+    'js-yaml': { safeLoad: (text) => JSON.parse(text) },
+};
+const k8sDir = path.join(__dirname, '..', 'functions', 'kubernetes');
+const stubbedRequires = {
+    [path.join(k8sDir, 'k8sJobSubmit.js')]: ['@kubernetes/client-node', 'js-yaml'],
+    [path.join(k8sDir, 'k8sAdmissionController.js')]: ['@kubernetes/client-node'],
+};
+const originalLoad = Module._load;
+Module._load = function(request, parent) {
+    const allowed = parent && stubbedRequires[parent.filename];
+    if (allowed && allowed.includes(request)) {
+        return npmStubs[request];
+    }
+    return originalLoad.apply(this, arguments);
+};
+let submitK8sJob;
+try {
+    submitK8sJob = require('../functions/kubernetes/k8sJobSubmit.js').submitK8sJob;
+} finally {
+    Module._load = originalLoad;
+}
+
+// The template leaves out ${command}: its double-quoted task ids would break
+// the JSON.
+const JOB_TEMPLATE_PATH = path.join(__dirname, 'fixtures', 'job-template.json');
 
 const FAILED = jobCreate.JOB_CREATE_FAILED_EXIT_CODE;
 const JOB_NAME = 'jobx1y2z3-mimgtbl-5-1';
@@ -74,19 +127,36 @@ const CREATED = { created: true };
 
 // Fake BatchV1Api: answers the n-th createNamespacedJob call with outcomes[n],
 // repeating the last outcome. An outcome is CREATED or a value to reject with.
+// Given a 'gate' promise, each call answers only once the gate resolves.
 class FakeBatchApi {
-    constructor(outcomes) {
+    constructor(outcomes, gate) {
         this.outcomes = outcomes;
+        this.gate = gate;
         this.calls = 0;
+        this.requests = [];
     }
     createNamespacedJob(namespace, body) {
         const outcome = this.outcomes[Math.min(this.calls, this.outcomes.length - 1)];
         this.calls++;
-        if (outcome === CREATED) {
-            return Promise.resolve({ response: { statusCode: 201 }, body: body });
-        }
-        return Promise.reject(typeof outcome === 'function' ? outcome() : outcome);
+        this.requests.push({ namespace: namespace, body: body });
+        const answer = () => {
+            if (outcome === CREATED) {
+                return Promise.resolve({ response: { statusCode: 201 }, body: body });
+            }
+            return Promise.reject(typeof outcome === 'function' ? outcome() : outcome);
+        };
+        return this.gate ? this.gate.then(answer) : answer();
     }
+}
+
+// Stands in for the KubeConfig that submitK8sJob gets from k8sCommandGroup.
+function fakeKubeconfig(api) {
+    return {
+        makeApiClient: (apiClass) => {
+            assert.strictEqual(apiClass, BatchV1Api, 'submitK8sJob asked for another API client');
+            return api;
+        },
+    };
 }
 
 // Records requested delays and returns at once.
@@ -95,11 +165,43 @@ function delayRecorder() {
     return { delays: delays, sleep: (ms) => { delays.push(ms); return Promise.resolve(); } };
 }
 
+// submitK8sJob passes k8sJobCreate.js no sleep function, so its retry delays
+// are real timers. This holds every timer of 500 ms or more, which covers
+// those delays (at least half the 1 s base delay), until release(). Shorter
+// timers, such as the set connector's polling interval, run as usual.
+function holdRetryTimers() {
+    const held = [];
+    global.setTimeout = function(fn, ms, ...args) {
+        if (ms >= 500) {
+            held.push({ ms: ms, run: () => fn(...args) });
+            return { ref() { return this; }, unref() { return this; }, hasRef: () => false };
+        }
+        return realSetTimeout(fn, ms, ...args);
+    };
+    return {
+        held: held,
+        release: () => held.splice(0).forEach((timer) => timer.run()),
+        restore: () => { global.setTimeout = realSetTimeout; },
+    };
+}
+
+function deferred() {
+    let resolve;
+    const promise = new Promise((r) => { resolve = r; });
+    return { promise: promise, resolve: resolve };
+}
+
 // ---- completion transports ----
 
-// Minimal redis fake for the set transport (RemoteJobConnector).
-class FakeSetRedis {
-    constructor() { this.sets = {}; }
+// Minimal redis fake: the set commands of the set transport
+// (RemoteJobConnector), the stream commands of the stream transport
+// (StreamRemoteJobConnector, one consumer), and LPUSH for job messages.
+class FakeRedis {
+    constructor() {
+        this.sets = {};
+        this.lists = {};
+        this.streams = {};
+    }
     _set(key) {
         if (!this.sets[key]) this.sets[key] = new Set();
         return this.sets[key];
@@ -125,42 +227,142 @@ class FakeSetRedis {
         const s = this.sets[key];
         setImmediate(cb, null, (s && s.delete(String(member))) ? 1 : 0);
     }
+    lpush(key, value, cb) {
+        if (!this.lists[key]) this.lists[key] = [];
+        this.lists[key].unshift(value);
+        setImmediate(cb, null, this.lists[key].length);
+    }
+    _stream(key) {
+        if (!this.streams[key]) {
+            this.streams[key] = { entries: [], delivered: 0, pending: new Set(), waiters: [] };
+        }
+        return this.streams[key];
+    }
+    // xgroup(['CREATE', key, group, '0', 'MKSTREAM'], cb)
+    xgroup(args, cb) {
+        this._stream(args[1]);
+        setImmediate(cb, null, 'OK');
+    }
+    // A job executor's XADD; 'fields' is [field1, value1, field2, value2, ...].
+    xadd(key, fields) {
+        const s = this._stream(key);
+        s.entries.push([(s.entries.length + 1) + '-0', fields]);
+        s.waiters.splice(0).forEach((wake) => setImmediate(wake));
+    }
+    // xreadgroup(['GROUP', group, consumer, 'COUNT', n, ('BLOCK', ms,)
+    //             'STREAMS', key, id], cb)
+    xreadgroup(args, cb) {
+        const key = args[args.length - 2];
+        const id = args[args.length - 1];
+        const s = this._stream(key);
+        if (id === '0') {
+            // The consumer's delivered but unacknowledged entries.
+            setImmediate(cb, null, [[key, s.entries.filter((e) => s.pending.has(e[0]))]]);
+            return;
+        }
+        let done = false;
+        const deliver = () => {
+            if (done) return;
+            done = true;
+            const batch = s.entries.slice(s.delivered);
+            s.delivered = s.entries.length;
+            batch.forEach((e) => s.pending.add(e[0]));
+            cb(null, batch.length ? [[key, batch]] : null);
+        };
+        if (s.entries.length > s.delivered || !args.includes('BLOCK')) {
+            setImmediate(deliver);
+            return;
+        }
+        // BLOCK: answer at the next XADD, or with nothing after 50 ms, which
+        // stands in for the connector's 5 s so that a stopped loop ends soon.
+        s.waiters.push(deliver);
+        realSetTimeout(deliver, 50);
+    }
+    // xack([key, group, id1, id2, ...], cb)
+    xack(args, cb) {
+        const s = this._stream(args[0]);
+        let n = 0;
+        args.slice(2).forEach((id) => { if (s.pending.delete(id)) n++; });
+        setImmediate(cb, null, n);
+    }
 }
 
-// Task contexts wired to the connector as wflib/index.js wires them.
-function contextFor(connector, name) {
-    return {
-        name: name,
-        jobResult: async (timeout, taskId) => connector.waitForTask(taskId, name),
-        resolveJobResult: (code, taskId) => connector.resolveTask(taskId, code),
+// A task's context as wflib/index.js builds it, with 'jobResult' and
+// 'resolveJobResult' from wflib/jobResult.js on the transport's connectors,
+// and the fields submitK8sJob reads.
+function contextFor(transport, name, taskId) {
+    const [hfId, appId, procId, firingId] = taskId.split(':');
+    const context = {
+        name: name, taskId: taskId,
+        hfId: hfId, appId: appId, procId: procId, firingId: firingId,
+        wfname: 'montage', redis_url: 'redis://redis:6379',
+        executor: { executable: name, args: ['in.fits', 'out.tbl'], image: 'montage-worker' },
+        // A job message goes to the same redis list as in wflib/index.js.
+        sendMsgToJob: (message, taskIdentifier) => new Promise((resolve, reject) => {
+            transport.rcl.lpush((taskIdentifier || taskId) + '_msg', message,
+                (err, reply) => err ? reject(err) : resolve(reply));
+        }),
     };
+    return addJobResultFunctions(context, transport.connectors);
 }
 
+// The job that k8sCommandGroup makes of a task's context.
+function jobFor(context) {
+    const job = context.executor;
+    job.name = context.name;
+    job.ins = [{ name: 'in.fits' }];
+    job.outs = [{ name: 'out.tbl' }];
+    return job;
+}
+
+// The set transport as wflib/index.js sets it up: one RemoteJobConnector
+// per workflow, here for workflows 1 and 2, on the engine's redis client.
+// The tests' tasks belong to workflow 1.
 function setTransport() {
-    const rcl = new FakeSetRedis();
-    const wfId = '1';
-    const connector = new RemoteJobConnector(rcl, wfId, 5);
-    connector.run();
+    const rcl = new FakeRedis();
+    const jobConnectors = {};
+    for (const wfId of ['1', '2']) {
+        jobConnectors[wfId] = new RemoteJobConnector(rcl, wfId, 5);
+        jobConnectors[wfId].run();
+    }
     return {
         name: 'set',
-        connector: connector,
+        rcl: rcl,
+        connectors: {
+            transport: 'set',
+            streamConnector: () => null, // none with the set transport
+            setConnector: (wfId) => jobConnectors[wfId],
+        },
+        connector: jobConnectors['1'],
         // A job executor's completion notice.
         complete: (taskId, code) => {
             rcl.sadd(taskId, String(code));
-            rcl.sadd('wf:' + wfId + ':tasksPendingCompletionHandling', taskId);
+            rcl.sadd('wf:' + taskId.split(':')[1] + ':tasksPendingCompletionHandling', taskId);
         },
-        stop: () => connector.stop(),
+        stop: () => Promise.all(Object.values(jobConnectors).map((c) => c.stop())),
     };
 }
 
+// The stream transport as wflib/index.js sets it up: one
+// StreamRemoteJobConnector for the engine process, reading the completion
+// stream of the engine's id, which leads every task id.
 function streamTransport() {
-    // No read loop: complete() hands a completion event to the connector the
-    // way the loop does for each entry it reads from the stream.
-    const connector = new StreamRemoteJobConnector(null, 'hftest');
+    const rcl = new FakeRedis();
+    const hfId = 'hf';
+    const connector = new StreamRemoteJobConnector(rcl, hfId);
+    connector.run();
     return {
         name: 'stream',
+        rcl: rcl,
+        connectors: {
+            transport: 'stream',
+            streamConnector: () => connector,
+            setConnector: () => undefined, // none with the stream transport
+        },
         connector: connector,
-        complete: (taskId, code) => connector._handleEntry(taskId, String(code)),
+        // A job executor's completion event.
+        complete: (taskId, code) => rcl.xadd('hf:' + hfId + ':completions',
+            ['taskId', taskId, 'code', String(code)]),
         stop: () => connector.stop(),
     };
 }
@@ -170,7 +372,7 @@ function streamTransport() {
 function withTimeout(promise, ms, what) {
     let timer;
     const timeout = new Promise((resolve, reject) => {
-        timer = setTimeout(() => reject(new Error('timed out after ' + ms + 'ms: ' + what)), ms);
+        timer = realSetTimeout(() => reject(new Error('timed out after ' + ms + 'ms: ' + what)), ms);
     });
     return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
@@ -181,7 +383,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
 // creation in the background, then synchronizeJobs. With 'creationFirst',
 // creation ends before the waits start.
 async function submitAndWait(transport, taskIds, api, options, creationFirst) {
-    const contexts = taskIds.map(() => contextFor(transport.connector, 'mImgtbl'));
+    const contexts = taskIds.map((taskId) => contextFor(transport, 'mImgtbl', taskId));
     const creation = jobCreate.startJobCreation(api, 'ns', JOB_YAML, taskIds, contexts, options);
     if (creationFirst) {
         await creation;
@@ -192,6 +394,27 @@ async function submitAndWait(transport, taskIds, api, options, creationFirst) {
     const waitsStarted = taskIds.every((id) => transport.connector.jobPromiseResolves[id] !== undefined);
     const codes = await withTimeout(sync, 1000, 'waiting for tasks ' + taskIds.join(', '));
     return { codes: codes, restarts: restarts, result: await creation, waitsStarted: waitsStarted };
+}
+
+// Runs a group of tasks through the real submitK8sJob the way
+// k8sCommandGroup does: await submitK8sJob, then synchronizeJobs. Returns
+// once submitK8sJob has returned, with the synchronizeJobs promise ('sync'),
+// whether it has settled, and the restartFn calls.
+async function submitGroup(transport, taskIds, api) {
+    const contexts = taskIds.map((taskId) => contextFor(transport, 'mImgtbl', taskId));
+    const jobs = contexts.map(jobFor);
+    const customParams = { jobTemplatePath: JOB_TEMPLATE_PATH, k8sNamespace: 'ns' };
+    await withTimeout(submitK8sJob(fakeKubeconfig(api), jobs, taskIds, contexts, customParams),
+        1000, 'submitK8sJob for ' + taskIds.join(', '));
+    const group = { restarts: [], settled: false };
+    group.sync = synchronizeJobs(jobs, taskIds, contexts, customParams, (i) => group.restarts.push(i));
+    group.sync.then(() => { group.settled = true; }, () => { group.settled = true; });
+    return group;
+}
+
+// The job messages sent to a task's executor, parsed.
+function jobMessages(transport, taskId) {
+    return (transport.rcl.lists[taskId + '_msg'] || []).map((message) => JSON.parse(message));
 }
 
 // Runs a test with the modules' console output captured; prints it only if
@@ -220,6 +443,9 @@ async function test(title, fn) {
 
 async function main() {
     delete process.env.HF_VAR_JOB_CREATE_RETRIES;
+    // submitK8sJob: neither test mode nor the admission controller path.
+    delete process.env.HF_VAR_K8S_TEST;
+    delete process.env.HF_VAR_ADMISSION_CONTROLLER;
     const one = () => 1; // jitter at its maximum: delays are the backoff ceilings
     const setT = setTransport();
     const streamT = streamTransport();
@@ -228,7 +454,7 @@ async function main() {
         const api = new FakeBatchApi([e500, CREATED]);
         const rec = delayRecorder();
         const taskId = 'hf:1:5:1';
-        const contexts = [contextFor(setT.connector, 'mImgtbl')];
+        const contexts = [contextFor(setT, 'mImgtbl', taskId)];
         const result = await jobCreate.startJobCreation(api, 'ns', JOB_YAML, [taskId], contexts,
             { sleep: rec.sleep, random: one });
         assert.strictEqual(result.created, true);
@@ -490,7 +716,7 @@ async function main() {
             assert.strictEqual(t.connector.jobPromiseResolves[taskId], undefined, 'the failed wait is still registered');
 
             // Restart: the Job is created, and its executor reports exit code 0.
-            const contexts = [contextFor(t.connector, 'mImgtbl')];
+            const contexts = [contextFor(t, 'mImgtbl', taskId)];
             const creation = jobCreate.startJobCreation(new FakeBatchApi([CREATED]), 'ns', JOB_YAML,
                 [taskId], contexts, {});
             const sync = synchronizeJobs([{}], [taskId], contexts, {}, () => {});
@@ -499,6 +725,72 @@ async function main() {
             t.complete(taskId, 0);
             assert.deepStrictEqual(await withTimeout(sync, 1000, 'restarted task'), [0]);
             assert.ok(!logs.some((l) => /already observed/.test(l)), 'connector reported the task as already observed');
+        });
+
+        // Through submitK8sJob from here on. The task ids' process and firing
+        // ids differ from their workflow id, 1, so that only the workflow id
+        // picks the right per-workflow connector.
+        await test(t.name + ': submitK8sJob with a 403 fails both tasks of the Job and restarts them, while a task of another Job keeps waiting', async () => {
+            const otherTaskId = 'hf:1:3:2';
+            const other = await submitGroup(t, [otherTaskId], new FakeBatchApi([CREATED]));
+
+            const taskIds = ['hf:1:2:3', 'hf:1:2:4'];
+            const gate = deferred();
+            const api = new FakeBatchApi([() => httpError(403, 'Forbidden', 'jobs.batch is forbidden'), CREATED],
+                gate.promise);
+            const group = await submitGroup(t, taskIds, api);
+            // submitK8sJob returned with the job messages sent and the create
+            // call not yet answered.
+            assert.strictEqual(api.calls, 1);
+            assert.strictEqual(api.requests[0].namespace, 'ns');
+            const job = api.requests[0].body;
+            assert.ok(/-mimgtbl-2-3$/.test(job.metadata.name), 'Job name ' + job.metadata.name);
+            assert.strictEqual(job.metadata.labels.task, 'mImgtbl');
+            for (const taskId of taskIds) {
+                assert.deepStrictEqual(jobMessages(t, taskId).map((m) => m.taskId), [taskId],
+                    'job messages for ' + taskId);
+                assert.notStrictEqual(t.connector.jobPromiseResolves[taskId], undefined,
+                    'no wait started for ' + taskId);
+            }
+
+            gate.resolve();
+            const codes = await withTimeout(group.sync, 1000, 'tasks of the Job that got 403');
+            assert.deepStrictEqual(codes, [FAILED, FAILED]);
+            assert.deepStrictEqual(group.restarts, [0, 1]);
+            assert.strictEqual(api.calls, 1, 'the 403 was retried');
+
+            await tick();
+            assert.strictEqual(other.settled, false, 'the task of the other Job stopped waiting');
+            assert.notStrictEqual(t.connector.jobPromiseResolves[otherTaskId], undefined,
+                'the wait of the other Job\'s task is gone');
+            t.complete(otherTaskId, 0);
+            assert.deepStrictEqual(await withTimeout(other.sync, 1000, 'task of the other Job'), [0]);
+            assert.deepStrictEqual(other.restarts, []);
+        });
+
+        await test(t.name + ': submitK8sJob returns with the job messages sent while a 500 awaits its retry, and the task then waits for its completion notice', async () => {
+            const taskId = 'hf:1:4:2';
+            const timers = holdRetryTimers();
+            try {
+                const api = new FakeBatchApi([e500, CREATED]);
+                const group = await submitGroup(t, [taskId], api);
+                assert.strictEqual(api.calls, 1);
+                assert.strictEqual(timers.held.length, 1, 'no retry is pending');
+                assert.deepStrictEqual(jobMessages(t, taskId).map((m) => m.taskId), [taskId]);
+                assert.notStrictEqual(t.connector.jobPromiseResolves[taskId], undefined, 'no wait started');
+
+                timers.release();
+                await tick();
+                assert.strictEqual(api.calls, 2, 'the retry did not run');
+                assert.strictEqual(timers.held.length, 0, 'another retry is pending');
+                assert.strictEqual(group.settled, false, 'the wait ended without a completion notice');
+
+                t.complete(taskId, 0);
+                assert.deepStrictEqual(await withTimeout(group.sync, 1000, 'completion of ' + taskId), [0]);
+                assert.deepStrictEqual(group.restarts, []);
+            } finally {
+                timers.restore();
+            }
         });
     }
 
