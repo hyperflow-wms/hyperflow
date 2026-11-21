@@ -9,10 +9,16 @@ submitK8sJob() called
 │   (fire-and-forget)              │
 │   returns immediately             │ (happens in background)
 │                                    ├─> Success, or 409 AlreadyExists
-│                                    │   for this Job's name → done
+│                                    │   for this Job's name after an
+│                                    │   earlier attempt with an unclear
+│                                    │   result (no HTTP status, 500,
+│                                    │   503 or 504) → done
 │                                    ├─> 5xx, 429, other 409, connection
 │                                    │   error → backoff → retry
-│                                    └─> other 4xx, or retries used up
+│                                    └─> other 4xx, including
+│                                        AlreadyExists with no earlier
+│                                        unclear attempt, or retries
+│                                        used up
 │                                        → the tasks fail (exit code 1)
 │
 └─> sendJobMessages() ────> Redis (lpush messages)

@@ -95,23 +95,47 @@ function retryAfterMs(err) {
   return undefined;
 }
 
-// Decides what a failed create call means:
-// - 'created': 409 AlreadyExists for this Job's name, so an earlier attempt
-//   reached the API server although its response was lost;
+// True when a failed create call had an unclear result, so it may still have
+// stored the Job: no HTTP response arrived (connection error, timeout), or
+// the API server answered 500, 503 or 504, which it can send after the Job
+// was written. Any other code, such as 429, 409 or 502, is taken to mean that
+// the call did not store the Job.
+function isUnclearResult(err) {
+  let statusCode = errorStatusCode(err);
+  return statusCode === undefined || statusCode === 500 || statusCode === 503 || statusCode === 504;
+}
+
+// True when a failed create call got 409 AlreadyExists for the Job named
+// 'jobName'.
+function isAlreadyExistsFor(err, jobName) {
+  if (errorStatusCode(err) !== 409) {
+    return false;
+  }
+  let status = errorStatus(err);
+  let name = status.details && status.details.name;
+  return status.reason === 'AlreadyExists' && jobName !== undefined && name === jobName;
+}
+
+// Decides what a failed create call means. 'earlierUnclear' tells whether an
+// earlier attempt of the same creation had an unclear result (see
+// isUnclearResult).
+// - 'created': 409 AlreadyExists for this Job's name after an earlier attempt
+//   with an unclear result, which is taken to have stored the Job without the
+//   engine learning so;
 // - 'retry': a transient error (no HTTP response, 409 other than
 //   AlreadyExists such as a resource quota conflict, 429, or 5xx);
-// - 'fail': any other error, such as 400, 403, 404 or 422, or AlreadyExists
-//   for another name.
-function classifyCreateError(err, jobName) {
+// - 'fail': any other error, such as 400, 403, 404 or 422, AlreadyExists for
+//   another name, or AlreadyExists for this Job's name with no earlier
+//   attempt of unclear result, which is taken to mean that something other
+//   than this creation made that Job.
+function classifyCreateError(err, jobName, earlierUnclear) {
   let statusCode = errorStatusCode(err);
   if (statusCode === undefined) {
     return 'retry';
   }
   if (statusCode === 409) {
-    let status = errorStatus(err);
-    if (status.reason === 'AlreadyExists') {
-      let name = status.details && status.details.name;
-      return (jobName !== undefined && name === jobName) ? 'created' : 'fail';
+    if (errorStatus(err).reason === 'AlreadyExists') {
+      return (earlierUnclear && isAlreadyExistsFor(err, jobName)) ? 'created' : 'fail';
     }
     return 'retry';
   }
@@ -152,7 +176,9 @@ function describeError(err) {
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Function createJobWithRetries
-// Creates the Job, retrying transient errors with exponential backoff.
+// Creates the Job, retrying transient errors with exponential backoff. A 409
+// AlreadyExists for the Job's name counts as created only when an earlier
+// attempt of this call had an unclear result (see classifyCreateError).
 //
 // Inputs:
 // - 'k8sApi': object with a 'createNamespacedJob(namespace, body)' method
@@ -172,6 +198,9 @@ async function createJobWithRetries(k8sApi, namespace, jobYaml, taskIds, options
   let jobName = jobYaml && jobYaml.metadata ? jobYaml.metadata.name : undefined;
   let tasks = [].concat(taskIds).join(', ');
   let maxAttempts = retries + 1;
+  // The latest attempt so far with an unclear result, as
+  // { attempt, description }, or undefined when there was none.
+  let unclear;
 
   for (let attempt = 1; ; attempt++) {
     let err;
@@ -183,11 +212,16 @@ async function createJobWithRetries(k8sApi, namespace, jobYaml, taskIds, options
     }
 
     let statusCode = errorStatusCode(err);
-    let outcome = classifyCreateError(err, jobName);
+    let outcome = classifyCreateError(err, jobName, unclear !== undefined);
     if (outcome === 'created') {
       clog.warn("Create k8s job " + jobName + " for tasks [" + tasks + "]: attempt " + attempt +
-                " got " + describeError(err) + "; the Job exists, counting it as created");
+                " got " + describeError(err) + "; attempt " + unclear.attempt +
+                " had an unclear result (" + unclear.description + ") and may have created" +
+                " the Job, counting it as created");
       return { created: true, attempts: attempt };
+    }
+    if (isUnclearResult(err)) {
+      unclear = { attempt: attempt, description: describeError(err) };
     }
     if (outcome === 'retry' && attempt < maxAttempts) {
       let delay = retryDelayMs(attempt, err, random);
@@ -199,9 +233,17 @@ async function createJobWithRetries(k8sApi, namespace, jobYaml, taskIds, options
       continue;
     }
 
+    let reason;
+    if (outcome === 'retry') {
+      reason = "retry limit reached";
+    } else if (isAlreadyExistsFor(err, jobName)) {
+      reason = "AlreadyExists for this Job's name with no earlier attempt of unclear result," +
+               " which is taken to mean that something other than this creation made the Job";
+    } else {
+      reason = "error not retried";
+    }
     clog.error("Create k8s job " + jobName + " for tasks [" + tasks + "] failed for good after " +
-               attempt + " attempt" + (attempt === 1 ? "" : "s") + " (" +
-               (outcome === 'retry' ? "retry limit reached" : "error not retried") + "): " +
+               attempt + " attempt" + (attempt === 1 ? "" : "s") + " (" + reason + "): " +
                describeError(err) + "; the tasks fail with exit code " + JOB_CREATE_FAILED_EXIT_CODE);
     clog.debug("Job YAML:", JSON.stringify(jobYaml));
     return { created: false, attempts: attempt, error: err, statusCode: statusCode };

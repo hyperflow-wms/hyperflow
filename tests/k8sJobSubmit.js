@@ -2,8 +2,11 @@
  * Tests for the creation of a task's Kubernetes Job on the default path of
  * functions/kubernetes/k8sJobSubmit.js (HF_VAR_ADMISSION_CONTROLLER unset):
  *  - functions/kubernetes/k8sJobCreate.js retries transient API errors with
- *    exponential backoff, honours Retry-After, treats AlreadyExists for the
- *    Job's own name as created and fails other 4xx errors at once;
+ *    exponential backoff, honours Retry-After, and fails other 4xx errors at
+ *    once. AlreadyExists for the Job's own name counts as created only after
+ *    an earlier attempt with an unclear result (no HTTP status, 500, 503 or
+ *    504); on the first attempt, or after only 429, 409 Conflict or 502, it
+ *    fails the task;
  *  - when the Job cannot be created, the tasks' waits end with a failure
  *    exit code through the connector (wflib/connector.js resolveTask), for
  *    both completion transports, whether or not the wait has started, and a
@@ -62,6 +65,11 @@ function connectionError(code) {
 
 const e500 = () => httpError(500, 'InternalError',
     'Internal error occurred: resource quota evaluation timed out');
+const tooManyRequests = () => httpError(429, 'TooManyRequests', 'slow down');
+const conflict = () => httpError(409, 'Conflict',
+    'Operation cannot be fulfilled on resourcequotas "quota": the object has been modified');
+const alreadyExists = () => httpError(409, 'AlreadyExists',
+    'jobs.batch "' + JOB_NAME + '" already exists', { name: JOB_NAME });
 const CREATED = { created: true };
 
 // Fake BatchV1Api: answers the n-th createNamespacedJob call with outcomes[n],
@@ -277,12 +285,95 @@ async function main() {
         assert.deepStrictEqual(rec.delays, [1000]);
     });
 
-    await test('409 AlreadyExists for another name fails at once; 409 Conflict is retried', async () => {
-        let api = new FakeBatchApi([() => httpError(409, 'AlreadyExists', 'exists', { name: 'other-job' })]);
+    await test('409 AlreadyExists for this Job on the first attempt fails the task with no retry', async (logs) => {
+        const api = new FakeBatchApi([alreadyExists, CREATED]);
+        const rec = delayRecorder();
+        const r = await submitAndWait(setT, ['hf:1:18:1'], api, { sleep: rec.sleep, random: one }, false);
+        assert.strictEqual(api.calls, 1);
+        assert.deepStrictEqual(rec.delays, []);
+        assert.strictEqual(r.result.created, false);
+        assert.strictEqual(r.result.statusCode, 409);
+        assert.deepStrictEqual(r.codes, [FAILED]);
+        assert.deepStrictEqual(r.restarts, [0]);
+        const failLog = logs.find((l) => /failed for good/.test(l));
+        assert.ok(failLog && /no earlier attempt of unclear result/.test(failLog),
+            'final log line: ' + failLog);
+    });
+
+    await test('409 AlreadyExists for this Job after only 429, 409 Conflict or 502 fails the task', async (logs) => {
+        const e502 = () => httpError(502, 'BadGateway', 'bad gateway');
+        const cases = [
+            ['429', [tooManyRequests, alreadyExists, CREATED]],
+            ['409 Conflict', [conflict, alreadyExists, CREATED]],
+            ['429 and 409 Conflict', [tooManyRequests, conflict, tooManyRequests, alreadyExists, CREATED]],
+            ['502', [e502, alreadyExists, CREATED]],
+        ];
+        for (let i = 0; i < cases.length; i++) {
+            const [what, outcomes] = cases[i];
+            const api = new FakeBatchApi(outcomes);
+            const rec = delayRecorder();
+            const r = await submitAndWait(setT, ['hf:1:19:' + (i + 1)], api,
+                { sleep: rec.sleep, random: one }, false);
+            const calls = outcomes.length - 1;
+            assert.strictEqual(api.calls, calls, 'after ' + what + ': calls');
+            assert.strictEqual(rec.delays.length, calls - 1, 'after ' + what + ': retries');
+            assert.strictEqual(r.result.created, false, 'after ' + what + ': counted as created');
+            assert.strictEqual(r.result.statusCode, 409, 'after ' + what + ': status');
+            assert.deepStrictEqual(r.codes, [FAILED], 'after ' + what + ': exit codes');
+        }
+        assert.strictEqual(logs.filter((l) => /no earlier attempt of unclear result/.test(l)).length,
+            cases.length);
+
+        // 409 Conflict and 429 still count against the retry limit.
+        for (const error of [conflict, tooManyRequests]) {
+            const api = new FakeBatchApi([error]);
+            const result = await jobCreate.createJobWithRetries(api, 'ns', JOB_YAML, ['hf:1:19:9'],
+                { retries: 2, sleep: delayRecorder().sleep });
+            assert.strictEqual(result.created, false);
+            assert.strictEqual(api.calls, 3);
+        }
+    });
+
+    await test('409 AlreadyExists for this Job after a connection error, a 503, a 504, or a timeout and then 429 counts as created', async (logs) => {
+        const cases = [
+            ['a connection error', [connectionError('ECONNRESET'), alreadyExists, e500]],
+            ['a rejection with no error object', [undefined, alreadyExists, e500]],
+            ['503', [() => httpError(503, 'ServiceUnavailable', 'unavailable'), alreadyExists, e500]],
+            ['504', [() => httpError(504, 'Timeout', 'request timed out'), alreadyExists, e500]],
+            ['a timeout and then 429', [connectionError('ETIMEDOUT'), tooManyRequests, alreadyExists, e500]],
+        ];
+        for (let i = 0; i < cases.length; i++) {
+            const [what, outcomes] = cases[i];
+            const api = new FakeBatchApi(outcomes);
+            const rec = delayRecorder();
+            const result = await jobCreate.createJobWithRetries(api, 'ns', JOB_YAML, ['hf:1:20:' + (i + 1)],
+                { sleep: rec.sleep, random: one });
+            assert.strictEqual(result.created, true, 'after ' + what + ': not counted as created');
+            assert.strictEqual(api.calls, outcomes.length - 1, 'after ' + what + ': calls');
+        }
+        const createdLog = logs.find((l) => /counting it as created/.test(l));
+        assert.ok(createdLog && /attempt 1 had an unclear result/.test(createdLog),
+            'log line: ' + createdLog);
+    });
+
+    await test('409 AlreadyExists for another name fails, also after an unclear attempt; 409 Conflict is retried', async () => {
+        const otherExists = () => httpError(409, 'AlreadyExists', 'exists', { name: 'other-job' });
+        let api = new FakeBatchApi([otherExists]);
         let result = await jobCreate.createJobWithRetries(api, 'ns', JOB_YAML, ['hf:1:9:1'],
             { sleep: delayRecorder().sleep });
         assert.strictEqual(result.created, false);
         assert.strictEqual(api.calls, 1);
+
+        const unclearFirst = [['a 500', e500], ['a connection error', connectionError('ECONNRESET')]];
+        for (let i = 0; i < unclearFirst.length; i++) {
+            const [what, error] = unclearFirst[i];
+            api = new FakeBatchApi([error, otherExists, CREATED]);
+            const r = await submitAndWait(setT, ['hf:1:9:' + (i + 3)], api,
+                { sleep: delayRecorder().sleep, random: one }, false);
+            assert.strictEqual(r.result.created, false, 'after ' + what + ': counted as created');
+            assert.strictEqual(api.calls, 2, 'after ' + what + ': calls');
+            assert.deepStrictEqual(r.codes, [FAILED], 'after ' + what + ': exit codes');
+        }
 
         api = new FakeBatchApi([() => httpError(409, 'Conflict',
             'Operation cannot be fulfilled on resourcequotas "quota": the object has been modified'), CREATED]);
