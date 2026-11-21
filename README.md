@@ -63,6 +63,8 @@ If the Job cannot be created, because the error is not retried or the retries ru
 * with `HF_VAR_BACKOFF_LIMIT=N` (N > 0), the engine submits the task again, with a new Job, up to N times;
 * with neither, the task stays failed and never completes, so the workflow does not finish.
 
+The engine receives the exit codes of jobs from Redis in a completion loop. If that loop stops on an unexpected error, the engine logs the error and exits with status 1, because the tasks waiting on that loop could never complete.
+
 ### Running in a distributed infrastructure using the RabbitMQ executor (not maintained)
 * Start the RabbitMQ container: `docker run -d --name rabbitmq rabbitmq:3`
 * Add option `-e AMQP_URL=amqp://rabbitmq`

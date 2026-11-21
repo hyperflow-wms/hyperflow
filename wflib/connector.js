@@ -165,9 +165,16 @@ class RemoteJobConnector {
                 continue;
             }
 
+            // Read the observer again: resolveTask() may have ended the wait
+            // while SPOP was in flight. Then the result has no wait to go to
+            // and is discarded, but the notification is still removed below.
             let promiseResolve = this.jobPromiseResolves[taskId];
             delete this.jobPromiseResolves[taskId];
             this.handledTasks.add(taskId);
+            if (promiseResolve === undefined) {
+                clog.warn("[RemoteJobConnector] Completion for task", this.describeTask(taskId),
+                    "| result =", taskResult, "arrived after its wait had ended, discarding it");
+            }
 
             try {
                 await new Promise((resolve, reject) => {
@@ -177,6 +184,10 @@ class RemoteJobConnector {
                 });
             } catch (error) {
                 console.error("[RemoteJobConnector] Unable to delete job from completed queue", error);
+            }
+
+            if (promiseResolve === undefined) {
+                continue;
             }
 
             clog.debug("[RemoteJobConnector] Resolving promise for task", this.describeTask(taskId), "| result =", taskResult);
@@ -494,5 +505,22 @@ class StreamRemoteJobConnector {
     }
 }
 
+/**
+ * Starts a connector's completion loop (its run()). The loop is the only
+ * path by which task completions reach the engine, so if it stops on an
+ * unexpected error no waiting task could ever complete: the error is logged
+ * and the engine exits with status 1.
+ * @param {RemoteJobConnector|StreamRemoteJobConnector} connector
+ * @returns {Promise} settles when the loop ends
+ */
+function startCompletionLoop(connector) {
+    const name = connector.constructor.name;
+    return connector.run().catch((error) => {
+        clog.error("[" + name + "] Completion loop stopped on an unexpected error, exiting with status 1:", error);
+        process.exit(1);
+    });
+}
+
 module.exports = RemoteJobConnector
 module.exports.StreamRemoteJobConnector = StreamRemoteJobConnector
+module.exports.startCompletionLoop = startCompletionLoop

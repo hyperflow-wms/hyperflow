@@ -15,6 +15,7 @@ var fs = require('fs'),
     Mustache = require('mustache'),
     RemoteJobConnector = require('./connector'),
     StreamRemoteJobConnector = require('./connector').StreamRemoteJobConnector,
+    startCompletionLoop = require('./connector').startCompletionLoop,
     clog = require('../common/consoleLogger'),
     rcl;
 
@@ -227,11 +228,11 @@ exports.init = function(redisClient) {
                 // first use (all workflows this process runs share it).
                 if (!streamJobConnector) {
                     streamJobConnector = new StreamRemoteJobConnector(rcl.duplicate(), global_hfid);
-                    streamJobConnector.run();
+                    startCompletionLoop(streamJobConnector);
                 }
             } else {
                 jobConnectors[wfId] = new RemoteJobConnector(rcl, wfId, 3000);
-                jobConnectors[wfId].run();
+                startCompletionLoop(jobConnectors[wfId]);
             }
 
            var multi = rcl.multi(); // FIXME: change this to async.parallel
