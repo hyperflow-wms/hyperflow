@@ -15,6 +15,9 @@ class RemoteJobConnector {
         this.jobPromiseResolves = {};
         this.taskNames = {}; // taskId -> task/job type name (e.g. "mProject"), for logging
         this.handledTasks = new Set(); // tasks whose completion was already delivered
+        // taskId -> code from resolveTask() before waitForTask() registered.
+        // Completion notices that arrive early stay in redis instead.
+        this.earlyEvents = {};
         this.rcl = redisClient;
         this.running = false;
         this.completedNotificationQueueKey = "wf:" + wfId + ":tasksPendingCompletionHandling";
@@ -41,12 +44,52 @@ class RemoteJobConnector {
             return;
         }
         if (name) this.taskNames[taskId] = name;
+
+        if (this.earlyEvents[taskId] !== undefined) {
+            const code = this.earlyEvents[taskId];
+            delete this.earlyEvents[taskId];
+            this.handledTasks.add(taskId);
+            clog.debug("[RemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
+                "| result =", [null, code], "(resolved by the engine before the wait started)");
+            delete this.taskNames[taskId];
+            return Promise.resolve([null, code]);
+        }
+
         clog.debug("[RemoteJobConnector] Waiting for task", this.describeTask(taskId));
         let promise = new Promise((resolve, reject) => {
             this.jobPromiseResolves[taskId] = resolve;
         });
 
         return promise;
+    }
+
+    /**
+     * Ends the wait for a task with an exit code set by the engine itself
+     * instead of a job executor, e.g. when the task's Kubernetes Job could
+     * not be created. The waiting promise resolves as on a completion
+     * notice, so a later waitForTask() for the same task (a restart) starts
+     * a new wait. If no wait has started yet, the next waitForTask() for
+     * the task returns this result at once.
+     * @param {*} taskId task ID
+     * @param {number|string} code exit code
+     */
+    resolveTask(taskId, code) {
+        code = String(code);
+        const promiseResolve = this.jobPromiseResolves[taskId];
+        if (promiseResolve === undefined) {
+            if (this.earlyEvents[taskId] === undefined) {
+                clog.debug("[RemoteJobConnector] Result", code, "for task", this.describeTask(taskId),
+                    "set before its wait started, keeping it");
+                this.earlyEvents[taskId] = code;
+            }
+            return;
+        }
+        delete this.jobPromiseResolves[taskId];
+        this.handledTasks.add(taskId);
+        clog.debug("[RemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
+            "| result =", [null, code], "(resolved by the engine)");
+        delete this.taskNames[taskId];
+        promiseResolve([null, code]);
     }
 
     /**
@@ -122,9 +165,16 @@ class RemoteJobConnector {
                 continue;
             }
 
+            // Read the observer again: resolveTask() may have ended the wait
+            // while SPOP was in flight. Then the result has no wait to go to
+            // and is discarded, but the notification is still removed below.
             let promiseResolve = this.jobPromiseResolves[taskId];
             delete this.jobPromiseResolves[taskId];
             this.handledTasks.add(taskId);
+            if (promiseResolve === undefined) {
+                clog.warn("[RemoteJobConnector] Completion for task", this.describeTask(taskId),
+                    "| result =", taskResult, "arrived after its wait had ended, discarding it");
+            }
 
             try {
                 await new Promise((resolve, reject) => {
@@ -134,6 +184,10 @@ class RemoteJobConnector {
                 });
             } catch (error) {
                 console.error("[RemoteJobConnector] Unable to delete job from completed queue", error);
+            }
+
+            if (promiseResolve === undefined) {
+                continue;
             }
 
             clog.debug("[RemoteJobConnector] Resolving promise for task", this.describeTask(taskId), "| result =", taskResult);
@@ -210,7 +264,7 @@ class StreamRemoteJobConnector {
         this.jobPromiseResolves = {};
         this.taskNames = {}; // taskId -> task/job type name (e.g. "mProject"), for logging
         this.handledTasks = new Set(); // tasks whose completion was already delivered
-        this.earlyEvents = {}; // taskId -> code, for events that arrived before waitForTask() registered
+        this.earlyEvents = {}; // taskId -> code, for events (or resolveTask() results) that arrived before waitForTask() registered
         this.rcl = blockingRedisClient;
         this.hfId = hfId;
         this.streamKey = "hf:" + hfId + ":completions";
@@ -258,6 +312,36 @@ class StreamRemoteJobConnector {
         });
 
         return promise;
+    }
+
+    /**
+     * Ends the wait for a task with an exit code set by the engine itself
+     * instead of a job executor, e.g. when the task's Kubernetes Job could
+     * not be created. The waiting promise resolves as on a completion
+     * event, so a later waitForTask() for the same task (a restart) starts
+     * a new wait. If no wait has started yet, the result is kept as an
+     * early event, unless one is already kept, and the next waitForTask()
+     * for the task returns it at once.
+     * @param {*} taskId task ID
+     * @param {number|string} code exit code
+     */
+    resolveTask(taskId, code) {
+        code = String(code);
+        const promiseResolve = this.jobPromiseResolves[taskId];
+        if (promiseResolve === undefined) {
+            if (this.earlyEvents[taskId] === undefined) {
+                clog.debug("[StreamRemoteJobConnector] Result", code, "for task", this.describeTask(taskId),
+                    "set before its wait started, keeping it");
+                this.earlyEvents[taskId] = code;
+            }
+            return;
+        }
+        delete this.jobPromiseResolves[taskId];
+        this.handledTasks.add(taskId);
+        clog.debug("[StreamRemoteJobConnector] Resolving promise for task", this.describeTask(taskId),
+            "| result =", [null, code], "(resolved by the engine)");
+        delete this.taskNames[taskId];
+        promiseResolve([null, code]);
     }
 
     /**
@@ -421,5 +505,22 @@ class StreamRemoteJobConnector {
     }
 }
 
+/**
+ * Starts a connector's completion loop (its run()). The loop is the only
+ * path by which task completions reach the engine, so if it stops on an
+ * unexpected error no waiting task could ever complete: the error is logged
+ * and the engine exits with status 1.
+ * @param {RemoteJobConnector|StreamRemoteJobConnector} connector
+ * @returns {Promise} settles when the loop ends
+ */
+function startCompletionLoop(connector) {
+    const name = connector.constructor.name;
+    return connector.run().catch((error) => {
+        clog.error("[" + name + "] Completion loop stopped on an unexpected error, exiting with status 1:", error);
+        process.exit(1);
+    });
+}
+
 module.exports = RemoteJobConnector
 module.exports.StreamRemoteJobConnector = StreamRemoteJobConnector
+module.exports.startCompletionLoop = startCompletionLoop

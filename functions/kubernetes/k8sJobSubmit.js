@@ -4,6 +4,7 @@ const yaml = require('js-yaml');
 const clog = require('../../common/consoleLogger');
 const createJobMessage = require('../../common/jobMessage').createJobMessage;
 const { K8sAdmissionController } = require('./k8sAdmissionController.js');
+const { startJobCreation } = require('./k8sJobCreate.js');
 
 // k8sJobSubmit.js
 // Common functions for job submission to Kubernetes clusters
@@ -205,43 +206,11 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
     };
     createJobWithRetry(1);
   } else {
-    // ORIGINAL BEHAVIOR: Fire-and-forget with simple retry (does NOT wait)
-    var createJob = function(attempt) {
-      try {
-        k8sApi.createNamespacedJob(namespace, jobYaml).then(
-          (response) => {
-            // Success (fire-and-forget, no further action)
-          },
-          (err) => {
-            try {
-              var statusCode = err.response.statusCode;
-            } catch(e) {
-              // We didn't get a response, probably connection error
-              throw(err);
-            }
-            switch(statusCode) {
-              // if we get 409 or 429 ==> wait and retry
-              case 409: // 'Conflict' -- "Operation cannot be fulfilled on resourcequotas"; bug in k8s?
-              case 429: // 'Too many requests' -- API overloaded
-                // Calculate delay: default 1s, for '429' we should get it in the 'retry-after' header
-                let delay = Number(err.response.headers['retry-after'] || 1)*1000;
-                clog.warn("Create k8s job", taskIdArr, "HTTP error " + statusCode + " (attempt " + attempt +
-                             "), retrying after " + delay + "ms." );
-                setTimeout(() => createJob(attempt+1), delay);
-                break;
-              default:
-                clog.error("Job creation failed:", err);
-                clog.debug("Job YAML:", jobYaml);
-                let taskEnd = new Date().toISOString();
-                clog.error("Task ended with error, time=", taskEnd);
-            }
-          }
-        );
-      } catch (e) {
-        clog.error(e);
-      }
-    };
-    createJob(1); // Fire-and-forget: returns immediately, does NOT wait
+    // Create the Job in the background, retrying transient API errors, so
+    // that the job messages below go to Redis in parallel with the creation.
+    // If the Job cannot be created, its tasks' 'jobResult' waits end with a
+    // failure exit code (see k8sJobCreate.js). The promise never rejects.
+    startJobCreation(k8sApi, namespace, jobYaml, taskIdArr, contextArr);
   }
 
   let sendJobMessagesPromises = [];

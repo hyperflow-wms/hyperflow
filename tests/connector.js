@@ -17,18 +17,26 @@
  * workflows sharing one process-wide connector, and PEL redelivery across a
  * simulated engine restart.
  *
+ * The last two tests cover the set transport's loop when resolveTask() ends
+ * a wait while the loop's SPOP for that task is in flight, and
+ * startCompletionLoop(), which exits the engine with status 1 when a
+ * connector's loop stops on an unexpected error.
+ *
  * Self-contained: uses a fake redis client, no live services.
  * Run with:  node tests/connector.js
  */
 const assert = require('assert');
+const util = require('util');
 const RemoteJobConnector = require('../wflib/connector.js');
 const StreamRemoteJobConnector = RemoteJobConnector.StreamRemoteJobConnector;
+const startCompletionLoop = RemoteJobConnector.startCompletionLoop;
 
 class FakeRedis {
     constructor() {
         // legacy set-transport state
         this.sets = {};
         this.calls = { srandmember: 0, xreadgroup: 0, xgroup: 0 };
+        this.onSpop = null; // test hook: called with the key inside spop, before its callback
 
         // stream-transport state: key -> { entries: [{id, fields}], groups: {...} }
         this.streams = {};
@@ -58,6 +66,7 @@ class FakeRedis {
             v = s.values().next().value;
             s.delete(v);
         }
+        if (this.onSpop) this.onSpop(key);
         setImmediate(cb, null, v);
     }
     srem(key, member, cb) {
@@ -219,6 +228,14 @@ async function waitUntil(predicate, timeoutMs, intervalMs) {
         await sleep(intervalMs);
     }
     return predicate();
+}
+
+function withTimeout(promise, ms, what) {
+    let timer;
+    const timeout = new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("timed out after " + ms + " ms: " + what)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 async function runLegacyTests() {
@@ -444,9 +461,108 @@ async function runStreamTests() {
     console.log("all stream connector tests passed");
 }
 
+// 11. resolveTask() ends a wait while the set transport's loop has SPOP in
+//     flight for that task (the fake redis calls it from inside spop). The
+//     loop must discard the result instead of calling the gone observer,
+//     still remove the notification, and keep delivering completions.
+async function runResolveDuringSpopTest() {
+    const rcl = new FakeRedis();
+    const wfId = "2";
+    const interval = 20;
+    const pendingKey = "wf:" + wfId + ":tasksPendingCompletionHandling";
+    const connector = new RemoteJobConnector(rcl, wfId, interval);
+
+    const t1 = "hfid:2:5:1";
+    const p1 = connector.waitForTask(t1);
+    const observer = connector.jobPromiseResolves[t1];
+    let observerCalls = 0;
+    connector.jobPromiseResolves[t1] = (result) => { observerCalls++; observer(result); };
+    rcl.onSpop = (key) => {
+        if (key === t1) connector.resolveTask(t1, 1);
+    };
+    rcl.sadd(t1, "0");
+    rcl.sadd(pendingKey, t1);
+    // Count how often the loop draws t1: once, if the discard path removes
+    // the notification itself.
+    let t1Draws = 0;
+    const srandmember = rcl.srandmember.bind(rcl);
+    rcl.srandmember = (key, cb) => srandmember(key, (err, v) => {
+        if (v === t1) t1Draws++;
+        cb(err, v);
+    });
+
+    let runError = null;
+    const loop = connector.run().catch((err) => { runError = err; });
+
+    const r1 = await withTimeout(p1, 2000, "wait for " + t1);
+    assert.deepStrictEqual(r1, [null, "1"], "expected the resolveTask code, got " + JSON.stringify(r1));
+    const removed = await waitUntil(() => !rcl._set(pendingKey).has(t1), 2000, 5);
+    await sleep(interval * 3); // let the loop go past the completion it drew
+    assert.strictEqual(runError, null, "run() rejected: " + (runError && runError.stack));
+    assert.ok(removed, "notification not removed from the pending set");
+    assert.strictEqual(t1Draws, 1, "the loop drew " + t1 + " " + t1Draws + " times, expected once");
+    assert.strictEqual(observerCalls, 1, "observer called " + observerCalls + " times, expected once");
+
+    rcl.onSpop = null;
+    const t2 = "hfid:2:6:1";
+    const p2 = connector.waitForTask(t2);
+    rcl.sadd(t2, "0");
+    rcl.sadd(pendingKey, t2);
+    const r2 = await withTimeout(p2, 2000, "wait for " + t2 + " after the discarded completion");
+    assert.deepStrictEqual(r2, [null, "0"], "expected exit code 0, got " + JSON.stringify(r2));
+    assert.strictEqual(runError, null, "run() rejected: " + (runError && runError.stack));
+    console.log("ok 11 - resolveTask during SPOP: result discarded, notification removed, loop keeps running");
+
+    await connector.stop();
+    await loop;
+}
+
+// 12. startCompletionLoop(): a loop that rejects is logged with the
+//     connector's name and exits the engine with status 1, for both
+//     connectors; a loop ended by stop() does not exit.
+async function runCompletionLoopExitTest() {
+    const saved = { exit: process.exit, error: console.error };
+    const logs = [];
+    const exitCodes = [];
+    console.error = (...args) => logs.push(util.format(...args));
+    process.exit = (code) => { exitCodes.push(code); };
+    try {
+        const failing = [
+            new RemoteJobConnector(new FakeRedis(), "3", 20),
+            new StreamRemoteJobConnector(new FakeRedis(), "streamhf7"),
+        ];
+        for (const connector of failing) {
+            const name = connector.constructor.name;
+            const failure = new Error("simulated failure in " + name);
+            connector.run = async () => { throw failure; };
+            logs.length = 0;
+            exitCodes.length = 0;
+            await startCompletionLoop(connector);
+            assert.deepStrictEqual(exitCodes, [1], name + ": expected process.exit(1), got " + JSON.stringify(exitCodes));
+            const logged = logs.some((l) => l.startsWith("[" + name + "]") &&
+                /completion loop stopped/i.test(l) && l.includes(failure.message));
+            assert.ok(logged,
+                name + ": no log line naming the connector, the stop and the error: " + JSON.stringify(logs));
+        }
+
+        const stopped = new RemoteJobConnector(new FakeRedis(), "4", 20);
+        exitCodes.length = 0;
+        const loop = startCompletionLoop(stopped);
+        await stopped.stop();
+        await withTimeout(loop, 2000, "stopped loop to end");
+        assert.deepStrictEqual(exitCodes, [], "a stopped loop called process.exit: " + JSON.stringify(exitCodes));
+    } finally {
+        console.error = saved.error;
+        process.exit = saved.exit;
+    }
+    console.log("ok 12 - a completion loop that rejects is logged and exits the engine with status 1");
+}
+
 async function main() {
     await runLegacyTests();
     await runStreamTests();
+    await runResolveDuringSpopTest();
+    await runCompletionLoopExitTest();
     console.log("all connector tests passed");
     process.exit(0);
 }

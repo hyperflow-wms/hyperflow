@@ -1,0 +1,31 @@
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "name": "${jobName}",
+    "labels": {
+      "app": "hyperflow",
+      "workflow": "${workflowName}",
+      "task": "${taskName}"
+    }
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": { "app": "hyperflow" }
+      },
+      "spec": {
+        "restartPolicy": "${restartPolicy}",
+        "containers": [
+          {
+            "name": "worker",
+            "image": "${containerName}",
+            "resources": {
+              "requests": { "cpu": "${cpuRequest}", "memory": "${memRequest}" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
