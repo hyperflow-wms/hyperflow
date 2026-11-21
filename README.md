@@ -100,3 +100,16 @@ hflow run --submit=<hyperflow_server_url> <workflow_dir>
 ```
 
 Currently `<workflow_dir>` must be a local directory accessbile by the server. This allows running multiple workflows (concurrently) using the same instance of the HyperFlow engine.
+
+## Releases
+A release is a GitHub release whose tag is `v` followed by the version, for example `v1.11.2`. The tag is the only place the version is set. The maintainer creates the release from `master`:
+
+```
+gh release create v<version> --target master --generate-notes
+```
+
+The CI workflow (`.github/workflows/main.yml`) runs `tests/connector.js` and `tests/version.js` and builds the image with `make image` on every push to `master`, on pull requests into `master`, on pushes of `v*.*.*` tags and on manual runs. When a release is created, it also runs `make push`, which builds the image at the release tag and pushes it to Docker Hub as `hyperflowwms/hyperflow:latest` and `hyperflowwms/hyperflow:v<version>`. The image is published only from CI; do not run `make push` locally.
+
+`make image` passes the output of `git describe --tags` (the nearest tag, followed by `-<commits>-g<hash>` between releases), without its leading `v`, to `docker build` as the `VERSION` build argument, and the Dockerfile writes it into the image's `package.json` with `npm version`. `hflow --version` in the image prints that version: `1.11.2` in the image built at the release tag, and a version such as `1.11.2-3-gabc1234` in an image built three commits later. When no tag is reachable, for example in a clone made with `--no-tags`, `make image` passes no version and the image reports `0.0.0-dev`. A tag that does not give a valid semver version, such as `v1.11`, fails the build.
+
+`package.json` in the repository holds `0.0.0-dev`, and no commit changes it, so `hflow --version` run from a checkout or a source archive prints `0.0.0-dev`. Run `node tests/version.js` to check the version handling in the `Makefile` and the `Dockerfile` without Docker.
