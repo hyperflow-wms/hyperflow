@@ -11,12 +11,18 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 ## Getting started
 
 ### Installation
-* Install Node.js (http://nodejs.org)
+* Install Node.js 18 or later (http://nodejs.org)
 * Install Redis (http://redis.io) 
 * Install HyperFlow: 
-  * From npm package: `npm install -g @hyperflow/hyperflow`
-  * From github repository:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/{version}.tar.gz`<br>(where `{version}` is for example `v1.5.0`) 
-  * From the master branch: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
+  * As the Docker image `hyperflowwms/hyperflow` from Docker Hub. Each release is pushed as `hyperflowwms/hyperflow:v<version>`, for example `hyperflowwms/hyperflow:v1.11.1`; see [Running locally using Docker images](#running-locally-using-docker-images).
+  * From a git clone:
+    ```
+    git clone https://github.com/hyperflow-wms/hyperflow.git
+    cd hyperflow
+    npm install
+    npm install -g .
+    ```
+    `npm install` installs the dependencies into the clone. `npm install -g .` then links the clone into npm's global packages and installs the `hflow` and `hflow-recovery-analysis` commands into npm's global bin directory, so the clone must stay where it is. `hflow --version` run from a clone prints `0.0.0-dev`, because the repository does not carry a release version; see [Releasing](#releasing) for how release versions are set.
 
 ### Running locally
 * Start the redis server: `redis-server`
@@ -113,3 +119,24 @@ hflow run --submit=<hyperflow_server_url> <workflow_dir>
 ```
 
 Currently `<workflow_dir>` must be a local directory accessbile by the server. This allows running multiple workflows (concurrently) using the same instance of the HyperFlow engine.
+
+## Releasing
+The maintainer releases from `master`:
+
+```
+gh release create v<version> --target master --generate-notes
+```
+
+When the release is published, CI (`.github/workflows/main.yml`) builds the image and pushes it to Docker Hub as `hyperflowwms/hyperflow:v<version>` and `hyperflowwms/hyperflow:latest`. The image is published only from CI, because a local `make push` tags the image from that machine's `git describe`.
+
+A pre-release needs a `-suffix` in its tag, such as `v1.12.0-rc.1`:
+
+```
+gh release create v1.12.0-rc.1 --target master --prerelease --generate-notes
+```
+
+CI refuses to publish when the tag's form and the release's pre-release flag disagree: a tag with a `-suffix` must be published with `--prerelease`, and a plain `vX.Y.Z` without it. A tag that contains `-` is pushed under its own tag only and leaves `:latest` alone. This is the way to get a test image of `master`. Promoting a pre-release to a release later publishes nothing, because GitHub then sends a `released` event, not `published`; the stable version needs its own release.
+
+The released image tag must stay exactly `hyperflowwms/hyperflow:vX.Y.Z`, for example `hyperflowwms/hyperflow:v1.11.2`. Renovate in `hyperflow-k8s-deployment` and `1000genome-workflow` finds new engine images by the pattern `hyperflowwms/hyperflow:v\d+\.\d+\.\d+`, so it never picks up a tag of another form.
+
+`package.json` in the repository holds `0.0.0-dev`. The image build writes the tag's version into the image's `package.json`, so `hflow --version` in the image prints it. `node tests/makePush.js` checks which image tags `make push` pushes for a given tag.
