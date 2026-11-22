@@ -6,9 +6,11 @@ FROM node:20-alpine
 RUN apk add --no-cache docker-cli
 
 # Version that `hflow --version` reports: a semver string such as 1.11.2,
-# or 1.11.2-3-gabc1234 between releases. `make image` passes the
-# `git describe --tags` output without its leading "v". When it is not set, package.json keeps the
-# repository's 0.0.0-dev. An invalid version fails the build.
+# or 1.11.2-3-gabc1234 between releases, followed by -dirty when the tree
+# had uncommitted changes to tracked files. `make image` passes the nearest
+# version tag, as `git describe` reports it, without its leading "v" (see
+# the Makefile). When it is not set, package.json keeps the repository's
+# 0.0.0-dev. An invalid version fails the build.
 ARG VERSION
 
 COPY . /hyperflow

@@ -1,17 +1,20 @@
 /**
  * Tests for the version that the engine image reports with `hflow --version`.
  *
- * The git tag is the only place a version is set. `make image` passes the
- * nearest tag, without its leading "v", to `docker build` as the VERSION
- * build argument, and the Dockerfile writes it into package.json with
+ * The git tag is the only place a version is set. `make image` takes the
+ * nearest version tag (a tag matching v[0-9]*.[0-9]*.[0-9]*) as
+ * `git describe --tags --dirty` reports it, tags the image with it, and
+ * passes it without its leading "v" to `docker build` as the VERSION build
+ * argument. The Dockerfile writes VERSION into package.json with
  * `npm version` before `npm install`. The repository's package.json holds
  * 0.0.0-dev.
  *
  * The Dockerfile part runs the Dockerfile's own `npm version` RUN command
  * under sh, on copies of package.json and package-lock.json in a directory
  * without .git, as `docker build` would. The Makefile part runs
- * `make -n image` in a scratch git repository holding a copy of the
- * Makefile, so the result does not depend on the tags of this checkout.
+ * `make -n image` in scratch git repositories holding a copy of the
+ * Makefile, so the result does not depend on the tags or the uncommitted
+ * changes of this checkout.
  *
  * Needs sh, npm, make and git; no Docker and no network.
  * Run with:  node tests/version.js
@@ -79,14 +82,23 @@ function runVersionStep(command, version) {
     return { status: r.status, output: r.stdout + r.stderr, dir };
 }
 
-// Environment for git and make in the scratch repository, isolated from the
-// user's and the system's git configuration. Inherited GIT_* variables are
-// dropped: GIT_DIR or GIT_WORK_TREE, as set inside a git hook, would point
-// the scratch commits and tags at another repository.
-function gitEnv() {
-    const inherited = Object.assign({}, process.env);
+// Environment for git and make in a scratch repository, built from parent
+// (process.env by default) and isolated from the user's and the system's git
+// configuration. Inherited GIT_* variables are dropped: GIT_DIR or
+// GIT_WORK_TREE, as set inside a git hook, would point the scratch commits
+// and tags at another repository. MAKEFLAGS, MAKEOVERRIDES and GNUMAKEFLAGS
+// are dropped: a make that runs this test passes its command-line variables,
+// such as VERSION=..., and its options to the scratch make through MAKEFLAGS
+// (which may refer to MAKEOVERRIDES), and GNUMAKEFLAGS set in the user's
+// shell is read like MAKEFLAGS. Variables passed that way would override the
+// Makefile's own values.
+function gitEnv(parent) {
+    const inherited = Object.assign({}, parent || process.env);
     for (const key of Object.keys(inherited)) {
         if (key.startsWith('GIT_')) delete inherited[key];
+    }
+    for (const key of ['MAKEFLAGS', 'MAKEOVERRIDES', 'GNUMAKEFLAGS']) {
+        delete inherited[key];
     }
     const env = Object.assign(inherited, {
         GIT_CONFIG_GLOBAL: '/dev/null',
@@ -107,9 +119,27 @@ function run(cmd, args, cwd, env) {
     return r.stdout.trim();
 }
 
+// Runs git in a scratch repository and returns its trimmed output.
+function git(dir, ...args) {
+    return run('git', args, dir, gitEnv());
+}
+
+// A scratch git repository with one commit, holding a copy of the Makefile
+// and tracked.txt, a file that tests modify to leave uncommitted changes.
+function scratchRepo() {
+    const dir = mkTmp('hf-make-');
+    fs.copyFileSync(path.join(root, 'Makefile'), path.join(dir, 'Makefile'));
+    fs.writeFileSync(path.join(dir, 'tracked.txt'), 'first\n');
+    git(dir, 'init', '-q');
+    git(dir, 'add', 'Makefile', 'tracked.txt');
+    git(dir, 'commit', '-q', '-m', 'first');
+    return dir;
+}
+
 // The `docker build` and `docker tag` lines that `make -n image` prints.
-function makeImageDryRun(dir, extraArgs) {
-    const out = run('make', ['-n', 'image'].concat(extraArgs || []), dir, gitEnv());
+// parent is the environment the test would inherit, process.env by default.
+function makeImageDryRun(dir, extraArgs, parent) {
+    const out = run('make', ['-n', 'image'].concat(extraArgs || []), dir, gitEnv(parent));
     const lines = out.split('\n');
     const build = lines.find((l) => l.startsWith('docker build'));
     const tag = lines.find((l) => l.startsWith('docker tag'));
@@ -174,14 +204,9 @@ function main() {
         ok('an invalid VERSION fails the step (exit ' + r.status + ')');
     }
 
-    // Makefile, in a scratch git repository.
-    const repo = mkTmp('hf-make-');
-    fs.copyFileSync(path.join(root, 'Makefile'), path.join(repo, 'Makefile'));
-    const env = gitEnv();
-    run('git', ['init', '-q'], repo, env);
-    run('git', ['add', 'Makefile'], repo, env);
-    run('git', ['commit', '-q', '-m', 'first'], repo, env);
-    const firstCommit = run('git', ['rev-parse', '--short', 'HEAD'], repo, env);
+    // Makefile, in scratch git repositories.
+    const repo = scratchRepo();
+    const firstCommit = git(repo, 'rev-parse', '--short', 'HEAD');
 
     {
         const m = makeImageDryRun(repo);
@@ -190,7 +215,22 @@ function main() {
         ok('no tag: no --build-arg, image tagged with the commit hash');
     }
 
-    run('git', ['tag', 'v9.8.7'], repo, env);
+    // The environment variables through which VERSION=... could reach the
+    // scratch make: MAKEFLAGS (with MAKEOVERRIDES) from a make that runs this
+    // test, and GNUMAKEFLAGS from the user's shell.
+    for (const parent of [
+        { MAKEFLAGS: ' -- VERSION=6.6.6 TAG=parent' },
+        { MAKEFLAGS: ' -- $(MAKEOVERRIDES)', MAKEOVERRIDES: 'VERSION=6.6.6 TAG=parent' },
+        { GNUMAKEFLAGS: 'VERSION=6.6.6 TAG=parent' },
+    ]) {
+        const m = makeImageDryRun(repo, [], Object.assign({}, process.env, parent));
+        const names = Object.keys(parent).join(' and ');
+        assert.strictEqual(m.hasBuildArg, false, 'build argument passed with ' + names + ' inherited: ' + m.build);
+        assert.strictEqual(m.imageTag, firstCommit, 'image tag with ' + names + ' inherited');
+        ok('VERSION and TAG set through an inherited ' + names + ' do not reach the scratch make');
+    }
+
+    git(repo, 'tag', 'v9.8.7');
     {
         const m = makeImageDryRun(repo);
         assert.strictEqual(m.version, '9.8.7');
@@ -198,8 +238,8 @@ function main() {
         ok('on tag v9.8.7: --build-arg VERSION=9.8.7, image tagged v9.8.7');
     }
 
-    run('git', ['commit', '-q', '--allow-empty', '-m', 'second'], repo, env);
-    const described = run('git', ['describe', '--tags'], repo, env);
+    git(repo, 'commit', '-q', '--allow-empty', '-m', 'second');
+    const described = git(repo, 'describe', '--tags');
     assert.ok(/^v9\.8\.7-1-g[0-9a-f]+$/.test(described), 'unexpected git describe output: ' + described);
     {
         const m = makeImageDryRun(repo);
@@ -212,6 +252,87 @@ function main() {
         const m = makeImageDryRun(repo, ['VERSION=']);
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed for an empty VERSION: ' + m.build);
         ok('make image VERSION= passes no --build-arg');
+    }
+
+    // Only version tags count. This repository has tags without the "v",
+    // such as 1.7.1, and tags of other names, such as prePersistence.
+    {
+        const r = scratchRepo();
+        const commit = git(r, 'rev-parse', '--short', 'HEAD');
+        git(r, 'tag', '1.7.1');
+        const m = makeImageDryRun(r);
+        assert.strictEqual(m.hasBuildArg, false, 'build argument passed for tag 1.7.1: ' + m.build);
+        assert.strictEqual(m.imageTag, commit);
+        ok('tag 1.7.1 without the v prefix is skipped: no --build-arg, image tagged with the commit hash');
+    }
+
+    {
+        // Each nearer tag on a commit of its own, so that git describe would
+        // pick it if it were not skipped: a lightweight prePersistence, then
+        // an annotated v9.9 on a later commit.
+        const r = scratchRepo();
+        git(r, 'tag', 'v9.8.7');
+        git(r, 'commit', '-q', '--allow-empty', '-m', 'second');
+        git(r, 'tag', 'prePersistence');
+        let expected = 'v9.8.7-1-g' + git(r, 'rev-parse', '--short', 'HEAD');
+        let m = makeImageDryRun(r);
+        assert.strictEqual(m.version, expected.replace(/^v/, ''));
+        assert.strictEqual(m.imageTag, expected);
+        ok('nearer lightweight tag prePersistence is skipped: --build-arg VERSION=' + m.version +
+            ', image tagged ' + m.imageTag);
+
+        git(r, 'commit', '-q', '--allow-empty', '-m', 'third');
+        git(r, 'tag', '-a', '-m', 'annotated tag that is not a version tag', 'v9.9');
+        expected = 'v9.8.7-2-g' + git(r, 'rev-parse', '--short', 'HEAD');
+        m = makeImageDryRun(r);
+        assert.strictEqual(m.version, expected.replace(/^v/, ''));
+        assert.strictEqual(m.imageTag, expected);
+        ok('nearer annotated tag v9.9 is skipped: --build-arg VERSION=' + m.version +
+            ', image tagged ' + m.imageTag);
+    }
+
+    // Uncommitted changes to a tracked file add -dirty to the image tag and
+    // to the version, and the Dockerfile's npm version step accepts that
+    // version.
+    {
+        const r = scratchRepo();
+        const tracked = path.join(r, 'tracked.txt');
+        const first = git(r, 'rev-parse', '--short', 'HEAD');
+        const dirtyVersions = [];
+        fs.writeFileSync(path.join(r, 'untracked.txt'), 'untracked\n');
+        let m = makeImageDryRun(r);
+        assert.strictEqual(m.imageTag, first, 'an untracked file made the tree dirty: ' + m.imageTag);
+        ok('untracked file only: image tagged ' + m.imageTag + ', no -dirty');
+
+        fs.appendFileSync(tracked, 'changed\n');
+        m = makeImageDryRun(r);
+        assert.strictEqual(m.hasBuildArg, false, 'build argument passed with no tag: ' + m.build);
+        assert.strictEqual(m.imageTag, first + '-dirty');
+        ok('no tag, tracked file modified: no --build-arg, image tagged ' + m.imageTag);
+
+        git(r, 'tag', 'v9.8.7');
+        m = makeImageDryRun(r);
+        assert.strictEqual(m.version, '9.8.7-dirty');
+        assert.strictEqual(m.imageTag, 'v9.8.7-dirty');
+        dirtyVersions.push(m.version);
+        ok('on tag v9.8.7, tracked file modified: --build-arg VERSION=9.8.7-dirty, image tagged v9.8.7-dirty');
+
+        git(r, 'commit', '-q', '-a', '-m', 'second');
+        const expected = 'v9.8.7-1-g' + git(r, 'rev-parse', '--short', 'HEAD') + '-dirty';
+        fs.appendFileSync(tracked, 'changed again\n');
+        m = makeImageDryRun(r);
+        assert.strictEqual(m.version, expected.replace(/^v/, ''));
+        assert.strictEqual(m.imageTag, expected);
+        dirtyVersions.push(m.version);
+        ok('one commit after the tag, tracked file modified: --build-arg VERSION=' + m.version +
+            ', image tagged ' + m.imageTag);
+
+        for (const v of dirtyVersions) {
+            const s = runVersionStep(step, v);
+            assert.strictEqual(s.status, 0, 'npm version step failed for VERSION=' + v + ':\n' + s.output);
+            assert.deepStrictEqual(versionsIn(s.dir), [v, v, v]);
+            ok('VERSION=' + v + ' from make is written into package.json and package-lock.json');
+        }
     }
 
     console.log('all version tests passed');
