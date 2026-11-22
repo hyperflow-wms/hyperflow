@@ -10,11 +10,14 @@ RUN apk add --no-cache docker-cli
 # had uncommitted changes to tracked files. `make image` passes the nearest
 # version tag, as `git describe` reports it, without its leading "v" (see
 # the Makefile). When it is not set, package.json keeps the repository's
-# 0.0.0-dev. An invalid version fails the build.
+# 0.0.0-dev. scripts/check-version.sh fails the build, before `npm version`
+# runs, for anything but a strict semver 2.0.0 version without build
+# metadata: npm keywords such as "patch", options such as "--help", leading
+# zeros, "+build" and short forms such as 1.12 are all rejected.
 ARG VERSION
 
 COPY . /hyperflow
 WORKDIR /hyperflow
-RUN if [ -n "$VERSION" ]; then npm version --no-git-tag-version --allow-same-version "$VERSION"; fi
+RUN if [ -n "$VERSION" ]; then sh scripts/check-version.sh "$VERSION" && npm version --no-git-tag-version --allow-same-version "$VERSION"; fi
 RUN npm install
 RUN npm install -g .

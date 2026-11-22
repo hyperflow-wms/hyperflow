@@ -37,7 +37,7 @@ jobs:
       # k8sJobSubmit.js requires @kubernetes/client-node and js-yaml, and
       # k8sAdmissionController.js requires @kubernetes/client-node; the test
       # replaces exactly those with stubs, so a dependency required by any
-      # other file fails it. tests/version.js needs only git, make, npm and sh.
+      # other file fails it. tests/version.js needs only git, make, npm, sh and grep.
       # tests/functions.js is deliberately not run: it asserts synchronously on
       # an asynchronous notification and has failed since before this workflow.
       - name: Connector regression tests

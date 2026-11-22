@@ -8,16 +8,24 @@
  * argument. On a release, CI runs `make push RELEASE_TAG=<tag>`, and the
  * image tag and the version come from RELEASE_TAG instead. The Dockerfile
  * writes VERSION into package.json with `npm version` before `npm install`.
- * The repository's package.json holds 0.0.0-dev.
+ * The repository's package.json holds 0.0.0-dev. scripts/check-version.sh
+ * rejects anything but a strict semver 2.0.0 version without build metadata;
+ * `make image` runs it before any docker command, and the Dockerfile before
+ * `npm version`.
  *
- * The Dockerfile part runs the Dockerfile's own `npm version` RUN command
- * under sh, on copies of package.json and package-lock.json in a directory
- * without .git, as `docker build` would. The Makefile part runs
- * `make -n image` and `make -n push` in scratch git repositories holding a
- * copy of the Makefile, so the result does not depend on the tags or the
- * uncommitted changes of this checkout.
+ * The script part runs scripts/check-version.sh on valid and invalid
+ * versions. The Dockerfile part runs the Dockerfile's own `npm version` RUN
+ * command under sh, on copies of the files of the build context it uses, in
+ * a directory without .git, as `docker build` would. The Makefile part runs
+ * `make image` and `make push` in scratch git repositories holding copies of
+ * the Makefile and the script, so the result does not depend on the tags or
+ * the uncommitted changes of this checkout. A fake `docker`, first on PATH,
+ * records the arguments of each docker command instead of running it, and
+ * the tests check those arguments, and that a tag with shell characters runs
+ * nothing. Refusals that make decides while it reads the Makefile are checked
+ * with `make -n`.
  *
- * Needs sh, npm, make and git; no Docker and no network.
+ * Needs sh, grep, npm, make and git; no Docker and no network.
  * Run with:  node tests/version.js
  */
 const assert = require('assert');
@@ -63,12 +71,32 @@ function dockerInstructions() {
     return out;
 }
 
+const checkScript = 'scripts/check-version.sh';
+
+// Whether .dockerignore lets a file into the build context. The file uses
+// "*" to exclude everything and "!<path>" lines to let paths back in; the
+// last line that matches the file decides.
+function inBuildContext(file) {
+    let included = true;
+    for (const raw of fs.readFileSync(path.join(root, '.dockerignore'), 'utf8').split('\n')) {
+        const line = raw.trim();
+        if (line === '' || line.startsWith('#')) continue;
+        const negated = line.startsWith('!');
+        const pattern = line.replace(/^!/, '').replace(/\/$/, '');
+        if (pattern === '*' || file === pattern || file.startsWith(pattern + '/')) included = negated;
+    }
+    return included;
+}
+
 // Run the Dockerfile's `npm version` command the way a RUN instruction in
 // shell form runs: `/bin/sh -c <command>`, with the build argument in the
-// environment. `version === undefined` leaves VERSION unset.
+// environment, in a directory holding copies of the files of the build
+// context that the command uses. `version === undefined` leaves VERSION
+// unset.
 function runVersionStep(command, version) {
     const dir = mkTmp('hf-version-');
-    for (const f of ['package.json', 'package-lock.json']) {
+    for (const f of ['package.json', 'package-lock.json', checkScript]) {
+        fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
         fs.copyFileSync(path.join(root, f), path.join(dir, f));
     }
     const env = Object.assign({}, process.env, {
@@ -127,44 +155,90 @@ function git(dir, ...args) {
     return run('git', args, dir, gitEnv());
 }
 
-// A scratch git repository with one commit, holding a copy of the Makefile
-// and tracked.txt, a file that tests modify to leave uncommitted changes.
+// A scratch git repository with one commit, holding copies of the Makefile
+// and the version check script, and tracked.txt, a file that tests modify to
+// leave uncommitted changes.
 function scratchRepo() {
     const dir = mkTmp('hf-make-');
     fs.copyFileSync(path.join(root, 'Makefile'), path.join(dir, 'Makefile'));
+    fs.mkdirSync(path.join(dir, path.dirname(checkScript)));
+    fs.copyFileSync(path.join(root, checkScript), path.join(dir, checkScript));
     fs.writeFileSync(path.join(dir, 'tracked.txt'), 'first\n');
     git(dir, 'init', '-q');
-    git(dir, 'add', 'Makefile', 'tracked.txt');
+    git(dir, 'add', 'Makefile', checkScript, 'tracked.txt');
     git(dir, 'commit', '-q', '-m', 'first');
     return dir;
 }
 
-// The docker commands that `make -n <target>` prints, for target image or
-// push: the `docker build` line, the VERSION build argument, the tag that
-// `docker tag` adds, and the images that `docker push` pushes. parent is the
-// environment the test would inherit, process.env by default.
-function makeDryRun(dir, target, extraArgs, parent) {
-    const out = run('make', ['-n', target].concat(extraArgs || []), dir, gitEnv(parent));
-    const lines = out.split('\n');
-    const build = lines.find((l) => l.startsWith('docker build'));
-    const tag = lines.find((l) => l.startsWith('docker tag'));
-    assert.ok(build, 'no docker build line in make -n ' + target + ' output:\n' + out);
-    assert.ok(tag, 'no docker tag line in make -n ' + target + ' output:\n' + out);
-    const buildArg = build.match(/--build-arg\s+VERSION=(\S+)/);
-    const imageTag = tag.match(/^docker tag \S+ \S+:(\S+)/);
-    assert.ok(imageTag, 'unexpected docker tag line: ' + tag);
+// A directory holding a fake `docker`: it appends its arguments, as a JSON
+// array, to the file named by FAKE_DOCKER_LOG, and exits 0.
+let fakeDockerDir = null;
+function fakeDocker() {
+    if (!fakeDockerDir) {
+        fakeDockerDir = mkTmp('hf-docker-');
+        fs.writeFileSync(path.join(fakeDockerDir, 'docker'),
+            '#!' + process.execPath + '\n' +
+            "require('fs').appendFileSync(process.env.FAKE_DOCKER_LOG, JSON.stringify(process.argv.slice(2)) + '\\n');\n",
+            { mode: 0o755 });
+    }
+    return fakeDockerDir;
+}
+
+// Runs `make <target> <extraArgs>` for real in a scratch repository, with the
+// fake docker first on PATH, and returns make's exit status and output and
+// the arguments of each docker command, in order. parent is the environment
+// the test would inherit, process.env by default.
+function runMake(dir, target, extraArgs, parent) {
+    const log = path.join(mkTmp('hf-docker-log-'), 'calls');
+    fs.writeFileSync(log, '');
+    const env = gitEnv(parent);
+    env.PATH = fakeDocker() + path.delimiter + env.PATH;
+    env.FAKE_DOCKER_LOG = log;
+    const r = spawnSync('make', [target].concat(extraArgs || []), { cwd: dir, env, encoding: 'utf8' });
+    if (r.error) throw r.error;
+    const calls = fs.readFileSync(log, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l));
+    return { status: r.status, output: r.stdout + r.stderr, calls };
+}
+
+// The docker commands that `make <target>` runs, for target image or push,
+// after checking that make succeeded: the `docker build` arguments, the
+// VERSION build argument, the tag that `docker tag` adds, and the images that
+// `docker push` pushes.
+const image = 'hyperflowwms/hyperflow';
+function dockerCommands(dir, target, extraArgs, parent) {
+    const r = runMake(dir, target, extraArgs, parent);
+    assert.strictEqual(r.status, 0, 'make ' + target + ' failed:\n' + r.output);
+    const build = r.calls.find((c) => c[0] === 'build');
+    const tag = r.calls.find((c) => c[0] === 'tag');
+    assert.ok(build, 'make ' + target + ' ran no docker build: ' + JSON.stringify(r.calls));
+    assert.ok(tag, 'make ' + target + ' ran no docker tag: ' + JSON.stringify(r.calls));
+    const i = build.indexOf('--build-arg');
+    if (i >= 0) assert.ok(/^VERSION=/.test(build[i + 1]), 'unexpected build argument: ' + build[i + 1]);
+    assert.strictEqual(tag[1], image, 'unexpected docker tag source: ' + JSON.stringify(tag));
+    assert.ok(tag[2].startsWith(image + ':'), 'unexpected docker tag target: ' + JSON.stringify(tag));
     return {
-        out,
-        build,
-        version: buildArg ? buildArg[1] : null,
-        hasBuildArg: /--build-arg/.test(build),
-        imageTag: imageTag[1],
-        pushes: lines.filter((l) => l.startsWith('docker push')).map((l) => l.split(/\s+/)[2]),
+        calls: r.calls,
+        build: JSON.stringify(build),
+        version: i >= 0 ? build[i + 1].replace(/^VERSION=/, '') : null,
+        hasBuildArg: i >= 0,
+        imageTag: tag[2].slice(image.length + 1),
+        pushes: r.calls.filter((c) => c[0] === 'push').map((c) => c[1]),
     };
 }
 
-function makeImageDryRun(dir, extraArgs, parent) {
-    return makeDryRun(dir, 'image', extraArgs, parent);
+function makeImage(dir, extraArgs, parent) {
+    return dockerCommands(dir, 'image', extraArgs, parent);
+}
+
+// Runs `make <target> <extraArgs>` for real in a scratch repository where it
+// is expected to fail before any docker command, and returns its exit status
+// and output.
+function makeFails(dir, target, extraArgs) {
+    const r = runMake(dir, target, extraArgs);
+    const cmd = 'make ' + [target].concat(extraArgs || []).join(' ');
+    assert.notStrictEqual(r.status, 0, cmd + ' succeeded:\n' + r.output);
+    assert.deepStrictEqual(r.calls, [], cmd + ' ran docker commands');
+    return r;
 }
 
 // Runs `make -n <args>` in a scratch repository that is expected to refuse
@@ -185,6 +259,29 @@ function main() {
     assert.deepStrictEqual(versionsIn(root), ['0.0.0-dev', '0.0.0-dev', '0.0.0-dev']);
     ok('package.json and package-lock.json hold 0.0.0-dev');
 
+    // The version check: strict semver 2.0.0 without build metadata.
+    {
+        const check = (v) => spawnSync('sh', [checkScript, v], { cwd: root, encoding: 'utf8' });
+        const valid = ['0.0.0', '1.11.2', '1.12.0-rc.1', '1.11.2-3-gabc1234', '1.11.2-3-gabc1234-dirty',
+            '1.0.0-alpha.0', '1.0.0-0a', '1.0.0--'];
+        for (const v of valid) {
+            const r = check(v);
+            assert.strictEqual(r.status, 0, checkScript + ' rejected ' + JSON.stringify(v) + ':\n' + r.stderr);
+        }
+        ok(checkScript + ' accepts ' + valid.join(', '));
+
+        const invalid = ['', '1.12', '1.2.3.4', '1.12.03', '01.2.3', '1.02.3', '1.2.3-01', '1.2.3-a.01',
+            'patch', 'major', 'minor', 'prerelease', 'from-git', '--help', '-h', '1.2.3+build',
+            '1.2.3-', '1.2.3-a..b', '1.2.3.', 'v1.2.3', ' 1.2.3', '1.2.3 ', '1.2.3\njunk', 'junk\n1.2.3',
+            '1.2.3\n', '1.2.3;x', '1.2.3$(x)', '1.2.3`x`', "1.2.3'", '1.2.3"'];
+        for (const v of invalid) {
+            const r = check(v);
+            assert.strictEqual(r.status, 1, checkScript + ' accepted ' + JSON.stringify(v) + ' (exit ' + r.status + ')');
+            assert.ok(/is not a valid version/.test(r.stderr), 'no message for ' + JSON.stringify(v) + ': ' + r.stderr);
+        }
+        ok(checkScript + ' rejects ' + invalid.map((v) => JSON.stringify(v)).join(', '));
+    }
+
     // Dockerfile: ARG VERSION, then the npm version step, then npm install.
     const instr = dockerInstructions();
     const argIdx = instr.findIndex((i) => /^ARG\s+VERSION\s*$/.test(i));
@@ -203,7 +300,10 @@ function main() {
     const step = instr[stepIdx].replace(/^RUN\s+/, '');
     ok('Dockerfile declares ARG VERSION in its stage and runs npm version before npm install');
 
-    for (const v of ['1.11.1', '1.11.1-1-g53bdb6f']) {
+    assert.ok(inBuildContext(checkScript), '.dockerignore leaves ' + checkScript + ' out of the build context');
+    ok('.dockerignore lets ' + checkScript + ' into the build context');
+
+    for (const v of ['1.11.1', '1.11.1-1-g53bdb6f', '1.12.0-rc.1']) {
         const r = runVersionStep(step, v);
         assert.strictEqual(r.status, 0, 'npm version step failed for VERSION=' + v + ':\n' + r.output);
         assert.deepStrictEqual(versionsIn(r.dir), [v, v, v]);
@@ -225,12 +325,24 @@ function main() {
         ok('an invalid VERSION fails the step (exit ' + r.status + ')');
     }
 
+    // Values that `npm version` alone would accept or act on, or that a
+    // check matching line by line would let through: the version check
+    // rejects each before npm version runs.
+    for (const v of ['patch', '--help', '1.2.3+build', '01.2.3', '1.2.3-01', '1.12', '1.2.3\njunk']) {
+        const r = runVersionStep(step, v);
+        assert.notStrictEqual(r.status, 0, 'npm version step accepted VERSION=' + JSON.stringify(v) + ':\n' + r.output);
+        assert.ok(/is not a valid version/.test(r.output),
+            'the version check did not reject VERSION=' + JSON.stringify(v) + ':\n' + r.output);
+        assert.deepStrictEqual(versionsIn(r.dir), ['0.0.0-dev', '0.0.0-dev', '0.0.0-dev']);
+        ok('VERSION=' + JSON.stringify(v) + ' fails the step before npm version, 0.0.0-dev kept (exit ' + r.status + ')');
+    }
+
     // Makefile, in scratch git repositories.
     const repo = scratchRepo();
     const firstCommit = git(repo, 'rev-parse', '--short', 'HEAD');
 
     {
-        const m = makeImageDryRun(repo);
+        const m = makeImage(repo);
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed with no tag: ' + m.build);
         assert.strictEqual(m.imageTag, firstCommit);
         ok('no tag: no --build-arg, image tagged with the commit hash');
@@ -244,7 +356,7 @@ function main() {
         { MAKEFLAGS: ' -- $(MAKEOVERRIDES)', MAKEOVERRIDES: 'VERSION=6.6.6 TAG=parent' },
         { GNUMAKEFLAGS: 'VERSION=6.6.6 TAG=parent' },
     ]) {
-        const m = makeImageDryRun(repo, [], Object.assign({}, process.env, parent));
+        const m = makeImage(repo, [], Object.assign({}, process.env, parent));
         const names = Object.keys(parent).join(' and ');
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed with ' + names + ' inherited: ' + m.build);
         assert.strictEqual(m.imageTag, firstCommit, 'image tag with ' + names + ' inherited');
@@ -253,7 +365,7 @@ function main() {
 
     git(repo, 'tag', 'v9.8.7');
     {
-        const m = makeImageDryRun(repo);
+        const m = makeImage(repo);
         assert.strictEqual(m.version, '9.8.7');
         assert.strictEqual(m.imageTag, 'v9.8.7');
         ok('on tag v9.8.7: --build-arg VERSION=9.8.7, image tagged v9.8.7');
@@ -263,14 +375,14 @@ function main() {
     const described = git(repo, 'describe', '--tags');
     assert.ok(/^v9\.8\.7-1-g[0-9a-f]+$/.test(described), 'unexpected git describe output: ' + described);
     {
-        const m = makeImageDryRun(repo);
+        const m = makeImage(repo);
         assert.strictEqual(m.version, described.replace(/^v/, ''));
         assert.strictEqual(m.imageTag, described);
         ok('one commit after the tag: --build-arg VERSION=' + m.version + ', image tagged ' + m.imageTag);
     }
 
     {
-        const m = makeImageDryRun(repo, ['VERSION=']);
+        const m = makeImage(repo, ['VERSION=']);
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed for an empty VERSION: ' + m.build);
         ok('make image VERSION= passes no --build-arg');
     }
@@ -281,7 +393,7 @@ function main() {
         const r = scratchRepo();
         const commit = git(r, 'rev-parse', '--short', 'HEAD');
         git(r, 'tag', '1.7.1');
-        const m = makeImageDryRun(r);
+        const m = makeImage(r);
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed for tag 1.7.1: ' + m.build);
         assert.strictEqual(m.imageTag, commit);
         ok('tag 1.7.1 without the v prefix is skipped: no --build-arg, image tagged with the commit hash');
@@ -296,7 +408,7 @@ function main() {
         git(r, 'commit', '-q', '--allow-empty', '-m', 'second');
         git(r, 'tag', 'prePersistence');
         let expected = 'v9.8.7-1-g' + git(r, 'rev-parse', '--short', 'HEAD');
-        let m = makeImageDryRun(r);
+        let m = makeImage(r);
         assert.strictEqual(m.version, expected.replace(/^v/, ''));
         assert.strictEqual(m.imageTag, expected);
         ok('nearer lightweight tag prePersistence is skipped: --build-arg VERSION=' + m.version +
@@ -305,7 +417,7 @@ function main() {
         git(r, 'commit', '-q', '--allow-empty', '-m', 'third');
         git(r, 'tag', '-a', '-m', 'annotated tag that is not a version tag', 'v9.9');
         expected = 'v9.8.7-2-g' + git(r, 'rev-parse', '--short', 'HEAD');
-        m = makeImageDryRun(r);
+        m = makeImage(r);
         assert.strictEqual(m.version, expected.replace(/^v/, ''));
         assert.strictEqual(m.imageTag, expected);
         ok('nearer annotated tag v9.9 is skipped: --build-arg VERSION=' + m.version +
@@ -321,18 +433,18 @@ function main() {
         const first = git(r, 'rev-parse', '--short', 'HEAD');
         const dirtyVersions = [];
         fs.writeFileSync(path.join(r, 'untracked.txt'), 'untracked\n');
-        let m = makeImageDryRun(r);
+        let m = makeImage(r);
         assert.strictEqual(m.imageTag, first, 'an untracked file made the tree dirty: ' + m.imageTag);
         ok('untracked file only: image tagged ' + m.imageTag + ', no -dirty');
 
         fs.appendFileSync(tracked, 'changed\n');
-        m = makeImageDryRun(r);
+        m = makeImage(r);
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed with no tag: ' + m.build);
         assert.strictEqual(m.imageTag, first + '-dirty');
         ok('no tag, tracked file modified: no --build-arg, image tagged ' + m.imageTag);
 
         git(r, 'tag', 'v9.8.7');
-        m = makeImageDryRun(r);
+        m = makeImage(r);
         assert.strictEqual(m.version, '9.8.7-dirty');
         assert.strictEqual(m.imageTag, 'v9.8.7-dirty');
         dirtyVersions.push(m.version);
@@ -341,7 +453,7 @@ function main() {
         git(r, 'commit', '-q', '-a', '-m', 'second');
         const expected = 'v9.8.7-1-g' + git(r, 'rev-parse', '--short', 'HEAD') + '-dirty';
         fs.appendFileSync(tracked, 'changed again\n');
-        m = makeImageDryRun(r);
+        m = makeImage(r);
         assert.strictEqual(m.version, expected.replace(/^v/, ''));
         assert.strictEqual(m.imageTag, expected);
         dirtyVersions.push(m.version);
@@ -364,13 +476,13 @@ function main() {
         const r = scratchRepo();
         git(r, 'tag', '-a', '-m', 'release candidate', 'v1.12.0-rc1');
         git(r, 'tag', 'v1.12.0');
-        let m = makeImageDryRun(r);
+        let m = makeImage(r);
         assert.strictEqual(m.version, '1.12.0-rc1');
         assert.strictEqual(m.imageTag, 'v1.12.0-rc1');
         ok('annotated v1.12.0-rc1 and lightweight v1.12.0 on one commit, no RELEASE_TAG: ' +
             '--build-arg VERSION=1.12.0-rc1, image tagged v1.12.0-rc1');
 
-        m = makeImageDryRun(r, ['RELEASE_TAG=v1.12.0']);
+        m = makeImage(r, ['RELEASE_TAG=v1.12.0']);
         assert.strictEqual(m.version, '1.12.0');
         assert.strictEqual(m.imageTag, 'v1.12.0');
         ok('the same commit with RELEASE_TAG=v1.12.0: --build-arg VERSION=1.12.0, image tagged v1.12.0');
@@ -382,18 +494,28 @@ function main() {
     {
         const r = scratchRepo();
         git(r, 'tag', 'v1.11.2');
-        const expectedPushes = ['hyperflowwms/hyperflow', 'hyperflowwms/hyperflow:v1.11.2'];
-        let m = makeDryRun(r, 'push', ['RELEASE_TAG=v1.11.2']);
-        assert.strictEqual(m.version, '1.11.2');
-        assert.deepStrictEqual(m.pushes, expectedPushes);
+        // A reference without a tag, the first push, is :latest.
+        const expectedCalls = [
+            ['build', '--no-cache', '--build-arg', 'VERSION=1.11.2', '-t', 'hyperflowwms/hyperflow', '.'],
+            ['tag', 'hyperflowwms/hyperflow', 'hyperflowwms/hyperflow:v1.11.2'],
+            ['push', 'hyperflowwms/hyperflow'],
+            ['push', 'hyperflowwms/hyperflow:v1.11.2'],
+        ];
+        let m = dockerCommands(r, 'push', ['RELEASE_TAG=v1.11.2']);
+        assert.deepStrictEqual(m.calls, expectedCalls);
         ok('make push RELEASE_TAG=v1.11.2: --build-arg VERSION=1.11.2, pushes ' + m.pushes.join(' and '));
 
+        // The recipes refer to "$VERSION" and "$TAG"; make prints the values
+        // themselves, so that a dry run shows them.
+        const dry = run('make', ['-n', 'push', 'RELEASE_TAG=v1.11.2'], r, gitEnv());
+        assert.ok(dry.split('\n').includes('Image tag: v1.11.2; version: 1.11.2'), 'make -n push printed:\n' + dry);
+        ok('make -n push RELEASE_TAG=v1.11.2 prints "Image tag: v1.11.2; version: 1.11.2"');
+
         fs.appendFileSync(path.join(r, 'tracked.txt'), 'changed\n');
-        m = makeDryRun(r, 'push', ['RELEASE_TAG=v1.11.2']);
-        assert.ok(!/dirty/.test(m.out), 'make -n push printed -dirty with RELEASE_TAG set:\n' + m.out);
-        assert.strictEqual(m.version, '1.11.2');
-        assert.strictEqual(m.imageTag, 'v1.11.2');
-        assert.deepStrictEqual(m.pushes, expectedPushes);
+        m = dockerCommands(r, 'push', ['RELEASE_TAG=v1.11.2']);
+        assert.ok(!/dirty/.test(JSON.stringify(m.calls)), 'make push passed -dirty with RELEASE_TAG set: ' +
+            JSON.stringify(m.calls));
+        assert.deepStrictEqual(m.calls, expectedCalls);
         ok('make push RELEASE_TAG=v1.11.2, tracked file modified: no -dirty anywhere');
 
         // RELEASE_TAG must be one of the tags on the checked-out commit.
@@ -414,6 +536,79 @@ function main() {
         f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.2']);
         assert.ok(/RELEASE_TAG=v1\.11\.2 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
         ok('make push RELEASE_TAG=v1.11.2 one commit after the tag: make refuses to run (exit ' + f.status + ')');
+    }
+
+    // A malformed version fails `make image` at the version check, before any
+    // docker command, whether git describe or RELEASE_TAG supplies it. git
+    // describe skips vpatch, which does not match v[0-9]*.[0-9]*.[0-9]*.
+    {
+        const r = scratchRepo();
+        const commit = git(r, 'rev-parse', '--short', 'HEAD');
+        git(r, 'tag', 'vpatch');
+        const m = makeImage(r);
+        assert.strictEqual(m.hasBuildArg, false, 'build argument passed for tag vpatch: ' + m.build);
+        assert.strictEqual(m.imageTag, commit);
+        ok('tag vpatch on HEAD, no RELEASE_TAG: git describe skips it, no --build-arg, image tagged with the commit hash');
+
+        let f = makeFails(r, 'push', ['RELEASE_TAG=vpatch']);
+        assert.ok(/"patch" is not a valid version/.test(f.output), f.output);
+        ok('make push RELEASE_TAG=vpatch fails at the version check, before any docker command (exit ' + f.status + ')');
+
+        git(r, 'tag', 'v1.12.03');
+        f = makeFails(r, 'image');
+        assert.ok(/"1\.12\.03" is not a valid version/.test(f.output), f.output);
+        ok('tag v1.12.03 on HEAD, no RELEASE_TAG: make image fails at the version check, before any docker command (exit ' +
+            f.status + ')');
+
+        f = makeFails(r, 'push', ['RELEASE_TAG=v1.12.03']);
+        assert.ok(/"1\.12\.03" is not a valid version/.test(f.output), f.output);
+        ok('make push RELEASE_TAG=v1.12.03 fails at the version check, before any docker command (exit ' + f.status + ')');
+
+        // The release image must be tagged v<version>.
+        git(r, 'tag', '1.7.1');
+        f = makeRefused(r, ['push', 'RELEASE_TAG=1.7.1']);
+        assert.ok(/RELEASE_TAG=1\.7\.1 does not start with "v"/.test(f.stderr), f.stderr);
+        ok('make push RELEASE_TAG=1.7.1, a tag on HEAD without the v: make refuses to run (exit ' + f.status + ')');
+
+        // With RELEASE_TAG set, the version check runs also on an empty
+        // version: from a tag named "v", or from VERSION= on the command line.
+        git(r, 'tag', 'v');
+        f = makeFails(r, 'push', ['RELEASE_TAG=v']);
+        assert.ok(/"" is not a valid version/.test(f.output), f.output);
+        ok('make push RELEASE_TAG=v, a tag on HEAD with an empty version: fails at the version check, ' +
+            'before any docker command (exit ' + f.status + ')');
+
+        git(r, 'tag', 'v1.11.2');
+        f = makeFails(r, 'push', ['RELEASE_TAG=v1.11.2', 'VERSION=']);
+        assert.ok(/"" is not a valid version/.test(f.output), f.output);
+        ok('make push RELEASE_TAG=v1.11.2 VERSION=: fails at the version check, before any docker command (exit ' +
+            f.status + ')');
+    }
+
+    // Tag names with characters that a shell interprets. Each payload would
+    // create a file named pwned-* in the repository if a shell ran it, and
+    // "$(oops" would stop make with an unterminated variable reference if make
+    // expanded it. make fails at the version check, which reports the version
+    // exactly as the tag has it, before any docker command, and nothing in the
+    // tag runs, whether git describe or RELEASE_TAG supplies it.
+    for (const tag of [
+        'v1.2.3;>pwned-semicolon',
+        'v1.2.3$(>pwned-dollar)',
+        'v1.2.3`>pwned-backquote`',
+        "v1.2.3';>pwned-quote;'",
+        'v1.2.3";>pwned-dquote;"',
+        'v1.2.3$(oops',
+    ]) {
+        const r = scratchRepo();
+        git(r, 'tag', tag);
+        for (const args of [[], ['RELEASE_TAG=' + tag]]) {
+            const f = makeFails(r, 'push', args);
+            assert.ok(f.output.includes('"' + tag.slice(1) + '" is not a valid version'),
+                'make push ' + args.join(' ') + ' did not fail at the version check:\n' + f.output);
+            const created = fs.readdirSync(r).filter((name) => name.startsWith('pwned'));
+            assert.deepStrictEqual(created, [], 'the tag ' + tag + ' ran: ' + created.join(', '));
+        }
+        ok('tag ' + tag + ': make push fails at the version check and runs nothing, from git describe and as RELEASE_TAG');
     }
 
     console.log('all version tests passed');
