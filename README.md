@@ -11,12 +11,18 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
 ## Getting started
 
 ### Installation
-* Install Node.js (http://nodejs.org)
+* Install Node.js 18 or later (http://nodejs.org)
 * Install Redis (http://redis.io) 
 * Install HyperFlow: 
-  * From npm package: `npm install -g @hyperflow/hyperflow`
-  * From github repository:<br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/{version}.tar.gz`<br>(where `{version}` is for example `v1.5.0`) 
-  * From the master branch: <br>`npm install https://github.com/hyperflow-wms/hyperflow/archive/master.tar.gz`
+  * As the Docker image `hyperflowwms/hyperflow` from Docker Hub. Each release is pushed as `hyperflowwms/hyperflow:v<version>`, for example `hyperflowwms/hyperflow:v1.11.1`; see [Running locally using Docker images](#running-locally-using-docker-images).
+  * From a git clone:
+    ```
+    git clone https://github.com/hyperflow-wms/hyperflow.git
+    cd hyperflow
+    npm install
+    npm install -g .
+    ```
+    `npm install` installs the dependencies into the clone. `npm install -g .` then links the clone into npm's global packages and installs the `hflow` and `hflow-recovery-analysis` commands into npm's global bin directory, so the clone must stay where it is. `hflow --version` run from a clone prints `0.0.0-dev`, because the repository does not carry a release version; see [Releasing](#releasing) for how release versions are set.
 
 ### Running locally
 * Start the redis server: `redis-server`
