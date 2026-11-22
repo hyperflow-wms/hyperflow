@@ -181,10 +181,12 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
     // Wait for a permit from the admission controller, which paces Job
     // creation. The controller records every failed create call in its error
     // rate, and gets its permit back when the Job cannot be created.
-    await admissionController.acquirePermit();
+    const controller = admissionController;
+    await controller.acquirePermit();
     startJobCreation(k8sApi, namespace, jobYaml, taskIdArr, contextArr,
-      { onError: () => admissionController.recordError() })
-      .then((result) => { if (!result.created) admissionController.releasePermit(); });
+      { onError: () => controller.recordError() })
+      .then((result) => { if (!result.created) controller.releasePermit(); })
+      .catch((err) => clog.error("Unable to return the admission permit for tasks [" + taskIdArr.join(', ') + "]:", err));
   } else {
     startJobCreation(k8sApi, namespace, jobYaml, taskIdArr, contextArr);
   }
