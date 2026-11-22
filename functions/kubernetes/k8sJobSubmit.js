@@ -173,43 +173,21 @@ var submitK8sJob = async(kubeconfig, jobArr, taskIdArr, contextArr, customParams
     await admissionControllerInitPromise;
   }
 
-  // Create the job via the Kubernetes API
-  // If admission controller is enabled, acquire permit first (rate limiting),
-  // then fire-and-forget the Pod creation. This preserves parallelism with
-  // message sending while still protecting the scheduler.
+  // Create the Job in the background, retrying transient API errors, so that
+  // the job messages below go to Redis in parallel with the creation. If the
+  // Job cannot be created, its tasks' 'jobResult' waits end with a failure
+  // exit code (see k8sJobCreate.js). The creation promise never rejects.
   if (admissionControllerEnabled && admissionController) {
-    // Acquire permit (waits for rate limiting), then fire-and-forget with retry
-    await admissionController.acquirePermit();
-
-    // Fire-and-forget Pod creation with retry for transient errors
-    var createJobWithRetry = function(attempt) {
-      k8sApi.createNamespacedJob(namespace, jobYaml).then(
-        (response) => {
-          // Success (fire-and-forget, no further action needed)
-        },
-        (err) => {
-          admissionController.recordError();
-          var statusCode = err.response ? err.response.statusCode : undefined;
-          var isRetryable = statusCode === 409 || statusCode === 429 || (statusCode && statusCode >= 500);
-
-          if (isRetryable && attempt < 5) {
-            var delay = Number((err.response && err.response.headers && err.response.headers['retry-after']) || 1) * 1000;
-            clog.warn("Pod creation error (" + statusCode + "), retry #" + attempt + " after " + delay + "ms:", err.message || err);
-            setTimeout(function() { createJobWithRetry(attempt + 1); }, delay);
-          } else {
-            // Non-retryable or max retries exceeded: return the token
-            admissionController.releasePermit();
-            clog.error("Pod creation failed permanently:", err.message || err);
-          }
-        }
-      );
-    };
-    createJobWithRetry(1);
+    // Wait for a permit from the admission controller, which paces Job
+    // creation. The controller records every failed create call in its error
+    // rate, and gets its permit back when the Job cannot be created.
+    const controller = admissionController;
+    await controller.acquirePermit();
+    startJobCreation(k8sApi, namespace, jobYaml, taskIdArr, contextArr,
+      { onError: () => controller.recordError() })
+      .then((result) => { if (!result.created) controller.releasePermit(); })
+      .catch((err) => clog.error("Unable to return the admission permit for tasks [" + taskIdArr.join(', ') + "]:", err));
   } else {
-    // Create the Job in the background, retrying transient API errors, so
-    // that the job messages below go to Redis in parallel with the creation.
-    // If the Job cannot be created, its tasks' 'jobResult' waits end with a
-    // failure exit code (see k8sJobCreate.js). The promise never rejects.
     startJobCreation(k8sApi, namespace, jobYaml, taskIdArr, contextArr);
   }
 
