@@ -1,15 +1,8 @@
 # Builds the engine image on every change and publishes it when a release is
-# published: a release created without being saved as a draft, or a draft
-# release when it is published later. A release pushes the image as its tag
-# and as :latest. A pre-release pushes only its own tag, such as
-# :v1.11.2-rc.1, and does not move :latest; publishing a pre-release is how a
-# test image of master gets onto Docker Hub. Publishing happens here and
-# nowhere else: a local `make push` tags the image from whatever
-# `git describe` returns on that machine, which has already put a mis-tagged
-# image on Docker Hub. The deploy job passes the release's tag to `make push`
-# as RELEASE_TAG, so the image is tagged with exactly that tag and reports its
-# version, even when another tag sits on the same commit, and the release's
-# pre-release flag as PRERELEASE, which decides whether :latest is pushed.
+# published. The deploy job passes the release tag to `make push` as TAG, so
+# the image is pushed as that tag, and as :latest only for a plain vX.Y.Z tag.
+# Publishing happens only here, because a local `make push` tags the image
+# from that machine's `git describe`.
 
 name: CI
 
@@ -42,15 +35,15 @@ jobs:
       # k8sJobSubmit.js requires @kubernetes/client-node and js-yaml, and
       # k8sAdmissionController.js requires @kubernetes/client-node; the test
       # replaces exactly those with stubs, so a dependency required by any
-      # other file fails it. tests/version.js needs only git, make, npm, sh and grep.
+      # other file fails it. tests/makePush.js needs only make and sh.
       # tests/functions.js is deliberately not run: it asserts synchronously on
       # an asynchronous notification and has failed since before this workflow.
       - name: Connector regression tests
         run: node tests/connector.js
       - name: Kubernetes Job creation tests
         run: node tests/k8sJobSubmit.js
-      - name: Version build-argument tests
-        run: node tests/version.js
+      - name: Image tag tests
+        run: node tests/makePush.js
 
   build:
     needs: [ test ]
@@ -67,6 +60,7 @@ jobs:
     needs: [ build ]
     runs-on: ubuntu-22.04
     if: github.event_name == 'release' && github.event.action == 'published'
+    concurrency: { group: deploy, cancel-in-progress: false }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,12 +71,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # On a release event GITHUB_REF_NAME is the release's tag name, and
-      # PRERELEASE is "true" for a pre-release and "false" for any other
-      # release. make push pushes :latest for "false" (or when PRERELEASE is
-      # unset, as in a local run), and refuses any value other than "true" or
-      # "false" before it builds anything.
       - name: Build and Push Docker Images
-        env:
-          PRERELEASE: ${{ github.event.release.prerelease }}
-        run: make push RELEASE_TAG="$GITHUB_REF_NAME" PRERELEASE="$PRERELEASE"
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "Release tag $GITHUB_REF_NAME is not v<major>.<minor>.<patch>, optionally followed by -<suffix>"; exit 1; }
+          make push TAG="$GITHUB_REF_NAME"
