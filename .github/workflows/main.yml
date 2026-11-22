@@ -1,7 +1,10 @@
 # Builds the engine image on every change and publishes it when a release is
 # created. Publishing happens here and nowhere else: a local `make push` tags
 # the image from whatever `git describe` returns on that machine, which has
-# already put a mis-tagged image on Docker Hub.
+# already put a mis-tagged image on Docker Hub. The deploy job passes the
+# release's tag to `make push` as RELEASE_TAG, so the image is tagged with
+# exactly that tag and reports its version, even when another tag sits on the
+# same commit.
 
 name: CI
 
@@ -69,5 +72,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # On a release event GITHUB_REF_NAME is the release's tag name.
       - name: Build and Push Docker Images
-        run: make push
+        run: make push RELEASE_TAG="$GITHUB_REF_NAME"

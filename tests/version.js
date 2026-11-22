@@ -5,16 +5,17 @@
  * nearest version tag (a tag matching v[0-9]*.[0-9]*.[0-9]*) as
  * `git describe --tags --dirty` reports it, tags the image with it, and
  * passes it without its leading "v" to `docker build` as the VERSION build
- * argument. The Dockerfile writes VERSION into package.json with
- * `npm version` before `npm install`. The repository's package.json holds
- * 0.0.0-dev.
+ * argument. On a release, CI runs `make push RELEASE_TAG=<tag>`, and the
+ * image tag and the version come from RELEASE_TAG instead. The Dockerfile
+ * writes VERSION into package.json with `npm version` before `npm install`.
+ * The repository's package.json holds 0.0.0-dev.
  *
  * The Dockerfile part runs the Dockerfile's own `npm version` RUN command
  * under sh, on copies of package.json and package-lock.json in a directory
  * without .git, as `docker build` would. The Makefile part runs
- * `make -n image` in scratch git repositories holding a copy of the
- * Makefile, so the result does not depend on the tags or the uncommitted
- * changes of this checkout.
+ * `make -n image` and `make -n push` in scratch git repositories holding a
+ * copy of the Makefile, so the result does not depend on the tags or the
+ * uncommitted changes of this checkout.
  *
  * Needs sh, npm, make and git; no Docker and no network.
  * Run with:  node tests/version.js
@@ -91,7 +92,8 @@ function runVersionStep(command, version) {
 // such as VERSION=..., and its options to the scratch make through MAKEFLAGS
 // (which may refer to MAKEOVERRIDES), and GNUMAKEFLAGS set in the user's
 // shell is read like MAKEFLAGS. Variables passed that way would override the
-// Makefile's own values.
+// Makefile's own values. RELEASE_TAG is dropped too: the Makefile reads it
+// from the environment when it is not given on the command line.
 function gitEnv(parent) {
     const inherited = Object.assign({}, parent || process.env);
     for (const key of Object.keys(inherited)) {
@@ -109,6 +111,7 @@ function gitEnv(parent) {
         GIT_COMMITTER_EMAIL: 'test@example.invalid',
     });
     delete env.VERSION;
+    delete env.RELEASE_TAG;
     return env;
 }
 
@@ -136,24 +139,42 @@ function scratchRepo() {
     return dir;
 }
 
-// The `docker build` and `docker tag` lines that `make -n image` prints.
-// parent is the environment the test would inherit, process.env by default.
-function makeImageDryRun(dir, extraArgs, parent) {
-    const out = run('make', ['-n', 'image'].concat(extraArgs || []), dir, gitEnv(parent));
+// The docker commands that `make -n <target>` prints, for target image or
+// push: the `docker build` line, the VERSION build argument, the tag that
+// `docker tag` adds, and the images that `docker push` pushes. parent is the
+// environment the test would inherit, process.env by default.
+function makeDryRun(dir, target, extraArgs, parent) {
+    const out = run('make', ['-n', target].concat(extraArgs || []), dir, gitEnv(parent));
     const lines = out.split('\n');
     const build = lines.find((l) => l.startsWith('docker build'));
     const tag = lines.find((l) => l.startsWith('docker tag'));
-    assert.ok(build, 'no docker build line in make -n image output:\n' + out);
-    assert.ok(tag, 'no docker tag line in make -n image output:\n' + out);
+    assert.ok(build, 'no docker build line in make -n ' + target + ' output:\n' + out);
+    assert.ok(tag, 'no docker tag line in make -n ' + target + ' output:\n' + out);
     const buildArg = build.match(/--build-arg\s+VERSION=(\S+)/);
     const imageTag = tag.match(/^docker tag \S+ \S+:(\S+)/);
     assert.ok(imageTag, 'unexpected docker tag line: ' + tag);
     return {
+        out,
         build,
         version: buildArg ? buildArg[1] : null,
         hasBuildArg: /--build-arg/.test(build),
         imageTag: imageTag[1],
+        pushes: lines.filter((l) => l.startsWith('docker push')).map((l) => l.split(/\s+/)[2]),
     };
+}
+
+function makeImageDryRun(dir, extraArgs, parent) {
+    return makeDryRun(dir, 'image', extraArgs, parent);
+}
+
+// Runs `make -n <args>` in a scratch repository that is expected to refuse
+// to run, and returns its exit status and output.
+function makeRefused(dir, args) {
+    const r = spawnSync('make', ['-n'].concat(args), { cwd: dir, env: gitEnv(), encoding: 'utf8' });
+    if (r.error) throw r.error;
+    assert.notStrictEqual(r.status, 0, 'make -n ' + args.join(' ') + ' ran:\n' + r.stdout + r.stderr);
+    assert.ok(!/^docker /m.test(r.stdout), 'make -n ' + args.join(' ') + ' printed docker commands:\n' + r.stdout);
+    return { status: r.status, stderr: r.stderr };
 }
 
 function main() {
@@ -333,6 +354,66 @@ function main() {
             assert.deepStrictEqual(versionsIn(s.dir), [v, v, v]);
             ok('VERSION=' + v + ' from make is written into package.json and package-lock.json');
         }
+    }
+
+    // On a release, CI runs `make push RELEASE_TAG=<the release's tag>`, and
+    // the release tag wins over another tag on the same commit: here an
+    // annotated release candidate next to the lightweight tag that
+    // `gh release create` makes, of which git describe picks the annotated.
+    {
+        const r = scratchRepo();
+        git(r, 'tag', '-a', '-m', 'release candidate', 'v1.12.0-rc1');
+        git(r, 'tag', 'v1.12.0');
+        let m = makeImageDryRun(r);
+        assert.strictEqual(m.version, '1.12.0-rc1');
+        assert.strictEqual(m.imageTag, 'v1.12.0-rc1');
+        ok('annotated v1.12.0-rc1 and lightweight v1.12.0 on one commit, no RELEASE_TAG: ' +
+            '--build-arg VERSION=1.12.0-rc1, image tagged v1.12.0-rc1');
+
+        m = makeImageDryRun(r, ['RELEASE_TAG=v1.12.0']);
+        assert.strictEqual(m.version, '1.12.0');
+        assert.strictEqual(m.imageTag, 'v1.12.0');
+        ok('the same commit with RELEASE_TAG=v1.12.0: --build-arg VERSION=1.12.0, image tagged v1.12.0');
+    }
+
+    // The released image is pushed as latest and as exactly the release tag:
+    // other repositories find new engine images with the pattern
+    // hyperflowwms/hyperflow:v<major>.<minor>.<patch>, without a suffix.
+    {
+        const r = scratchRepo();
+        git(r, 'tag', 'v1.11.2');
+        const expectedPushes = ['hyperflowwms/hyperflow', 'hyperflowwms/hyperflow:v1.11.2'];
+        let m = makeDryRun(r, 'push', ['RELEASE_TAG=v1.11.2']);
+        assert.strictEqual(m.version, '1.11.2');
+        assert.deepStrictEqual(m.pushes, expectedPushes);
+        ok('make push RELEASE_TAG=v1.11.2: --build-arg VERSION=1.11.2, pushes ' + m.pushes.join(' and '));
+
+        fs.appendFileSync(path.join(r, 'tracked.txt'), 'changed\n');
+        m = makeDryRun(r, 'push', ['RELEASE_TAG=v1.11.2']);
+        assert.ok(!/dirty/.test(m.out), 'make -n push printed -dirty with RELEASE_TAG set:\n' + m.out);
+        assert.strictEqual(m.version, '1.11.2');
+        assert.strictEqual(m.imageTag, 'v1.11.2');
+        assert.deepStrictEqual(m.pushes, expectedPushes);
+        ok('make push RELEASE_TAG=v1.11.2, tracked file modified: no -dirty anywhere');
+
+        // RELEASE_TAG must be one of the tags on the checked-out commit.
+        let f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.3']);
+        assert.ok(/RELEASE_TAG=v1\.11\.3 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
+        ok('make push RELEASE_TAG=v1.11.3, no such tag: make refuses to run (exit ' + f.status + ')');
+
+        f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.3', 'HEAD_TAGS=v1.11.3', 'RELEASE_TAG_AT_HEAD=v1.11.3']);
+        assert.ok(/RELEASE_TAG=v1\.11\.3 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
+        ok('make push RELEASE_TAG=v1.11.3 with the check\'s variables set on the command line: make still refuses (exit ' +
+            f.status + ')');
+
+        f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11']);
+        assert.ok(/RELEASE_TAG=v1\.11 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
+        ok('make push RELEASE_TAG=v1.11, a prefix of the tag on HEAD: make refuses to run (exit ' + f.status + ')');
+
+        git(r, 'commit', '-q', '-a', '-m', 'second');
+        f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.2']);
+        assert.ok(/RELEASE_TAG=v1\.11\.2 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
+        ok('make push RELEASE_TAG=v1.11.2 one commit after the tag: make refuses to run (exit ' + f.status + ')');
     }
 
     console.log('all version tests passed');
