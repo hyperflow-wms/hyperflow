@@ -1,12 +1,15 @@
 # Builds the engine image on every change and publishes it when a release is
 # published: a release created without being saved as a draft, or a draft
-# release when it is published later. A pre-release is published the same
-# way, so its image is pushed too and moves :latest. Publishing happens here
-# and nowhere else: a local `make push` tags the image from whatever
+# release when it is published later. A release pushes the image as its tag
+# and as :latest. A pre-release pushes only its own tag, such as
+# :v1.11.2-rc.1, and does not move :latest; publishing a pre-release is how a
+# test image of master gets onto Docker Hub. Publishing happens here and
+# nowhere else: a local `make push` tags the image from whatever
 # `git describe` returns on that machine, which has already put a mis-tagged
 # image on Docker Hub. The deploy job passes the release's tag to `make push`
 # as RELEASE_TAG, so the image is tagged with exactly that tag and reports its
-# version, even when another tag sits on the same commit.
+# version, even when another tag sits on the same commit, and the release's
+# pre-release flag as PRERELEASE, which decides whether :latest is pushed.
 
 name: CI
 
@@ -74,6 +77,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # On a release event GITHUB_REF_NAME is the release's tag name.
+      # On a release event GITHUB_REF_NAME is the release's tag name, and
+      # PRERELEASE is "true" for a pre-release and "false" for any other
+      # release. make push pushes :latest for "false" (or when PRERELEASE is
+      # unset, as in a local run), and refuses any value other than "true" or
+      # "false" before it builds anything.
       - name: Build and Push Docker Images
-        run: make push RELEASE_TAG="$GITHUB_REF_NAME"
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: make push RELEASE_TAG="$GITHUB_REF_NAME" PRERELEASE="$PRERELEASE"

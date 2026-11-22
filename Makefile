@@ -1,7 +1,9 @@
 # On a release, RELEASE_TAG names the release's tag: CI runs
-# `make push RELEASE_TAG=<tag>`. Make reads it with $(value), so it does not
-# expand a "$" in it. It is not exported to the recipes, because make expands
-# a command-line variable when it exports it. The recipes' commands get the
+# `make push RELEASE_TAG=<tag> PRERELEASE=<true or false>`, with PRERELEASE
+# deciding whether the image is also pushed as latest (see PUSH_LATEST
+# below). Make reads RELEASE_TAG with $(value), so it does not expand a "$"
+# in it. It is not exported to the recipes, because make expands a
+# command-line variable when it exports it. The recipes' commands get the
 # tag only through TAG and VERSION, below. MAKEFLAGS in the recipes'
 # environment also holds RELEASE_TAG=<tag>, with each "$" doubled, for a
 # sub-make; no recipe here reads it.
@@ -67,15 +69,44 @@ $(error The image tag is empty: TAG= was given empty, or git describe found no c
 endif
 endif
 
-# `make push` publishes only an image with a version, as v<version> and as
-# latest. Make refuses to run it, before anything is built, when VERSION is
-# empty: when no version tag is reachable, the image would report 0.0.0-dev,
-# and a tag named "v" has no version. With RELEASE_TAG set, make also refuses
-# when VERSION is not RELEASE_TAG without its "v", or TAG is not RELEASE_TAG,
-# as when VERSION or TAG is given on the command line. Make compares the
-# values itself, as exact strings, so they reach no shell. These refusals
-# hold under `make -n` and `make -i` too. `make image` without a version tag
-# is allowed, for a local build.
+# Whether `make push` also pushes the image as latest: "yes" or "no", or
+# empty for a PRERELEASE that make push refuses (see below). CI's deploy job
+# sets PRERELEASE from the release's pre-release flag: "true" for a GitHub
+# pre-release, which then pushes only v<version>, so that it does not move
+# latest, and "false" for any other release, which pushes latest too. Without
+# PRERELEASE, as in a local run, make push pushes latest too. Any other value,
+# an empty one included, gives no decision, so a mistyped value does not push
+# latest. Make compares $(value PRERELEASE) with "true" and "false" as exact
+# strings. The decision depends on PRERELEASE alone, not on the version: a
+# version such as 1.11.2-3-gabc1234, which git describe gives between
+# releases, is a semver pre-release too, and make push pushes latest for it.
+# PUSH_LATEST is set with "override", so a value given on the command line
+# has no effect. PRERELEASE is not exported to the recipes, which do not read
+# it, so make does not expand a command-line value of it to export it. The
+# unexport comes after the decision, because it defines PRERELEASE, empty,
+# when it is not set.
+ifeq ($(origin PRERELEASE),undefined)
+override PUSH_LATEST := yes
+else ifeq ($(value PRERELEASE),false)
+override PUSH_LATEST := yes
+else ifeq ($(value PRERELEASE),true)
+override PUSH_LATEST := no
+else
+override PUSH_LATEST :=
+endif
+unexport PRERELEASE
+
+# `make push` publishes only an image with a version, as v<version> and, when
+# PUSH_LATEST is yes, as latest. Make refuses to run it, before anything is
+# built, when VERSION is empty: when no version tag is reachable, the image
+# would report 0.0.0-dev, and a tag named "v" has no version. With RELEASE_TAG
+# set, make also refuses when VERSION is not RELEASE_TAG without its "v", or
+# TAG is not RELEASE_TAG, as when VERSION or TAG is given on the command line.
+# Make compares the values itself, as exact strings, so they reach no shell.
+# It also refuses a PRERELEASE that is set but neither "true" nor "false".
+# These refusals hold under `make -n` and `make -i` too. `make image` without
+# a version tag is allowed, for a local build, and `make image` is not
+# affected by PRERELEASE.
 ifneq ($(filter all push,$(GOALS)),)
 ifneq ($(value RELEASE_TAG),)
 ifneq ($(VERSION),$(patsubst v%,%,$(value RELEASE_TAG)))
@@ -90,6 +121,9 @@ ifneq ($(value RELEASE_TAG),)
 $(error RELEASE_TAG=$(value RELEASE_TAG) has an empty version: a release tag is "v" followed by the version)
 endif
 $(error make push needs a version, and VERSION is empty, as when no tag matching v[0-9]*.[0-9]*.[0-9]* is reachable from the checked-out commit; make image builds an image without a version, which reports 0.0.0-dev)
+endif
+ifeq ($(PUSH_LATEST),)
+$(error PRERELEASE=$(value PRERELEASE) is neither "true" nor "false": PRERELEASE=true pushes only the version tag, PRERELEASE=false or no PRERELEASE pushes latest too)
 endif
 endif
 
@@ -112,8 +146,12 @@ image:
 	docker build --no-cache $(if $(VERSION),--build-arg VERSION="$$VERSION") -t $(PREFIX)/$(REPO_NAME) . # Build new image and automatically tag it as latest
 	docker tag $(PREFIX)/$(REPO_NAME) $(PREFIX)/$(REPO_NAME):"$$TAG"  # Add the version tag to the latest image
 
+# The first line prints whether the image is pushed as latest, also under
+# `make -n`. The second pushes it as latest, the image name without a tag,
+# only when PUSH_LATEST is yes. The third pushes the version tag.
 push: image
-	docker push $(PREFIX)/$(REPO_NAME) # Push image tagged as latest to repository
+	$(info Push latest: $(if $(filter yes,$(PUSH_LATEST)),yes,no (PRERELEASE=true)))
+	$(if $(filter yes,$(PUSH_LATEST)),docker push $(PREFIX)/$(REPO_NAME) # Push image tagged as latest to repository)
 	docker push $(PREFIX)/$(REPO_NAME):"$$TAG" # Push version tagged image to repository (since this image is already pushed it will simply create or update version tag)
 
 clean:

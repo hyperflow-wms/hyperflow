@@ -6,8 +6,13 @@
  * `git describe --tags --dirty` reports it, tags the image with it, and
  * passes it without its leading "v" to `docker build` as the VERSION build
  * argument. On a release, CI runs `make push RELEASE_TAG=<tag>`, and the
- * image tag and the version come from RELEASE_TAG instead. The Dockerfile
- * writes VERSION into package.json with `npm version` before `npm install`.
+ * image tag and the version come from RELEASE_TAG instead. CI also passes
+ * PRERELEASE, "true" for a GitHub pre-release and "false" otherwise. With
+ * PRERELEASE=true, `make push` pushes only the version tag and not latest;
+ * with PRERELEASE=false or without PRERELEASE it pushes latest too; it
+ * refuses any other value of PRERELEASE while make reads the Makefile. The
+ * Dockerfile writes VERSION into package.json with `npm version` before
+ * `npm install`.
  * The repository's package.json holds 0.0.0-dev. scripts/check-version.sh
  * rejects anything but a strict semver 2.0.0 version without build metadata;
  * `make image` runs it before any docker command, and the Dockerfile before
@@ -128,9 +133,9 @@ function runVersionStep(command, version) {
 // read like MAKEFLAGS. Variables passed that way would override the
 // Makefile's own values. MAKECMDGOALS is dropped: from the environment it
 // would replace the goals that the scratch make reports, and the Makefile
-// would then apply the checks of `make push` to every goal. RELEASE_TAG is
-// dropped too: the Makefile reads it from the environment when it is not
-// given on the command line.
+// would then apply the checks of `make push` to every goal. RELEASE_TAG and
+// PRERELEASE are dropped too: the Makefile reads them from the environment
+// when they are not given on the command line.
 function gitEnv(parent) {
     const inherited = Object.assign({}, parent || process.env);
     for (const key of Object.keys(inherited)) {
@@ -150,6 +155,7 @@ function gitEnv(parent) {
     });
     delete env.VERSION;
     delete env.RELEASE_TAG;
+    delete env.PRERELEASE;
     return env;
 }
 
@@ -539,6 +545,11 @@ function main() {
         assert.deepStrictEqual(m.calls, expectedCalls);
         ok('make push RELEASE_TAG=v1.11.2: --build-arg VERSION=1.11.2, pushes ' + m.pushes.join(' and '));
 
+        // As CI runs it for a release that is not a pre-release.
+        m = dockerCommands(r, 'push', ['RELEASE_TAG=v1.11.2', 'PRERELEASE=false']);
+        assert.deepStrictEqual(m.calls, expectedCalls);
+        ok('make push RELEASE_TAG=v1.11.2 PRERELEASE=false: the same four docker commands');
+
         m = dockerCommands(r, 'push');
         assert.deepStrictEqual(m.calls, expectedCalls);
         ok('make push on tag v1.11.2 without RELEASE_TAG: the same four docker commands');
@@ -589,6 +600,99 @@ function main() {
         f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.2']);
         assert.ok(/RELEASE_TAG=v1\.11\.2 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
         ok('make push RELEASE_TAG=v1.11.2 one commit after the tag: make refuses to run (exit ' + f.status + ')');
+    }
+
+    // A GitHub pre-release pushes only its own tag and does not move latest.
+    // CI runs `make push RELEASE_TAG=<tag> PRERELEASE=true` for a pre-release
+    // and PRERELEASE=false for any other release. With PRERELEASE=false, or
+    // without PRERELEASE, make push pushes latest too. Any other value of
+    // PRERELEASE is refused while make reads the Makefile.
+    {
+        const r = scratchRepo();
+        git(r, 'tag', 'v1.11.2-rc.1');
+        const rcImage = image + ':v1.11.2-rc.1';
+        const build = ['build', '--no-cache', '--build-arg', 'VERSION=1.11.2-rc.1', '-t', image, '.'];
+        const tag = ['tag', image, rcImage];
+        // A reference without a tag, the image name alone, is :latest.
+        const latestPushes = (pushes) => pushes.filter((p) => p === image || p === image + ':latest');
+
+        let m = dockerCommands(r, 'push', ['RELEASE_TAG=v1.11.2-rc.1', 'PRERELEASE=true']);
+        assert.deepStrictEqual(latestPushes(m.pushes), [], 'a pre-release pushed latest: ' + JSON.stringify(m.calls));
+        assert.deepStrictEqual(m.calls, [build, tag, ['push', rcImage]]);
+        ok('make push RELEASE_TAG=v1.11.2-rc.1 PRERELEASE=true: --build-arg VERSION=1.11.2-rc.1, image tagged ' +
+            'v1.11.2-rc.1, pushes only ' + rcImage);
+
+        // PUSH_LATEST=yes on the command line does not override the decision
+        // that the Makefile takes from PRERELEASE.
+        m = dockerCommands(r, 'push', ['RELEASE_TAG=v1.11.2-rc.1', 'PRERELEASE=true', 'PUSH_LATEST=yes']);
+        assert.deepStrictEqual(m.calls, [build, tag, ['push', rcImage]]);
+        ok('make push RELEASE_TAG=v1.11.2-rc.1 PRERELEASE=true PUSH_LATEST=yes: still pushes only ' + rcImage);
+
+        const fourCalls = [build, tag, ['push', image], ['push', rcImage]];
+        for (const extra of [['PRERELEASE=false'], []]) {
+            m = dockerCommands(r, 'push', ['RELEASE_TAG=v1.11.2-rc.1'].concat(extra));
+            assert.deepStrictEqual(m.calls, fourCalls);
+            ok('make push RELEASE_TAG=v1.11.2-rc.1' + (extra.length ? ' ' + extra.join(' ') : ', no PRERELEASE') +
+                ': pushes ' + m.pushes.join(' and '));
+        }
+
+        // make -n push shows whether the image is pushed as latest.
+        for (const [extra, line] of [
+            [['PRERELEASE=true'], 'Push latest: no (PRERELEASE=true)'],
+            [['PRERELEASE=false'], 'Push latest: yes'],
+            [[], 'Push latest: yes'],
+        ]) {
+            const args = ['-n', 'push', 'RELEASE_TAG=v1.11.2-rc.1'].concat(extra);
+            const dry = run('make', args, r, gitEnv()).split('\n');
+            assert.ok(dry.includes('Image tag: v1.11.2-rc.1; version: 1.11.2-rc.1'), 'make ' + args.join(' ') +
+                ' printed:\n' + dry.join('\n'));
+            assert.ok(dry.includes(line), 'make ' + args.join(' ') + ' printed:\n' + dry.join('\n'));
+            const latestLine = dry.some((l) => /^docker push hyperflowwms\/hyperflow(\s|$)/.test(l));
+            assert.strictEqual(latestLine, line === 'Push latest: yes', 'make ' + args.join(' ') + ' printed:\n' +
+                dry.join('\n'));
+            ok('make ' + args.join(' ') + ' prints "' + line + '"');
+        }
+
+        // Values other than "true" and "false", an empty one and one with
+        // trailing whitespace included, are refused before any docker
+        // command, also under make -n. "$(shell ...)" would create a file
+        // named pwned-prerelease if make expanded the value.
+        for (const value of ['yes', 'no', 'True', 'TRUE', 'FALSE', '1', '0', 'ture', '', 'false ', 'true false',
+            '$(shell touch pwned-prerelease)']) {
+            const args = ['RELEASE_TAG=v1.11.2-rc.1', 'PRERELEASE=' + value];
+            const message = 'PRERELEASE=' + value + ' is neither "true" nor "false"';
+            const f = makeFails(r, 'push', args);
+            assert.ok(f.output.includes(message), f.output);
+            const dry = makeRefused(r, ['push'].concat(args));
+            assert.ok(dry.stderr.includes(message), dry.stderr);
+            assert.deepStrictEqual(fs.readdirSync(r).filter((name) => name.startsWith('pwned')), []);
+            ok('make push RELEASE_TAG=v1.11.2-rc.1 PRERELEASE=' + JSON.stringify(value) +
+                ': make refuses to run, before any docker command, also under make -n (exit ' + f.status + ')');
+        }
+        for (const [target, extra] of [[null, ['-i', 'push']], [null, []], ['push', []]]) {
+            const f = makeFails(r, target, extra.concat(['PRERELEASE=yes']));
+            assert.ok(/PRERELEASE=yes is neither "true" nor "false"/.test(f.output), f.output);
+            ok(['make'].concat(makeArgs(target, extra), ['PRERELEASE=yes']).join(' ') +
+                ', no RELEASE_TAG: make refuses to run, before any docker command (exit ' + f.status + ')');
+        }
+
+        // make image pushes nothing and does not read PRERELEASE.
+        m = makeImage(r, ['PRERELEASE=yes']);
+        assert.deepStrictEqual(m.calls, [build, tag]);
+        ok('make image PRERELEASE=yes: builds and tags, pushes nothing');
+
+        // The version alone does not make a pre-release: between releases,
+        // git describe gives a version such as 1.11.2-rc.1-1-gabc1234, a
+        // semver pre-release, and a make push without PRERELEASE there still
+        // pushes latest.
+        git(r, 'commit', '-q', '--allow-empty', '-m', 'second');
+        const described = git(r, 'describe', '--tags');
+        assert.ok(/^v1\.11\.2-rc\.1-1-g[0-9a-f]+$/.test(described), 'unexpected git describe output: ' + described);
+        m = dockerCommands(r, 'push');
+        assert.strictEqual(m.version, described.slice(1));
+        assert.deepStrictEqual(m.pushes, [image, image + ':' + described]);
+        ok('make push one commit after v1.11.2-rc.1, no PRERELEASE: --build-arg VERSION=' + m.version +
+            ', pushes ' + m.pushes.join(' and '));
     }
 
     // A malformed version fails `make image` at the version check, before any
