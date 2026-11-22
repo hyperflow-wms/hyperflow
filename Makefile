@@ -15,7 +15,9 @@
 # variables are set with "override", so a value given on the command line
 # cannot get past the check. The rest of the tag, the version, is checked by
 # scripts/check-version.sh when `make image` runs, also when it is empty, as
-# for a tag named "v".
+# for a tag named "v". For `make push`, make refuses an empty version, and a
+# VERSION or TAG that does not match RELEASE_TAG, while it reads this file
+# (see below).
 unexport RELEASE_TAG
 ifneq ($(value RELEASE_TAG),)
 override HEAD_TAGS := $(shell git tag --points-at HEAD 2>/dev/null)
@@ -36,11 +38,12 @@ endif
 # set and no version tag is reachable. TAG and VERSION both derive from it.
 DESCRIBE := $(or $(value RELEASE_TAG),$(shell git describe --tags --dirty --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null))
 # Version written into the image's package.json: DESCRIBE without its leading
-# "v". Empty when DESCRIBE is; the build then gets no VERSION argument and the
-# image reports 0.0.0-dev.
+# "v". Empty when DESCRIBE is; `make image` then passes no VERSION argument
+# and the image reports 0.0.0-dev, and `make push` refuses to run (see below).
 VERSION := $(patsubst v%,%,$(DESCRIBE))
 # Image tag: DESCRIBE, so RELEASE_TAG when it is set. When DESCRIBE is empty,
-# the abbreviated commit hash, followed by -dirty in the same way.
+# the abbreviated commit hash, followed by -dirty in the same way. Empty
+# outside a git checkout, as in a source archive.
 TAG := $(or $(DESCRIBE),$(shell git describe --always --dirty --exclude='*' 2>/dev/null))
 # VERSION and TAG come from a tag name, which can hold characters that a
 # shell interprets, such as ; $ ` ( ) and quotes. They reach the recipes only
@@ -48,6 +51,48 @@ TAG := $(or $(DESCRIBE),$(shell git describe --always --dirty --exclude='*' 2>/d
 # "$$TAG", and never as text in a recipe line. Make exports a variable set
 # with := as its stored value, without expanding it again.
 export VERSION TAG
+
+# The goals given on the command line; `make` without a goal runs the default
+# goal, all, which pushes. A MAKECMDGOALS set on the command line or in the
+# environment replaces the goals that make reports, so make then takes the
+# goals to be all, and every check below applies.
+override GOALS := $(if $(filter default undefined,$(origin MAKECMDGOALS)),$(or $(MAKECMDGOALS),all),all)
+
+# Make refuses to build the image when its tag is empty: outside a git
+# checkout, git describe finds no commit, and `docker tag` would fail only
+# after a full build. TAG=<tag> on the command line gives a tag there.
+ifneq ($(filter all container image push,$(GOALS)),)
+ifeq ($(strip $(TAG)),)
+$(error The image tag is empty: TAG= was given empty, or git describe found no commit, as outside a git checkout; build from a git clone, or give TAG=<tag>)
+endif
+endif
+
+# `make push` publishes only an image with a version, as v<version> and as
+# latest. Make refuses to run it, before anything is built, when VERSION is
+# empty: when no version tag is reachable, the image would report 0.0.0-dev,
+# and a tag named "v" has no version. With RELEASE_TAG set, make also refuses
+# when VERSION is not RELEASE_TAG without its "v", or TAG is not RELEASE_TAG,
+# as when VERSION or TAG is given on the command line. Make compares the
+# values itself, as exact strings, so they reach no shell. These refusals
+# hold under `make -n` and `make -i` too. `make image` without a version tag
+# is allowed, for a local build.
+ifneq ($(filter all push,$(GOALS)),)
+ifneq ($(value RELEASE_TAG),)
+ifneq ($(VERSION),$(patsubst v%,%,$(value RELEASE_TAG)))
+$(error VERSION=$(VERSION) does not match RELEASE_TAG=$(value RELEASE_TAG): with RELEASE_TAG set, the version is RELEASE_TAG without its "v")
+endif
+ifneq ($(TAG),$(value RELEASE_TAG))
+$(error TAG=$(TAG) does not match RELEASE_TAG=$(value RELEASE_TAG): with RELEASE_TAG set, the image tag is RELEASE_TAG)
+endif
+endif
+ifeq ($(strip $(VERSION)),)
+ifneq ($(value RELEASE_TAG),)
+$(error RELEASE_TAG=$(value RELEASE_TAG) has an empty version: a release tag is "v" followed by the version)
+endif
+$(error make push needs a version, and VERSION is empty, as when no tag matching v[0-9]*.[0-9]*.[0-9]* is reachable from the checked-out commit; make image builds an image without a version, which reports 0.0.0-dev)
+endif
+endif
+
 PREFIX = hyperflowwms
 REPO_NAME = hyperflow
 #REPO_NAME = $(shell git config --get remote.origin.url | tr ':.' '/'  | rev | cut -d '/' -f 2 | rev)
@@ -60,7 +105,7 @@ container: image
 # without a shell. The second refuses a VERSION that is not strict semver
 # 2.0.0, before anything is built, tagged or pushed. It runs whenever VERSION
 # or RELEASE_TAG is set, so with RELEASE_TAG set an empty VERSION is refused
-# too.
+# too; make itself refuses an empty VERSION only for `make push`.
 image:
 	$(info Image tag: $(TAG); version: $(or $(VERSION),none))
 	$(if $(or $(VERSION),$(value RELEASE_TAG)),sh scripts/check-version.sh "$$VERSION")

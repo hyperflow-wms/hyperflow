@@ -11,7 +11,10 @@
  * The repository's package.json holds 0.0.0-dev. scripts/check-version.sh
  * rejects anything but a strict semver 2.0.0 version without build metadata;
  * `make image` runs it before any docker command, and the Dockerfile before
- * `npm version`.
+ * `npm version`. `make push` refuses to run, while make reads the Makefile,
+ * when the version is empty, and when RELEASE_TAG is set and VERSION or TAG
+ * differs from what it gives; `make image` and `make push` refuse to run when
+ * the image tag is empty, as outside a git checkout.
  *
  * The script part runs scripts/check-version.sh on valid and invalid
  * versions. The Dockerfile part runs the Dockerfile's own `npm version` RUN
@@ -115,22 +118,29 @@ function runVersionStep(command, version) {
 // (process.env by default) and isolated from the user's and the system's git
 // configuration. Inherited GIT_* variables are dropped: GIT_DIR or
 // GIT_WORK_TREE, as set inside a git hook, would point the scratch commits
-// and tags at another repository. MAKEFLAGS, MAKEOVERRIDES and GNUMAKEFLAGS
-// are dropped: a make that runs this test passes its command-line variables,
-// such as VERSION=..., and its options to the scratch make through MAKEFLAGS
-// (which may refer to MAKEOVERRIDES), and GNUMAKEFLAGS set in the user's
-// shell is read like MAKEFLAGS. Variables passed that way would override the
-// Makefile's own values. RELEASE_TAG is dropped too: the Makefile reads it
-// from the environment when it is not given on the command line.
+// and tags at another repository. GIT_CEILING_DIRECTORIES stops git's search
+// for a repository at the temporary directory, so a scratch directory without
+// .git is outside any repository, also when the temporary directory lies
+// inside one. MAKEFLAGS, MAKEOVERRIDES and GNUMAKEFLAGS are dropped: a make
+// that runs this test passes its command-line variables, such as
+// VERSION=..., and its options to the scratch make through MAKEFLAGS (which
+// may refer to MAKEOVERRIDES), and GNUMAKEFLAGS set in the user's shell is
+// read like MAKEFLAGS. Variables passed that way would override the
+// Makefile's own values. MAKECMDGOALS is dropped: from the environment it
+// would replace the goals that the scratch make reports, and the Makefile
+// would then apply the checks of `make push` to every goal. RELEASE_TAG is
+// dropped too: the Makefile reads it from the environment when it is not
+// given on the command line.
 function gitEnv(parent) {
     const inherited = Object.assign({}, parent || process.env);
     for (const key of Object.keys(inherited)) {
         if (key.startsWith('GIT_')) delete inherited[key];
     }
-    for (const key of ['MAKEFLAGS', 'MAKEOVERRIDES', 'GNUMAKEFLAGS']) {
+    for (const key of ['MAKEFLAGS', 'MAKEOVERRIDES', 'GNUMAKEFLAGS', 'MAKECMDGOALS']) {
         delete inherited[key];
     }
     const env = Object.assign(inherited, {
+        GIT_CEILING_DIRECTORIES: os.tmpdir(),
         GIT_CONFIG_GLOBAL: '/dev/null',
         GIT_CONFIG_NOSYSTEM: '1',
         GIT_AUTHOR_NAME: 'test',
@@ -184,6 +194,12 @@ function fakeDocker() {
     return fakeDockerDir;
 }
 
+// The arguments of `make <target> <extraArgs>`; a null target runs make
+// without a goal.
+function makeArgs(target, extraArgs) {
+    return (target === null ? [] : [target]).concat(extraArgs || []);
+}
+
 // Runs `make <target> <extraArgs>` for real in a scratch repository, with the
 // fake docker first on PATH, and returns make's exit status and output and
 // the arguments of each docker command, in order. parent is the environment
@@ -194,7 +210,7 @@ function runMake(dir, target, extraArgs, parent) {
     const env = gitEnv(parent);
     env.PATH = fakeDocker() + path.delimiter + env.PATH;
     env.FAKE_DOCKER_LOG = log;
-    const r = spawnSync('make', [target].concat(extraArgs || []), { cwd: dir, env, encoding: 'utf8' });
+    const r = spawnSync('make', makeArgs(target, extraArgs), { cwd: dir, env, encoding: 'utf8' });
     if (r.error) throw r.error;
     const calls = fs.readFileSync(log, 'utf8').split('\n').filter((l) => l !== '').map((l) => JSON.parse(l));
     return { status: r.status, output: r.stdout + r.stderr, calls };
@@ -235,7 +251,7 @@ function makeImage(dir, extraArgs, parent) {
 // and output.
 function makeFails(dir, target, extraArgs) {
     const r = runMake(dir, target, extraArgs);
-    const cmd = 'make ' + [target].concat(extraArgs || []).join(' ');
+    const cmd = ['make'].concat(makeArgs(target, extraArgs)).join(' ');
     assert.notStrictEqual(r.status, 0, cmd + ' succeeded:\n' + r.output);
     assert.deepStrictEqual(r.calls, [], cmd + ' ran docker commands');
     return r;
@@ -246,8 +262,9 @@ function makeFails(dir, target, extraArgs) {
 function makeRefused(dir, args) {
     const r = spawnSync('make', ['-n'].concat(args), { cwd: dir, env: gitEnv(), encoding: 'utf8' });
     if (r.error) throw r.error;
-    assert.notStrictEqual(r.status, 0, 'make -n ' + args.join(' ') + ' ran:\n' + r.stdout + r.stderr);
-    assert.ok(!/^docker /m.test(r.stdout), 'make -n ' + args.join(' ') + ' printed docker commands:\n' + r.stdout);
+    const cmd = ['make', '-n'].concat(args).join(' ');
+    assert.notStrictEqual(r.status, 0, cmd + ' ran:\n' + r.stdout + r.stderr);
+    assert.ok(!/^docker /m.test(r.stdout), cmd + ' printed docker commands:\n' + r.stdout);
     return { status: r.status, stderr: r.stderr };
 }
 
@@ -346,6 +363,23 @@ function main() {
         assert.strictEqual(m.hasBuildArg, false, 'build argument passed with no tag: ' + m.build);
         assert.strictEqual(m.imageTag, firstCommit);
         ok('no tag: no --build-arg, image tagged with the commit hash');
+    }
+
+    // `make push` publishes only an image with a version. Without a version
+    // tag, make refuses to run it while it reads the Makefile, before any
+    // docker command, also under `make -n` and `make -i`. It refuses `make`
+    // and `make all` too, since the default goal, all, pushes. `make image`,
+    // above, builds the image.
+    for (const [target, extra] of [['push', []], [null, []], ['all', []], [null, ['-i', 'push']], ['image', ['push']]]) {
+        const f = makeFails(repo, target, extra);
+        assert.ok(/make push needs a version, and VERSION is empty/.test(f.output), f.output);
+        ok('no tag: ' + ['make'].concat(makeArgs(target, extra)).join(' ') +
+            ' refuses to run, before any docker command (exit ' + f.status + ')');
+    }
+    for (const args of [['push'], [], ['push', 'MAKECMDGOALS=image']]) {
+        const f = makeRefused(repo, args);
+        assert.ok(/make push needs a version, and VERSION is empty/.test(f.stderr), f.stderr);
+        ok('no tag: ' + ['make', '-n'].concat(args).join(' ') + ' refuses to run (exit ' + f.status + ')');
     }
 
     // The environment variables through which VERSION=... could reach the
@@ -505,6 +539,10 @@ function main() {
         assert.deepStrictEqual(m.calls, expectedCalls);
         ok('make push RELEASE_TAG=v1.11.2: --build-arg VERSION=1.11.2, pushes ' + m.pushes.join(' and '));
 
+        m = dockerCommands(r, 'push');
+        assert.deepStrictEqual(m.calls, expectedCalls);
+        ok('make push on tag v1.11.2 without RELEASE_TAG: the same four docker commands');
+
         // The recipes refer to "$VERSION" and "$TAG"; make prints the values
         // themselves, so that a dry run shows them.
         const dry = run('make', ['-n', 'push', 'RELEASE_TAG=v1.11.2'], r, gitEnv());
@@ -531,6 +569,21 @@ function main() {
         f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11']);
         assert.ok(/RELEASE_TAG=v1\.11 is not a tag on the checked-out commit/.test(f.stderr), f.stderr);
         ok('make push RELEASE_TAG=v1.11, a prefix of the tag on HEAD: make refuses to run (exit ' + f.status + ')');
+
+        // With RELEASE_TAG set, make push refuses a VERSION or TAG given on
+        // the command line that differs from what RELEASE_TAG gives, before
+        // any docker command, also under make -n.
+        for (const [extra, message] of [
+            ['VERSION=1.2.3', /VERSION=1\.2\.3 does not match RELEASE_TAG=v1\.11\.2/],
+            ['TAG=other', /TAG=other does not match RELEASE_TAG=v1\.11\.2/],
+        ]) {
+            f = makeFails(r, 'push', ['RELEASE_TAG=v1.11.2', extra]);
+            assert.ok(message.test(f.output), f.output);
+            const dry = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.2', extra]);
+            assert.ok(message.test(dry.stderr), dry.stderr);
+            ok('make push RELEASE_TAG=v1.11.2 ' + extra + ': make refuses to run, also under make -n (exit ' +
+                f.status + ')');
+        }
 
         git(r, 'commit', '-q', '-a', '-m', 'second');
         f = makeRefused(r, ['push', 'RELEASE_TAG=v1.11.2']);
@@ -570,19 +623,70 @@ function main() {
         assert.ok(/RELEASE_TAG=1\.7\.1 does not start with "v"/.test(f.stderr), f.stderr);
         ok('make push RELEASE_TAG=1.7.1, a tag on HEAD without the v: make refuses to run (exit ' + f.status + ')');
 
-        // With RELEASE_TAG set, the version check runs also on an empty
-        // version: from a tag named "v", or from VERSION= on the command line.
+        // With RELEASE_TAG set, an empty version, from a tag named "v" or from
+        // VERSION= on the command line, is refused: by make while it reads
+        // the Makefile for make push, also under make -n and make -i, and by
+        // the version check for make image.
         git(r, 'tag', 'v');
-        f = makeFails(r, 'push', ['RELEASE_TAG=v']);
+        for (const args of [['push', 'RELEASE_TAG=v'], ['-i', 'push', 'RELEASE_TAG=v']]) {
+            f = makeFails(r, null, args);
+            assert.ok(/RELEASE_TAG=v has an empty version/.test(f.output), f.output);
+            ok(['make'].concat(args).join(' ') +
+                ', a tag on HEAD with an empty version: make refuses to run, before any docker command (exit ' +
+                f.status + ')');
+        }
+        f = makeRefused(r, ['push', 'RELEASE_TAG=v']);
+        assert.ok(/RELEASE_TAG=v has an empty version/.test(f.stderr), f.stderr);
+        ok('make -n push RELEASE_TAG=v: make refuses to run (exit ' + f.status + ')');
+
+        f = makeFails(r, 'image', ['RELEASE_TAG=v']);
         assert.ok(/"" is not a valid version/.test(f.output), f.output);
-        ok('make push RELEASE_TAG=v, a tag on HEAD with an empty version: fails at the version check, ' +
-            'before any docker command (exit ' + f.status + ')');
+        ok('make image RELEASE_TAG=v: fails at the version check, before any docker command (exit ' + f.status + ')');
 
         git(r, 'tag', 'v1.11.2');
         f = makeFails(r, 'push', ['RELEASE_TAG=v1.11.2', 'VERSION=']);
-        assert.ok(/"" is not a valid version/.test(f.output), f.output);
-        ok('make push RELEASE_TAG=v1.11.2 VERSION=: fails at the version check, before any docker command (exit ' +
+        assert.ok(/VERSION= does not match RELEASE_TAG=v1\.11\.2/.test(f.output), f.output);
+        ok('make push RELEASE_TAG=v1.11.2 VERSION=: make refuses to run, before any docker command (exit ' +
             f.status + ')');
+
+        f = makeFails(r, 'image', ['RELEASE_TAG=v1.11.2', 'VERSION=']);
+        assert.ok(/"" is not a valid version/.test(f.output), f.output);
+        ok('make image RELEASE_TAG=v1.11.2 VERSION=: fails at the version check, before any docker command (exit ' +
+            f.status + ')');
+
+        // A VERSION given on the command line would otherwise pass the
+        // version check in place of the tag's own, as for a tag vfoo.
+        git(r, 'tag', 'vfoo');
+        f = makeFails(r, 'push', ['RELEASE_TAG=vfoo', 'VERSION=1.2.3']);
+        assert.ok(/VERSION=1\.2\.3 does not match RELEASE_TAG=vfoo/.test(f.output), f.output);
+        ok('make push RELEASE_TAG=vfoo VERSION=1.2.3: make refuses to run, before any docker command (exit ' +
+            f.status + ')');
+    }
+
+    // Outside a git checkout, as in a source archive, git describe finds no
+    // commit, and the image tag would be empty: make refuses to build the
+    // image, before any docker command, unless TAG is given.
+    {
+        const dir = mkTmp('hf-archive-');
+        fs.copyFileSync(path.join(root, 'Makefile'), path.join(dir, 'Makefile'));
+        fs.mkdirSync(path.join(dir, path.dirname(checkScript)));
+        fs.copyFileSync(path.join(root, checkScript), path.join(dir, checkScript));
+        const g = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: dir, env: gitEnv(), encoding: 'utf8' });
+        assert.notStrictEqual(g.status, 0, dir + ' is inside a git repository: ' + g.stdout);
+        for (const target of ['image', 'push']) {
+            const f = makeFails(dir, target);
+            assert.ok(/The image tag is empty/.test(f.output), f.output);
+            ok('outside a git checkout: make ' + target + ' refuses to run, before any docker command (exit ' +
+                f.status + ')');
+        }
+        const f = makeRefused(dir, ['image']);
+        assert.ok(/The image tag is empty/.test(f.stderr), f.stderr);
+        ok('outside a git checkout: make -n image refuses to run (exit ' + f.status + ')');
+
+        const m = makeImage(dir, ['TAG=local']);
+        assert.strictEqual(m.hasBuildArg, false, 'build argument passed outside a git checkout: ' + m.build);
+        assert.strictEqual(m.imageTag, 'local');
+        ok('outside a git checkout: make image TAG=local passes no --build-arg, image tagged local');
     }
 
     // Tag names with characters that a shell interprets. Each payload would
