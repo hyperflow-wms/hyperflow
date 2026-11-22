@@ -1,7 +1,7 @@
 /**
  * Checks the docker commands that `make push TAG=<tag>` runs: the image is
  * built with the tag's version, pushed as the tag first, and pushed as latest
- * only when the tag has no "-". The recipe that `make -n` prints runs in sh
+ * only for a plain vX.Y.Z tag. The recipe that `make -n` prints runs in sh
  * with docker replaced by a function that echoes its arguments, so the test
  * needs make and sh but no Docker and no git repository.
  * Run with:  node tests/makePush.js
@@ -13,6 +13,7 @@ const env = Object.assign({}, process.env);
 delete env.MAKEFLAGS;
 delete env.MAKEOVERRIDES;
 delete env.GNUMAKEFLAGS;
+delete env.MAKELEVEL;
 
 function dockerCommands(tag) {
     const script = execFileSync('make', ['-n', 'push', 'TAG=' + tag],

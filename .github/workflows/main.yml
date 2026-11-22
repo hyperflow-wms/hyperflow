@@ -1,6 +1,9 @@
 # Builds the engine image on every change and publishes it when a release is
 # published. The deploy job passes the release tag to `make push` as TAG, so
 # the image is pushed as that tag, and as :latest only for a plain vX.Y.Z tag.
+# It refuses a tag that is not v<major>.<minor>.<patch> with an optional
+# -<pre-release>, and a release whose pre-release flag disagrees with whether
+# the tag has a -suffix.
 # Publishing happens only here, because a local `make push` tags the image
 # from that machine's `git describe`.
 
@@ -72,6 +75,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and Push Docker Images
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "Release tag $GITHUB_REF_NAME is not v<major>.<minor>.<patch>, optionally followed by -<suffix>"; exit 1; }
+          re='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          [[ "$GITHUB_REF_NAME" =~ $re ]] || { echo "Release tag $GITHUB_REF_NAME is not v<major>.<minor>.<patch>, optionally followed by -<pre-release>"; exit 1; }
+          case "$GITHUB_REF_NAME" in *-*) want=true ;; *) want=false ;; esac
+          [ "$PRERELEASE" = "$want" ] || { echo "Release tag $GITHUB_REF_NAME needs the pre-release flag $want, but the release has $PRERELEASE"; exit 1; }
           make push TAG="$GITHUB_REF_NAME"

@@ -135,7 +135,7 @@ A pre-release needs a `-suffix` in its tag, such as `v1.12.0-rc.1`:
 gh release create v1.12.0-rc.1 --target master --prerelease --generate-notes
 ```
 
-A tag that contains `-` is pushed under its own tag only and leaves `:latest` alone. This is the way to get a test image of `master`. Promoting a pre-release to a release later publishes nothing, because GitHub then sends a `released` event, not `published`; the stable version needs its own release.
+CI refuses to publish when the tag's form and the release's pre-release flag disagree: a tag with a `-suffix` must be published with `--prerelease`, and a plain `vX.Y.Z` without it. A tag that contains `-` is pushed under its own tag only and leaves `:latest` alone. This is the way to get a test image of `master`. Promoting a pre-release to a release later publishes nothing, because GitHub then sends a `released` event, not `published`; the stable version needs its own release.
 
 The released image tag must stay exactly `hyperflowwms/hyperflow:vX.Y.Z`, for example `hyperflowwms/hyperflow:v1.11.2`. Renovate in `hyperflow-k8s-deployment` and `1000genome-workflow` finds new engine images by the pattern `hyperflowwms/hyperflow:v\d+\.\d+\.\d+`, so it never picks up a tag of another form.
 
