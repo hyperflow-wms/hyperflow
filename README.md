@@ -114,14 +114,16 @@ hflow run --submit=<hyperflow_server_url> <workflow_dir>
 
 Currently `<workflow_dir>` must be a local directory accessbile by the server. This allows running multiple workflows (concurrently) using the same instance of the HyperFlow engine.
 
-## Releases
+## Releasing
 A release is a GitHub release whose tag is `v` followed by the version, for example `v1.11.2`. The tag is the only place the version is set. The maintainer creates the release from `master`:
 
 ```
 gh release create v<version> --target master --generate-notes
 ```
 
-The CI workflow (`.github/workflows/main.yml`) runs `tests/connector.js`, `tests/k8sJobSubmit.js` and `tests/version.js` and builds the image with `make image` on every push to `master`, on pull requests into `master`, on pushes of `v*.*.*` tags and on manual runs. When a release is created, it also runs `make push RELEASE_TAG="$GITHUB_REF_NAME"`, which builds the image at the release tag and pushes it to Docker Hub as `hyperflowwms/hyperflow:latest` and `hyperflowwms/hyperflow:v<version>`. The image is published only from CI; do not run `make push` locally.
+The CI workflow (`.github/workflows/main.yml`) runs `tests/connector.js`, `tests/k8sJobSubmit.js` and `tests/version.js` and builds the image with `make image` on every push to `master`, on pull requests into `master`, on pushes of `v*.*.*` tags and on manual runs. When a release is published, it also runs `make push RELEASE_TAG="$GITHUB_REF_NAME"`, which builds the image at the release tag and pushes it to Docker Hub as `hyperflowwms/hyperflow:latest` and `hyperflowwms/hyperflow:v<version>`. This covers a release created without being saved as a draft, as by `gh release create` above, and a draft release when the maintainer publishes it later. A pre-release is published in the same way, so publishing a pre-release such as `v1.12.0-rc1` also pushes `hyperflowwms/hyperflow:v1.12.0-rc1` and moves `hyperflowwms/hyperflow:latest` to it. Publishing a release again, after converting it back to a draft, runs the same steps and moves `:latest` back to that release, even when newer releases exist. The image is published only from CI; do not run `make push` locally.
+
+The released image tag must stay exactly `hyperflowwms/hyperflow:v<major>.<minor>.<patch>`, for example `hyperflowwms/hyperflow:v1.11.2`. Renovate in the `hyperflow-k8s-deployment` and `1000genome-workflow` repositories finds new engine images on Docker Hub by the pattern `hyperflowwms/hyperflow:v\d+\.\d+\.\d+`, so an image released under a tag of another form is never picked up there. Read this section before changing the release workflow, the version scheme or the image tag.
 
 With `RELEASE_TAG` set, `make image` and `make push` take the image tag and the version from it, and do not run `git describe`: `RELEASE_TAG=v1.12.0` tags the image exactly `v1.12.0` and passes `1.12.0` as the version, also when another tag, such as an annotated `v1.12.0-rc1` that `git describe` would pick, is on the same commit, and also when tracked files have uncommitted changes. The Makefile refuses to run when `RELEASE_TAG` is not one of the tags on the checked-out commit, or does not start with `v`. `make push` also refuses to run when `RELEASE_TAG` has nothing after the `v`, and when a `VERSION` or `TAG` given on the command line differs from what `RELEASE_TAG` gives.
 

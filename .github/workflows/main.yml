@@ -1,10 +1,12 @@
 # Builds the engine image on every change and publishes it when a release is
-# created. Publishing happens here and nowhere else: a local `make push` tags
-# the image from whatever `git describe` returns on that machine, which has
-# already put a mis-tagged image on Docker Hub. The deploy job passes the
-# release's tag to `make push` as RELEASE_TAG, so the image is tagged with
-# exactly that tag and reports its version, even when another tag sits on the
-# same commit.
+# published: a release created without being saved as a draft, or a draft
+# release when it is published later. A pre-release is published the same
+# way, so its image is pushed too and moves :latest. Publishing happens here
+# and nowhere else: a local `make push` tags the image from whatever
+# `git describe` returns on that machine, which has already put a mis-tagged
+# image on Docker Hub. The deploy job passes the release's tag to `make push`
+# as RELEASE_TAG, so the image is tagged with exactly that tag and reports its
+# version, even when another tag sits on the same commit.
 
 name: CI
 
@@ -17,7 +19,7 @@ on:
   pull_request:
     branches: [ master ]
   release:
-    types: ["created"]
+    types: ["published"]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs: {}
@@ -61,7 +63,7 @@ jobs:
   deploy:
     needs: [ build ]
     runs-on: ubuntu-22.04
-    if: github.event_name == 'release' && github.event.action == 'created'
+    if: github.event_name == 'release' && github.event.action == 'published'
     steps:
       - uses: actions/checkout@v4
         with:
