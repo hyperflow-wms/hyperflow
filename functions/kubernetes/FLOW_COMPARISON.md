@@ -75,12 +75,16 @@ submitK8sJob() called
 │   └─> Permit granted ✓
 │       (pendingCount++, tokens--)
 │
-├─> createJob() ──────────────> K8s API (createNamespacedJob)
+├─> startJobCreation() ───────> K8s API (createNamespacedJob)
 │   (fire-and-forget)              │
-│   returns immediately             │
-│   │                                │ (happens in background)
-│   └─> on error: recordError()     ├─> Success (Pod created)
-│                                    └─> Error → logged (no retry here)
+│   returns immediately             │ (happens in background)
+│                                    ├─> every failed attempt → recordError()
+│                                    ├─> Success → done
+│                                    ├─> transient error → backoff → retry
+│                                    │   (same rules as the default flow)
+│                                    └─> Job cannot be created
+│                                        → releasePermit(), and the tasks
+│                                          fail (exit code 1)
 │
 └─> sendJobMessages() ────> Redis (lpush messages)
     await Promise.all()         │
@@ -94,7 +98,7 @@ T+0ms:    acquirePermit() called
 T+0ms:    Gate 1: pendingCount=5 < 200 → PASS
 T+0ms:    Gate 2: tokens=15.2 >= 1 → PASS (consume 1 token, now 14.2)
 T+0ms:    Permit granted, pendingCount now 6
-T+1ms:    createJob() starts           (background)
+T+1ms:    startJobCreation() starts    (background)
 T+1ms:    sendJobMessages() starts     (foreground, awaited)
 T+45ms:   Messages sent to Redis       ✓
 T+80ms:   submitK8sJob() returns       ✓
@@ -111,7 +115,7 @@ T+247ms:  Gate 2: tokens=0.8 < 1 → BLOCKED
 T+247ms:  sleep(93ms) with jitter
 T+340ms:  Gate 2: tokens=1.2 >= 1 → PASS
 T+340ms:  Permit granted
-T+341ms:  createJob() starts           (background)
+T+341ms:  startJobCreation() starts    (background)
 T+341ms:  sendJobMessages() starts     (foreground, awaited)
 T+385ms:  Messages sent to Redis       ✓
 T+420ms:  submitK8sJob() returns       ✓

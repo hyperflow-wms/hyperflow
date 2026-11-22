@@ -186,7 +186,9 @@ const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // - 'namespace', 'jobYaml': the Job's namespace and parsed definition
 // - 'taskIds': ids of the tasks the Job runs, for logging
 // - 'options' (optional): 'retries' overrides HF_VAR_JOB_CREATE_RETRIES,
-//   'sleep(ms)' and 'random()' replace the timer and Math.random (for tests)
+//   'sleep(ms)' and 'random()' replace the timer and Math.random (for tests),
+//   'onError(err)' is called after every failed create call, before the
+//   error is classified; it must not throw
 //
 // Returns a promise that never rejects and resolves to
 // { created, attempts, error, statusCode }.
@@ -209,6 +211,9 @@ async function createJobWithRetries(k8sApi, namespace, jobYaml, taskIds, options
       return { created: true, attempts: attempt };
     } catch (e) {
       err = e;
+    }
+    if (options.onError) {
+      options.onError(err);
     }
 
     let statusCode = errorStatusCode(err);

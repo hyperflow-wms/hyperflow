@@ -1,6 +1,7 @@
 /**
- * Tests for the creation of a task's Kubernetes Job on the default path of
- * functions/kubernetes/k8sJobSubmit.js (HF_VAR_ADMISSION_CONTROLLER unset):
+ * Tests for the creation of a task's Kubernetes Job by
+ * functions/kubernetes/k8sJobSubmit.js, on the default path
+ * (HF_VAR_ADMISSION_CONTROLLER unset) unless a test says otherwise:
  *  - functions/kubernetes/k8sJobCreate.js retries transient API errors with
  *    exponential backoff, honours Retry-After, and fails other 4xx errors at
  *    once. AlreadyExists for the Job's own name counts as created only after
@@ -14,18 +15,23 @@
  *  - submitK8sJob returns once the job messages are sent, while the Job's
  *    creation goes on in the background, and the outcome of the creation
  *    reaches the tasks' waits when the tasks run as k8sCommandGroup runs
- *    them: submitK8sJob, then synchronizeJobs (jobSynchronization.js).
+ *    them: submitK8sJob, then synchronizeJobs (jobSynchronization.js);
+ *  - with HF_VAR_ADMISSION_CONTROLLER=1, submitK8sJob creates the Job the
+ *    same way once it has a permit; the admission controller records every
+ *    failed create call and gets the permit back when the Job cannot be
+ *    created.
  *
  * The task contexts get 'jobResult' and 'resolveJobResult' from
  * wflib/jobResult.js, as in wflib/index.js. Behind them are the real
  * connector classes of wflib/connector.js, set up for each completion
  * transport the way wflib/index.js sets them up.
  *
- * Self-contained: a fake Kubernetes API client, a fake redis client, and
- * stubs for the two npm packages k8sJobSubmit.js requires; no live services
- * and no installed dependencies. Retry delays are recorded by an injected
- * sleep function, or held until the test releases them, instead of waited
- * for.
+ * Self-contained: a fake Kubernetes API client, a fake redis client, stubs
+ * for the two npm packages k8sJobSubmit.js requires, and recording stand-ins
+ * for the admission controller's methods that talk to the cluster or pace
+ * creation; no live services and no installed dependencies. Retry delays are
+ * recorded by an injected sleep function, or held until the test releases
+ * them, instead of waited for.
  * Run with:  node tests/k8sJobSubmit.js
  */
 const assert = require('assert');
@@ -76,6 +82,9 @@ try {
 } finally {
     Module._load = originalLoad;
 }
+// The class k8sJobSubmit.js uses, from the module cache: this require does
+// not load k8sAdmissionController.js again.
+const K8sAdmissionController = require('../functions/kubernetes/k8sAdmissionController.js').K8sAdmissionController;
 
 // The template leaves out ${command}: its double-quoted task ids would break
 // the JSON.
@@ -792,6 +801,56 @@ async function main() {
                 timers.restore();
             }
         });
+    }
+
+    // The admission controller path. The controller's methods that talk to
+    // the cluster or pace creation are replaced by ones that record their
+    // calls. k8sJobSubmit.js keeps the controller it initializes for the rest
+    // of the process, so only the first of these tests initializes it.
+    process.env.HF_VAR_ADMISSION_CONTROLLER = '1';
+    const admissionCalls = [];
+    const savedMethods = {};
+    for (const name of ['initialize', 'acquirePermit', 'recordError', 'releasePermit']) {
+        savedMethods[name] = K8sAdmissionController.prototype[name];
+        K8sAdmissionController.prototype[name] = function() { admissionCalls.push(name); return Promise.resolve(); };
+    }
+    try {
+        await test('admission controller: a 403 fails the task with no retry, and the permit is returned', async () => {
+            const api = new FakeBatchApi([() => httpError(403, 'Forbidden', 'jobs.batch is forbidden'), CREATED]);
+            const group = await submitGroup(setT, ['hf:1:21:1'], api);
+            assert.deepStrictEqual(await withTimeout(group.sync, 1000, 'task of the Job that got 403'), [FAILED]);
+            assert.deepStrictEqual(group.restarts, [0]);
+            await tick();
+            assert.strictEqual(api.calls, 1, 'the 403 was retried');
+            assert.deepStrictEqual(admissionCalls, ['initialize', 'acquirePermit', 'recordError', 'releasePermit']);
+        });
+
+        await test('admission controller: a connection error and a 500 are each recorded and retried, and the task then waits for its completion notice', async () => {
+            admissionCalls.length = 0;
+            const taskId = 'hf:1:22:1';
+            const timers = holdRetryTimers();
+            try {
+                const api = new FakeBatchApi([connectionError('ECONNRESET'), e500, CREATED]);
+                const group = await submitGroup(setT, [taskId], api);
+                assert.strictEqual(api.calls, 1);
+                for (const calls of [2, 3]) {
+                    assert.strictEqual(timers.held.length, 1, 'no retry is pending');
+                    timers.release();
+                    await tick();
+                    assert.strictEqual(api.calls, calls, 'the retry did not run');
+                }
+                assert.strictEqual(group.settled, false, 'the wait ended without a completion notice');
+                setT.complete(taskId, 0);
+                assert.deepStrictEqual(await withTimeout(group.sync, 1000, 'completion of ' + taskId), [0]);
+                assert.deepStrictEqual(group.restarts, []);
+                assert.deepStrictEqual(admissionCalls, ['acquirePermit', 'recordError', 'recordError']);
+            } finally {
+                timers.restore();
+            }
+        });
+    } finally {
+        delete process.env.HF_VAR_ADMISSION_CONTROLLER;
+        Object.assign(K8sAdmissionController.prototype, savedMethods);
     }
 
     await setT.stop();
