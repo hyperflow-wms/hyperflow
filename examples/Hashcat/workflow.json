@@ -1,0 +1,140 @@
+{
+    "name": "PasswordAudit",
+    "processes": [
+      {
+        "name": "GenerateHashes",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "firingLimit": 1,
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./generate.js"]
+          }
+        },
+        "ins": [],
+        "outs": [0]
+      },
+      {
+        "name": "FilterHashes",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./filter.js"]
+          }
+        },
+        "ins": [0],
+        "outs": [1]
+      },
+      {
+        "name": "RunHashcatMD5",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./hashcat.js", "md5"]
+          }
+        },
+        "ins": [1],
+        "outs": [2]
+      },
+      {
+        "name": "RunHashcatSHA1",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./hashcat.js", "sha1"]
+          }
+        },
+        "ins": [1],
+        "outs": [3]
+      },
+      {
+        "name": "RunHashcatSHA256",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./hashcat.js", "sha256"]
+          }
+        },
+        "ins": [1],
+        "outs": [4]
+      },
+      {
+        "name": "RunHashcatSHA512",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./hashcat.js", "sha512"]
+          }
+        },
+        "ins": [1],
+        "outs": [5]
+      },
+      {
+        "name": "RunHashcatSHA3-256",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./hashcat.js", "sha3-256"]
+          }
+        },
+        "ins": [1],
+        "outs": [6]
+      },
+      {
+        "name": "SummarizeResults",
+        "type": "dataflow",
+        "function": "submitRemoteJob",
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./summarize.js"]
+          }
+        },
+        "ins": [2, 3, 4, 5, 6],
+        "outs": [7]
+      }
+    ],
+    "signals": [
+      
+      {
+        "name": 0
+      },
+      {
+        "name": 1
+      },
+      {
+        "name": 2
+      },
+      {
+        "name": 3
+      },
+      {
+        "name": 4
+      },
+      {
+        "name": 5
+      },
+      {
+        "name": 6
+      },
+      {
+        "name": 7
+      }
+    ],
+    "ins": [],
+    "outs": [7]
+  }
+  

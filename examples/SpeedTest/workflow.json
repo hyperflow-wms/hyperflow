@@ -1,0 +1,28 @@
+{
+    "name": "SpeedTest",
+    "processes": [
+      {
+        "name": "SpeedTest",
+        "type": "dataflow",
+        "function": "{{function}}",
+        "firingLimit": 1,
+        "config": {
+          "executor": {
+            "executable": "node",
+            "args": ["./speedtest.js"]
+          }
+        },
+        "ins": [],
+        "outs": [0]
+      }
+    ],
+    "signals": [
+      
+      {
+        "name": 0
+      }
+    ],
+    "ins": [],
+    "outs": [0]
+  }
+  
