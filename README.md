@@ -19,10 +19,10 @@ Browse the [wiki pages](https://github.com/balis/hyperflow/wiki) to learn more a
     ```
     git clone https://github.com/hyperflow-wms/hyperflow.git
     cd hyperflow
-    npm install
+    npm ci
     npm install -g .
     ```
-    `npm install` installs the dependencies into the clone. `npm install -g .` then links the clone into npm's global packages and installs the `hflow` and `hflow-recovery-analysis` commands into npm's global bin directory, so the clone must stay where it is. `hflow --version` run from a clone prints `0.0.0-dev`, because the repository does not carry a release version; see [Releasing](#releasing) for how release versions are set.
+    `npm ci` installs the locked dependencies into the clone, the same tree the image installs. `npm install -g .` then links the clone into npm's global packages and installs the `hflow` and `hflow-recovery-analysis` commands into npm's global bin directory, so the clone must stay where it is. `hflow --version` run from a clone prints `0.0.0-dev`, because the repository does not carry a release version; see [Releasing](#releasing) for how release versions are set. After a change to `package.json`, regenerate `package-lock.json` with `npm install --package-lock-only` and commit both. The image build runs `npm ci`, which fails when the lock does not satisfy `package.json`.
 
 ### Running locally
 * Start the redis server: `redis-server`

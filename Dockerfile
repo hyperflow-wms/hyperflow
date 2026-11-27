@@ -11,5 +11,5 @@ WORKDIR /hyperflow
 # a value npm rejects leaves 0.0.0-dev and prints a warning.
 ARG VERSION
 RUN if [ -n "$VERSION" ]; then npm version --no-git-tag-version --allow-same-version "$VERSION" || echo "warning: VERSION=$VERSION is not a valid version, keeping 0.0.0-dev"; fi
-RUN npm install
+RUN npm ci
 RUN npm install -g .
